@@ -3,9 +3,13 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 interface Panel {
+  type: string;
   title: string;
   targets: { query: string }[];
-  fieldConfig: { defaults: { custom: { showPoints: string } } };
+  fieldConfig: {
+    defaults: { custom?: { showPoints: string } };
+    overrides: { matcher: { options: string }; properties: { id: string }[] }[];
+  };
 }
 interface Dashboard {
   __inputs: { name: string; type: string; pluginId: string }[];
@@ -36,11 +40,23 @@ test("배터리 건강도·사이클·벤치마크 패널이 한 화면에 있�
 });
 
 test("측정이 한 번뿐이어도 점이 보이도록 모든 패널이 점을 그린다", () => {
-  for (const p of dashboard.panels) expect(p.fieldConfig.defaults.custom.showPoints).toBe("always");
+  const series = dashboard.panels.filter((p) => p.type === "timeseries");
+  expect(series).toHaveLength(3);
+  for (const p of series) expect(p.fieldConfig.defaults.custom?.showPoints).toBe("always");
 });
 
-test("기기는 별칭(alias)으로만 고르고 실명·이메일 칸은 없다(FR-PIL-01)", () => {
-  expect(dashboard.templating.list.map((v) => v.name)).toContain("alias");
+test("기기는 deviceId로 고르고 alias 태그를 쓰지 않는다(contracts diagnostics/influx.md)", () => {
+  expect(dashboard.templating.list.map((v) => v.name)).toContain("deviceId");
+  for (const q of queries) expect(q).not.toMatch(/alias/);
+});
+
+test("별칭은 기기 별칭표의 deviceId 값 매핑으로 붙인다", () => {
+  const table = dashboard.panels.find((p) => p.type === "table");
+  const override = table?.fieldConfig.overrides.find((o) => o.matcher.options === "deviceId");
+  expect(override?.properties.map((x) => x.id)).toContain("mappings");
+});
+
+test("실명·이메일 칸은 없다(FR-PIL-01)", () => {
   const text = JSON.stringify(dashboard);
   expect(text).not.toMatch(/email|realName|실명/i);
 });
@@ -49,8 +65,8 @@ test("주소 링크와 맞도록 uid가 고정돼 있다", () => {
   expect(dashboard.uid).toBe("trace-pilot-trend");
 });
 
-test("별칭은 여러 개 고를 수 있다(FR-003)", () => {
-  expect(dashboard.templating.list.find((v) => v.name === "alias")?.multi).toBe(true);
+test("기기는 여러 대 고를 수 있다(FR-003)", () => {
+  expect(dashboard.templating.list.find((v) => v.name === "deviceId")?.multi).toBe(true);
 });
 
 test("기본 기간은 최근 30일, 시간대는 Asia/Seoul이다(FR-005)", () => {

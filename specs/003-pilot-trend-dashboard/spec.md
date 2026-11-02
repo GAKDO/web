@@ -12,6 +12,7 @@
 
 - Q: 대시보드를 웹 화면으로 만드나, Grafana로 만드나? → A: **학교 Grafana**에 만들고 관리자 웹 메뉴에 새 탭 링크만 단다. 근거: `design/mvp-design.md` 229행(Grafana Flux 패널, InfluxDB `trace-pilot`)과 22행 수용 기준("Grafana에 나온다"). contracts에는 추이 읽기 API가 없어 웹 화면은 계약 변경이 필요하다(헌법: 계약 변경은 멈추고 알림).
 - Q: 기기는 무엇으로 고르나? → A: 파일럿 별칭(P01 같은)으로만. 실명은 화면·쿼리에 없다(FR-PIL-01).
+  - 갱신(같은 날, A 답): InfluxDB 이름은 contracts `diagnostics/influx.md`로 확정, `alias` 태그는 없다(서비스끼리 REST를 부르지 않음). 기기는 `deviceId`로 고르고, 별칭은 "기기 별칭표" 패널의 Grafana 값 매핑(deviceId → 별칭)으로 보인다. 학교 Grafana에 올려도 되고 이름에 trace 접두사를 붙인다.
 - Q: 배터리는 무엇을 보이나? → A: 건강도(완충 ÷ 설계 × 100)와 사이클 수. 용량 단위(mAh·mWh)가 OS마다 달라 원 값 대신 비율을 쓴다(환산은 하지 않음).
 - Q: 벤치마크는? → A: 지표(codes.yaml `diagnostics.benchmark_metric`)마다 패널 하나, 3회 중앙값.
 - Q: 측정이 한 번뿐인 기기는? → A: 점으로 보인다(선은 두 번째 측정부터).
@@ -43,7 +44,7 @@
 
 - **FR-001**: 대시보드는 InfluxDB `trace-pilot` 버킷만 읽는다(NFR-04).
 - **FR-002**: 패널은 배터리 건강도(%)·배터리 사이클·벤치마크(지표별) 세 종류다.
-- **FR-003**: 기기 선택 변수는 `alias` 태그이고 여러 개 고를 수 있다.
+- **FR-003**: 기기 선택 변수는 `deviceId` 태그이고 여러 개 고를 수 있다. 별칭은 기기 별칭표의 값 매핑으로 보인다.
 - **FR-004**: 모든 패널은 점을 그린다(측정 1번도 보임).
 - **FR-005**: 기본 기간은 최근 30일, 시간대는 Asia/Seoul.
 - **FR-006**: 대시보드 정의는 `grafana/pilot-trend.dashboard.json`으로 Git에 두고 Grafana "Import"로 다시 만들 수 있다. 데이터 소스·토큰은 JSON에 넣지 않는다.
@@ -56,5 +57,5 @@
 
 ## Assumptions / 의존
 
-- InfluxDB에 쓰는 이름(measurement·tag·field)은 `data-model.md`의 **제안**이다. A가 DI2에서 확정해야 한다. 다르면 JSON의 쿼리만 고친다.
-- 학교 Grafana에 우리 폴더·편집 권한과 `trace-pilot` 읽기 데이터 소스가 있어야 한다(A·학교 확인).
+- InfluxDB 이름은 contracts `diagnostics/influx.md`로 확정됐다(11/2).
+- 학교 Grafana에 올려도 된다(10/30 인프라 승인 범위). 대시보드·폴더·데이터 소스 이름은 trace 접두사.

@@ -5,8 +5,9 @@
 - [x] T003 링크 주소 테스트·구현 `src/shared/config/pilotDashboard(.test).ts` (FR-007)
 - [x] T004 관리 메뉴 링크 테스트·구현 `RequireAdmin(.test).tsx` (US3)
 - [x] T005 Dockerfile `ARG VITE_PILOT_DASHBOARD_URL`, `vite-env.d.ts` 타입
-- [ ] T006 (A) data-model.md 이름 확정 → 다르면 JSON 쿼리 고침
-- [ ] T007 (A·학교) Grafana 권한·`trace-pilot` 데이터 소스 확인 → JSON Import
+- [x] T006 (A) 이름 확정(contracts diagnostics/influx.md) → alias 대신 deviceId로 고침, 별칭은 값 매핑
+- [x] T007a (A) 학교 Grafana 사용 승인, trace 접두사
+- [ ] T007b Grafana에 trace 폴더·`trace-pilot` 데이터 소스 만들고 JSON Import, 기기 별칭표에 값 매핑 입력
 - [x] T008 배포 워크플로 build-arg에 레포 변수 `PILOT_DASHBOARD_URL` 연결
 - [ ] T008b (chan) Grafana 주소가 정해지면 GitHub 레포 변수 `PILOT_DASHBOARD_URL` 등록
 - [ ] T009 DI2 배포 뒤 파일럿 기기 1대 두 번 측정 → 한 화면 확인(SC-001) → 시트 9행 체크
