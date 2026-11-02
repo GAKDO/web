@@ -27,6 +27,8 @@ export interface MockSet {
   uploads: UploadTarget[];
   completed: boolean;
   idempotencyKey: string | null;
+  /** 완료 요청 본문(같은 키에 다른 본문이면 422) */
+  completeBody?: string;
 }
 
 interface CaptureState {
