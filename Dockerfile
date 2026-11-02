@@ -11,5 +11,7 @@ RUN echo "$APP_COMMIT" > dist/version.txt
 
 FROM nginxinc/nginx-unprivileged:1.29-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+# 시작할 때 인증서가 있으면 HTTPS로 listen을 만든다(이미지 entrypoint가 /docker-entrypoint.d/*.sh를 차례로 돌린다)
+COPY --chmod=0755 docker/40-trace-tls.sh /docker-entrypoint.d/40-trace-tls.sh
 COPY --from=build /web/dist/ /usr/share/nginx/html/
 EXPOSE 8080
