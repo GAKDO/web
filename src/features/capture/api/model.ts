@@ -15,12 +15,12 @@ export interface FaceGuidesState {
   loading: boolean;
 }
 
-export function useFaceGuides(rentalId: string): FaceGuidesState {
+export function useFaceGuides(rentalId: string, waitMs: number = MODEL_WAIT_MS): FaceGuidesState {
   const [timedOut, setTimedOut] = useState(false);
   useEffect(() => {
-    const id = setTimeout(() => setTimedOut(true), MODEL_WAIT_MS);
+    const id = setTimeout(() => setTimedOut(true), waitMs);
     return () => clearTimeout(id);
-  }, []);
+  }, [waitMs]);
   const timeline = useQuery({
     queryKey: [...KEY, "timeline", rentalId],
     queryFn: () => unwrap(api.GET("/api/v1/reports/rentals/{rentalId}", { params: { path: { rentalId } } })),
@@ -38,5 +38,10 @@ export function useFaceGuides(rentalId: string): FaceGuidesState {
   const dims = model.data?.dimensions;
   const faces = useMemo(() => (dims ? faceGuides(dims) : PHONE_FACES), [dims]);
   const loading = !timedOut && (timeline.isPending || (!!modelCode && model.isPending));
-  return { faces, loading };
+  // 촬영을 시작할 수 있게 된 순간의 윤곽으로 고정한다. 시간 초과 뒤 늦게 온 치수로 찍는 도중 윤곽이 바뀌지 않게 한다
+  const [locked, setLocked] = useState<readonly FaceGuide[] | null>(null);
+  useEffect(() => {
+    if (!loading && !locked) setLocked(faces);
+  }, [loading, locked, faces]);
+  return { faces: locked ?? faces, loading };
 }
