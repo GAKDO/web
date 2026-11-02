@@ -1,11 +1,13 @@
 import type { CheckpointDiagnostics, TimelineCheckpoint } from "../../../shared/api/types";
 import { compareColumn, deltaText } from "./compare";
+import { faceNormal, lidInnerFace, pinPosition, pinRatio } from "./pins";
 import { hasPendingCheckpoint, sliderCheckpoints, splitPins } from "./timeline";
 
 const ID = "aaaaaaaaaaaaaaaaaaaaa";
 function cp(type: TimelineCheckpoint["type"], status: TimelineCheckpoint["status"], extra: Partial<TimelineCheckpoint> = {}): TimelineCheckpoint {
   return { checkpointId: `${type}${ID}`.slice(0, 21), type, status, occurredAt: null, grade: null, newDefectCount: 0, pins: [], diagnosticsSummary: null, sealedAt: null, ...extra };
 }
+const dims = { widthMm: 300, depthMm: 200, baseHMm: 10, lidHMm: 6 };
 
 describe("시점 슬라이더", () => {
   test("슬라이더에는 봉인된 시점만 출고 → 수령 → 반납 순서로 오른다", () => {
@@ -55,5 +57,40 @@ describe("비교표 값", () => {
 
   test("진단 요청이 실패하면 '진단을 불러오지 못함'으로 기록 없음과 구분한다", () => {
     expect(compareColumn(cp("OUT", "SEALED"), null, true).battery).toEqual({ kind: "missing", reason: "진단을 불러오지 못함" });
+  });
+});
+
+describe("핀 위치", () => {
+  test("면 사진 크기로 나눠 비율로 바꾸고, 범위 밖이거나 크기를 모르면 그리지 않는다", () => {
+    const pin = { defectId: ID, face: "KB" as const, x: 150, y: 50, isNew: true };
+    expect(pinRatio(pin, { width: 300, height: 100 })).toEqual({ u: 0.5, v: 0.5 });
+    expect(pinRatio({ ...pin, x: 400 }, { width: 300, height: 100 })).toBeNull();
+    expect(pinRatio(pin, undefined)).toBeNull();
+  });
+
+  test("키보드 면 가운데 핀은 본체 윗면 가운데에 놓인다", () => {
+    expect(pinPosition("KB", { u: 0.5, v: 0.5 }, dims)).toEqual([0, 5, 0]);
+  });
+
+  test("90° 연 화면의 맨 위 가운데 핀은 경첩 위로 화면 깊이만큼 올라간다", () => {
+    const [x, y, z] = pinPosition("SCR0", { u: 0.5, v: 0 }, dims, 90);
+    expect(x).toBe(0);
+    expect(y).toBeCloseTo(205);
+    expect(z).toBeCloseTo(-100);
+  });
+
+  test("90° 연 덮개 겉면은 뒤(−z)를, 화면은 앞(+z)을 본다", () => {
+    const [, oy, oz] = faceNormal("TOP", 90);
+    const [, iy, iz] = faceNormal("SCR0", 90);
+    expect(oy).toBeCloseTo(0);
+    expect(oz).toBeCloseTo(-1);
+    expect(iy).toBeCloseTo(0);
+    expect(iz).toBeCloseTo(1);
+  });
+
+  test("화면 안쪽에는 SCR0을 먼저, 없으면 SCR1을 입힌다", () => {
+    expect(lidInnerFace(["SCR1", "SCR0"])).toBe("SCR0");
+    expect(lidInnerFace(["SCR1"])).toBe("SCR1");
+    expect(lidInnerFace(["TOP"])).toBeNull();
   });
 });
