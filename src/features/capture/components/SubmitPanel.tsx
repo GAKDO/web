@@ -7,7 +7,7 @@ import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { Field, SelectField } from "../../../shared/ui/Field";
 import { PHONE_FACES } from "../faces";
-import { completeSession, createSession, sameShots, uploadPending, type Photo, type UploadSession } from "../submit";
+import { completeSession, createSession, reissueUploads, sameShots, uploadPending, type Photo, type UploadSession } from "../submit";
 import type { Shots } from "./CapturePage";
 
 const SKIP_REASONS = ["화면이 켜지지 않음", "화면이 깨져 흰 화면을 띄울 수 없음"];
@@ -45,7 +45,12 @@ export function SubmitPanel({ grant, shots, remaining, onMissing, onDone, onBusy
     setProgress(session.current.done.filter(Boolean).length);
     const result = await uploadPending(session.current, photos, setProgress);
     if (result === "expired" && allowRenew) {
-      session.current = null;
+      // 같은 세트에서 URL만 다시 받는다. 다시 받기가 안 되면(세트가 사라짐 등) 새 세트를 만든다
+      try {
+        await reissueUploads(session.current);
+      } catch {
+        session.current = null;
+      }
       return upload(false);
     }
     if (result !== "ok") {

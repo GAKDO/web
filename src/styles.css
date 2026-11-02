@@ -105,3 +105,4 @@ button { min-height: 44px; padding: 0 16px; font-size: 16px; }
 .check { display: flex; gap: 0.5rem; align-items: flex-start; margin: 0.75rem 0; }
 .check input { margin-top: 0.2rem; }
 .demo-accounts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.pairing-code { font-size: 2rem; font-weight: 700; letter-spacing: 0.3em; font-variant-numeric: tabular-nums; margin: 0.5rem 0; }

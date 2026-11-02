@@ -84,6 +84,38 @@ test("사진 하나의 업로드가 실패하면 다시 시도 때 실패한 사
   expect(captureDb.sets).toHaveLength(1);
 });
 
+test("사전 서명 URL이 만료되면 같은 세트에서 URL만 다시 받아 남은 사진을 올리고 완료한다", async () => {
+  let expiredOnce = false;
+  server.use(
+    http.put(`${MOCK_STORAGE_ORIGIN}/*`, () => {
+      if (expiredOnce) return undefined;
+      expiredOnce = true;
+      return new HttpResponse(null, { status: 403 });
+    }),
+  );
+  const user = await shootRequired();
+  await user.click(submitButton());
+  expect(await screen.findByText(/수령 사진이 접수되었습니다/)).toBeInTheDocument();
+  expect(captureDb.reissued).toBe(1);
+  expect(captureDb.sets).toHaveLength(1);
+});
+
+test("URL 다시 받기가 안 되면 새 세트를 만들어 올린다", async () => {
+  let expiredOnce = false;
+  server.use(
+    http.put(`${MOCK_STORAGE_ORIGIN}/*`, () => {
+      if (expiredOnce) return undefined;
+      expiredOnce = true;
+      return new HttpResponse(null, { status: 403 });
+    }),
+    http.post("*/api/v1/captures/sets/:setId/uploads", () => HttpResponse.json({ status: 404, code: "NOT_FOUND" }, { status: 404 })),
+  );
+  const user = await shootRequired();
+  await user.click(submitButton());
+  expect(await screen.findByText(/수령 사진이 접수되었습니다/)).toBeInTheDocument();
+  expect(captureDb.sets).toHaveLength(2);
+});
+
 test("서버가 빠진 면이 있다고 거절하면 그 면 이름이 보이고 그 면을 다시 찍게 한다", async () => {
   server.use(
     http.post("*/api/v1/captures/sets/:setId/complete", () =>

@@ -33,6 +33,10 @@ export interface MockSet {
 
 interface CaptureState {
   links: CaptureLink[];
+  /** 발급한 에이전트 페어링 코드 */
+  pairings: { code: string; rentalId: string; checkpointId: string }[];
+  /** 업로드 URL 다시 받기 횟수 */
+  reissued: number;
   /** 렌탈 → 연결된 고객 계정 */
   rentalOwner: Map<string, string>;
   grants: Map<string, Grant>;
@@ -41,7 +45,7 @@ interface CaptureState {
   objects: Map<string, string>;
 }
 
-const fresh = (): CaptureState => ({ links: [], rentalOwner: new Map(), grants: new Map(), sets: [], objects: new Map() });
+const fresh = (): CaptureState => ({ links: [], pairings: [], reissued: 0, rentalOwner: new Map(), grants: new Map(), sets: [], objects: new Map() });
 
 export let captureDb: CaptureState = fresh();
 
