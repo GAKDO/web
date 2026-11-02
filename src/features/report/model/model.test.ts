@@ -1,6 +1,6 @@
 import type { CheckpointDiagnostics, TimelineCheckpoint } from "../../../shared/api/types";
 import { compareColumn, deltaText } from "./compare";
-import { faceNormal, lidInnerFace, pinPosition, pinRatio } from "./pins";
+import { lidInnerFace, pinPlacement, pinRatio, sideBaseShare } from "./pins";
 import { hasPendingCheckpoint, sliderCheckpoints, splitPins } from "./timeline";
 
 const ID = "aaaaaaaaaaaaaaaaaaaaa";
@@ -69,23 +69,56 @@ describe("핀 위치", () => {
   });
 
   test("키보드 면 가운데 핀은 본체 윗면 가운데에 놓인다", () => {
-    expect(pinPosition("KB", { u: 0.5, v: 0.5 }, dims)).toEqual([0, 5, 0]);
+    expect(pinPlacement("KB", { u: 0.5, v: 0.5 }, dims).position).toEqual([0, 5, 0]);
   });
 
   test("90° 연 화면의 맨 위 가운데 핀은 경첩 위로 화면 깊이만큼 올라간다", () => {
-    const [x, y, z] = pinPosition("SCR0", { u: 0.5, v: 0 }, dims, 90);
+    const [x, y, z] = pinPlacement("SCR0", { u: 0.5, v: 0 }, dims, 90).position;
     expect(x).toBe(0);
     expect(y).toBeCloseTo(205);
     expect(z).toBeCloseTo(-100);
   });
 
   test("90° 연 덮개 겉면은 뒤(−z)를, 화면은 앞(+z)을 본다", () => {
-    const [, oy, oz] = faceNormal("TOP", 90);
-    const [, iy, iz] = faceNormal("SCR0", 90);
+    const [, oy, oz] = pinPlacement("TOP", { u: 0.5, v: 0.5 }, dims, 90).normal;
+    const [, iy, iz] = pinPlacement("SCR0", { u: 0.5, v: 0.5 }, dims, 90).normal;
     expect(oy).toBeCloseTo(0);
     expect(oz).toBeCloseTo(-1);
     expect(iy).toBeCloseTo(0);
     expect(iz).toBeCloseTo(1);
+  });
+
+  // contracts capture/faces.md: 면별 이미지 위쪽·왼쪽
+  test("바닥 사진은 위쪽이 뒤, 왼쪽이 사용자 오른쪽이다", () => {
+    const [x, y, z] = pinPlacement("BOT", { u: 0, v: 0 }, dims).position;
+    expect([x, y, z]).toEqual([150, -5, -100]);
+  });
+
+  test("덮개 겉면(TOP) 사진은 위쪽이 경첩, 왼쪽이 사용자 왼쪽이다", () => {
+    // 0°(닫힘)로 놓으면 덮개 윗면 왼쪽 뒤 모서리
+    const [x, y, z] = pinPlacement("TOP", { u: 0, v: 0 }, dims, 0).position;
+    expect(x).toBe(-150);
+    expect(y).toBeCloseTo(5 + 6);
+    expect(z).toBeCloseTo(-100);
+  });
+
+  test("왼쪽 옆면은 왼쪽이 뒤, 오른쪽 옆면은 왼쪽이 앞이다", () => {
+    expect(pinPlacement("SL", { u: 0, v: 1 }, dims).position).toEqual([-150, -5, -100]);
+    expect(pinPlacement("SR", { u: 0, v: 1 }, dims).position).toEqual([150, -5, 100]);
+    expect(pinPlacement("SB", { u: 0, v: 1 }, dims).position).toEqual([150, -5, -100]);
+  });
+
+  test("옆면 사진은 본체+덮개 높이라, 아래쪽은 본체 옆에, 위쪽은 연 덮개 옆 모서리에 놓인다", () => {
+    expect(sideBaseShare(dims)).toBeCloseTo(10 / 16);
+    // 맨 아래 = 본체 바닥, 본체 비율 경계 = 본체 윗면
+    expect(pinPlacement("SF", { u: 0.5, v: 1 }, dims).position).toEqual([0, -5, 100]);
+    const top = pinPlacement("SF", { u: 0.5, v: 1 - 10 / 16 }, dims).position;
+    expect(top[1]).toBeCloseTo(5);
+    // 맨 위 = 덮개 앞 모서리 바깥. 90° 열면 경첩 위로 깊이만큼, 뒤로 덮개 두께만큼
+    const lidTop = pinPlacement("SF", { u: 0.5, v: 0 }, dims, 90);
+    expect(lidTop.position[1]).toBeCloseTo(5 + 200);
+    expect(lidTop.position[2]).toBeCloseTo(-100 - 6);
+    expect(lidTop.normal[1]).toBeCloseTo(1);
   });
 
   test("화면 안쪽에는 SCR0을 먼저, 없으면 SCR1을 입힌다", () => {

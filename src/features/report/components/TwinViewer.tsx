@@ -5,21 +5,50 @@ import * as THREE from "three";
 import type { CaptureFace, CheckpointMedia, Pin } from "../../../shared/api/types";
 import { CAPTURE_FACE_LABEL } from "../../../shared/codes/labels";
 import { useTextures, type LoadedTexture } from "../hooks/useTextures";
-import { faceNormal, lidInnerFace, pinPosition, pinRatio, type Dimensions } from "../model/pins";
+import { lidInnerFace, pinPlacement, pinRatio, sideBaseShare, type Dimensions } from "../model/pins";
 
 // 3D 트윈(FR-RPT-01·02). 리포트 화면에서만 지연 로딩한다. 단위는 mm, 화면 상자는 110° 열린 모습 하나(명세 Q2)
 const OPEN_DEG = 110;
 const GRAY = new THREE.MeshStandardMaterial({ color: "#b8bec7" });
 
-function material(loaded: LoadedTexture | undefined): THREE.Material {
-  return loaded ? new THREE.MeshStandardMaterial({ map: loaded.texture }) : GRAY;
+interface View {
+  /** 사진의 아래에서부터 이 비율만 쓴다(옆면을 본체·덮개로 나눌 때). 기본 [0, 1] */
+  rows?: [number, number];
+  /** 180° 돌린다(바닥 사진은 왼쪽이 사용자 오른쪽이라 상자 기본 방향과 반대) */
+  flip?: boolean;
 }
 
-/** 재질 묶음이 바뀌거나 화면이 닫히면 이전 재질을 해제한다. 공유 재질 GRAY는 남긴다 */
+/** 면 사진을 상자 면에 입힌다. 방향은 contracts capture/faces.md와 three.js BoxGeometry의 면 UV를 맞춘 것이다 */
+function material(loaded: LoadedTexture | undefined, view: View = {}): THREE.Material {
+  if (!loaded) return GRAY;
+  const [from, to] = view.rows ?? [0, 1];
+  if (to <= from) return GRAY;
+  let map = loaded.texture;
+  if (view.flip || from !== 0 || to !== 1) {
+    // 잘라 보거나 돌린 사본. 이미지는 공유하고, 사본은 재질과 함께 해제한다
+    map = loaded.texture.clone();
+    map.userData.view = true;
+    map.offset.set(0, from);
+    map.repeat.set(1, to - from);
+    if (view.flip) {
+      map.center.set(0.5, 0.5);
+      map.rotation = Math.PI;
+    }
+    map.needsUpdate = true;
+  }
+  return new THREE.MeshStandardMaterial({ map });
+}
+
+/** 재질 묶음이 바뀌거나 화면이 닫히면 이전 재질과 잘라 본 텍스처 사본을 해제한다. 공유 재질 GRAY는 남긴다 */
 function useDisposeMaterials(materials: THREE.Material[]): void {
   useEffect(
     () => () => {
-      for (const m of materials) if (m !== GRAY) m.dispose();
+      for (const m of materials) {
+        if (m === GRAY) continue;
+        const map = (m as THREE.MeshStandardMaterial).map;
+        if (map?.userData.view) map.dispose();
+        m.dispose();
+      }
     },
     [materials],
   );
@@ -37,12 +66,35 @@ export default function TwinViewer({ dimensions: d, media, pins, selected, onSel
   const { loaded: textures, failed } = useTextures(media);
   const controls = useRef<ElementRef<typeof OrbitControls>>(null);
   const inner = lidInnerFace(Object.keys(textures) as CaptureFace[]);
+  // 옆면 사진은 닫힌 상태 전체 높이(본체+덮개)라, 아래 부분은 본체 옆에, 위 부분은 덮개 옆 모서리에 입힌다
+  const share = sideBaseShare(d);
+  const base: View = { rows: [0, share] };
+  const lid: View = { rows: [share, 1] };
   // BoxGeometry 재질 순서: +x, −x, +y, −y, +z, −z
   const baseMaterials = useMemo(
-    () => [material(textures.SR), material(textures.SL), material(textures.KB), material(textures.BOT), material(textures.SF), material(textures.SB)],
-    [textures],
+    () => [
+      material(textures.SR, base),
+      material(textures.SL, base),
+      material(textures.KB),
+      material(textures.BOT, { flip: true }),
+      material(textures.SF, base),
+      material(textures.SB, base),
+    ],
+    // base·lid는 share에서만 나온다
+    [textures, share],
   );
-  const lidMaterials = useMemo(() => [GRAY, GRAY, material(textures.TOP), material(inner ? textures[inner] : undefined), GRAY, GRAY], [textures, inner]);
+  // 덮개는 닫힌 자세로 만든 뒤 경첩에서 돌리므로, 닫힌 상태의 면 방향이 그대로 맞는다
+  const lidMaterials = useMemo(
+    () => [
+      material(textures.SR, lid),
+      material(textures.SL, lid),
+      material(textures.TOP),
+      material(inner ? textures[inner] : undefined),
+      material(textures.SF, lid),
+      material(textures.SB, lid),
+    ],
+    [textures, inner, share],
+  );
   useDisposeMaterials(baseMaterials);
   useDisposeMaterials(lidMaterials);
   const angle = (OPEN_DEG * Math.PI) / 180;
@@ -67,8 +119,7 @@ export default function TwinViewer({ dimensions: d, media, pins, selected, onSel
             const ratio = pinRatio(pin, textures[face]?.size);
             if (!ratio) return null;
             const radius = pin.isNew ? 4 : 3;
-            const normal = faceNormal(face, OPEN_DEG);
-            const at = pinPosition(face, ratio, d, OPEN_DEG);
+            const { position: at, normal } = pinPlacement(face, ratio, d, OPEN_DEG);
             // 면 위로 반지름의 절반만큼 띄우고, 고리는 면에 눕힌다
             const position: [number, number, number] = [at[0] + normal[0] * radius * 0.5, at[1] + normal[1] * radius * 0.5, at[2] + normal[2] * radius * 0.5];
             const facing = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...normal));
