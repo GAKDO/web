@@ -35,6 +35,7 @@ const MESSAGES: Record<ErrorCode, string> = {
   RENTAL_NOT_CLOSABLE: "반납 기록이 봉인되기 전에는 종료할 수 없습니다.",
   DEVICE_SERIAL_EXISTS: "이미 등록된 시리얼입니다. 시리얼을 다시 확인해 주세요.",
   DEVICE_HAS_OPEN_RENTAL: "진행 중인 렌탈이 있어 상태를 바꿀 수 없습니다. 렌탈을 먼저 종료하세요.",
+  DEVICE_STATUS_TRANSITION_INVALID: "폐기한 기기는 바로 사용 가능으로 바꿀 수 없습니다. 먼저 수리 중으로 되돌리세요.",
   PILOT_ALIAS_EXISTS: "이미 있는 파일럿 별칭입니다.",
   CAPTURE_FACES_MISSING: "빠진 면이 있습니다.",
   CAPTURE_HASH_MISMATCH: "사진이 올바르게 올라가지 않았습니다. 다시 올려 주세요.",

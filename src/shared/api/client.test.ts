@@ -91,3 +91,16 @@ test("리프레시가 네트워크 오류·5xx면 transient, 거절이면 reject
   server.use(http.post("*/api/v1/auth/refresh", () => new HttpResponse(null, { status: 401 })));
   expect(await refreshSessionOutcome()).toBe("rejected");
 });
+
+test("토큰 다시 받기와 로그아웃 요청은 리프레시 쿠키를 보내도록 credentials: include로 나간다", async () => {
+  await login();
+  const seen: Record<string, RequestCredentials> = {};
+  server.events.on("request:start", ({ request }) => {
+    const path = new URL(request.url).pathname;
+    if (path.endsWith("/auth/refresh") || path.endsWith("/auth/logout")) seen[path] = request.credentials;
+  });
+  await refreshSession();
+  await api.POST("/api/v1/auth/logout");
+  server.events.removeAllListeners();
+  expect(seen).toEqual({ "/api/v1/auth/refresh": "include", "/api/v1/auth/logout": "include" });
+});
