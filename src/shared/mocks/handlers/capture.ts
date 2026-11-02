@@ -9,9 +9,10 @@ import type {
   CaptureSetCreateResponse,
   CaptureTokenResponse,
 } from "../../api/types";
-import { accountFromRequest } from "../db";
+import { accountFromRequest, advanceCheckpoint, db } from "../db";
 import { captureDb, grantFromRequest, hexToBase64, MOCK_STORAGE_ORIGIN, objectPath, sha256Hex, type MockSet } from "../captureDb";
 import { problem } from "./problem";
+import { simulateCapture } from "./rental";
 
 // codes.yaml capture.face_required.PHONE (목 서버 검사용)
 const PHONE_REQUIRED: CaptureFace[] = ["TOP", "BOT", "SF", "SB", "SL", "SR", "SCR0"];
@@ -130,6 +131,12 @@ export const captureHandlers = [
     set.completed = true;
     set.idempotencyKey = key;
     set.completeBody = text;
+    // 폰 제출이 끝나면 그 시점을 촬영됨으로 올리고, 브라우저 목에서는 등급·봉인까지 이어 간다
+    const type = db.rentals.find((r) => r.rentalId === set.rentalId)?.checkpoints.find((c) => c.checkpointId === set.checkpointId)?.type;
+    if (type) {
+      advanceCheckpoint(set.rentalId, type, "CAPTURED");
+      simulateCapture(set.rentalId, type, "captured");
+    }
     return HttpResponse.json(toCaptureSet(set), { status: 202 });
   }),
 

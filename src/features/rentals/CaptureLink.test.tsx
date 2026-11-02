@@ -58,3 +58,16 @@ test("링크 복사가 되면 '링크 복사됨'이, 안 되면 QR을 읽게 하
   await user.click(within(step).getByRole("button", { name: "링크 복사됨" }));
   expect(await within(step).findByRole("alert")).toHaveTextContent("복사하지 못했습니다");
 });
+
+test("링크를 복사하는 동안에는 QR을 다시 만들 수 없다", async () => {
+  const { step } = await openRental("OPEN");
+  const user = userEvent.setup();
+  await user.click(within(step).getByRole("button", { name: "수령 QR 만들기" }));
+  let finish: () => void = () => undefined;
+  vi.spyOn(navigator.clipboard, "writeText").mockReturnValueOnce(new Promise<void>((r) => (finish = r)));
+  await user.click(await within(step).findByRole("button", { name: "링크 복사" }));
+  expect(within(step).getByRole("button", { name: "QR 다시 만들기" })).toBeDisabled();
+  finish();
+  expect(await within(step).findByRole("button", { name: "링크 복사됨" })).toBeInTheDocument();
+  expect(within(step).getByRole("button", { name: "QR 다시 만들기" })).toBeEnabled();
+});

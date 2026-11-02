@@ -18,6 +18,8 @@ export function CaptureLinkPanel({ rentalId, checkpointId }: { rentalId: string;
   const [issued, setIssued] = useState<Issued | null>(null);
   const [count, setCount] = useState(0);
   const [copied, setCopied] = useState<"ok" | "failed" | null>(null);
+  // 복사 중에는 다시 만들기를, 다시 만드는 중에는 복사를 막아 "복사됨"이 다른 링크를 가리키지 않게 한다
+  const [copying, setCopying] = useState(false);
   const create = useMutation({
     mutationFn: async (): Promise<Issued> => {
       const link = await unwrap(api.POST("/api/v1/auth/capture-links", { body: { rentalId, checkpointId } }));
@@ -33,12 +35,15 @@ export function CaptureLinkPanel({ rentalId, checkpointId }: { rentalId: string;
 
   // 복사가 실제로 된 때만 "복사됨"을 보인다(클립보드를 못 쓰는 브라우저·권한 거부)
   async function copy(url: string) {
+    setCopying(true);
     try {
       if (!navigator.clipboard) throw new Error("no clipboard");
       await navigator.clipboard.writeText(url);
       setCopied("ok");
     } catch {
       setCopied("failed");
+    } finally {
+      setCopying(false);
     }
   }
 
@@ -54,11 +59,11 @@ export function CaptureLinkPanel({ rentalId, checkpointId }: { rentalId: string;
             만료 {new Date(issued.expiresAt).toLocaleString("ko-KR")} · 고객이 폰 카메라로 읽으면 촬영 화면이 열립니다.
           </p>
           {count > 1 && <p role="status">새 QR을 만들었습니다. 이전 QR은 쓰지 마세요.</p>}
-          <Button onClick={() => void copy(issued.url)}>{copied === "ok" ? "링크 복사됨" : "링크 복사"}</Button>
+          <Button busy={copying} disabled={create.isPending} onClick={() => void copy(issued.url)}>{copied === "ok" ? "링크 복사됨" : "링크 복사"}</Button>
           {copied === "failed" && <p role="alert">복사하지 못했습니다. QR을 폰으로 읽게 해 주세요.</p>}
         </>
       )}
-      <Button busy={create.isPending} onClick={() => create.mutate()}>
+      <Button busy={create.isPending} disabled={copying} onClick={() => create.mutate()}>
         {issued ? "QR 다시 만들기" : "수령 QR 만들기"}
       </Button>
     </div>
