@@ -19,17 +19,28 @@ export function setSessionExpiredHandler(handler: () => void): void {
   onSessionExpired = handler;
 }
 
+const REFRESH_LOCK = "trace-auth-refresh";
+
+/** 리프레시 요청 하나. 탭 여러 개가 같은 리프레시 쿠키를 동시에 쓰면 서버가 늦은 쪽을 401로 거절하므로(토큰 회전),
+ * 브라우저 잠금(Web Locks)으로 탭 사이에서도 한 번에 하나씩 보낸다. 앞 탭이 받은 새 쿠키로 다음 탭이 보낸다.
+ * 잠금을 지원하지 않는 환경이면 그냥 보낸다 */
+async function postRefresh(): Promise<Response> {
+  const send = (): Promise<Response> => fetch(`${BASE}${REFRESH_PATH}`, { method: "POST", credentials: "include" });
+  if (!("locks" in navigator) || !navigator.locks) return send();
+  return await navigator.locks.request(REFRESH_LOCK, send);
+}
+
 /** ok = 새 토큰, rejected = 서버가 리프레시를 거절(세션 끝), transient = 네트워크 오류·5xx(세션은 그대로) */
 export type RefreshOutcome = "ok" | "rejected" | "transient";
 
-/** 리프레시 쿠키로 액세스 토큰을 다시 받고 결과를 나눠 알려 준다. 동시에 불려도 요청은 한 번만 간다 */
+/** 리프레시 쿠키로 액세스 토큰을 다시 받고 결과를 나눠 알려 준다. 한 탭 안에서는 동시에 불려도 요청은 한 번만 간다 */
 export function refreshSessionOutcome(): Promise<RefreshOutcome> {
   refreshing ??= (async (): Promise<RefreshOutcome> => {
     const startedAt = tokenStore.epoch();
     // 기다리는 동안 로그인·로그아웃이 있었다면 그 결과를 지키고, 이 응답은 버린다
     const changed = (): RefreshOutcome => (tokenStore.get() !== null ? "ok" : "rejected");
     try {
-      const response = await fetch(`${BASE}${REFRESH_PATH}`, { method: "POST", credentials: "include" });
+      const response = await postRefresh();
       if (tokenStore.epoch() !== startedAt) return changed();
       if (!response.ok) return response.status >= 500 ? "transient" : "rejected";
       const token = (await response.json()) as TokenResponse;

@@ -116,3 +116,37 @@ test("입력한 비밀번호가 틀린 401(INVALID_CREDENTIALS)은 토큰이 만
   expect(expired).not.toHaveBeenCalled();
   expect(tokenStore.get()).not.toBeNull();
 });
+
+test("브라우저가 잠금(Web Locks)을 지원하면 리프레시를 탭 사이 잠금 안에서 한 번에 하나씩 보낸다", async () => {
+  await login();
+  const names: string[] = [];
+  let held = false;
+  let overlapped = false;
+  let queue: Promise<unknown> = Promise.resolve();
+  const locks = {
+    request: (name: string, callback: () => Promise<unknown>) => {
+      names.push(name);
+      const run = queue.then(async () => {
+        if (held) overlapped = true;
+        held = true;
+        try {
+          return await callback();
+        } finally {
+          held = false;
+        }
+      });
+      queue = run.catch(() => undefined);
+      return run;
+    },
+  };
+  Object.defineProperty(navigator, "locks", { value: locks, configurable: true });
+  try {
+    // 같은 탭 안의 동시 호출은 요청 하나로 합쳐지고, 그 요청이 잠금을 거친다
+    const results = await Promise.all([refreshSession(), refreshSession()]);
+    expect(results).toEqual([true, true]);
+    expect(names).toEqual(["trace-auth-refresh"]);
+    expect(overlapped).toBe(false);
+  } finally {
+    Reflect.deleteProperty(navigator, "locks");
+  }
+});
