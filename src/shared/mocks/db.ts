@@ -6,6 +6,8 @@ import type { CheckpointStatus, CheckpointType, Device, DeviceModel, DeviceStatu
 // 계정·비밀번호는 계약 예시 값이고 실제 비밀이 아니다.
 export const MOCK_ADMIN = { email: "admin@example.com", password: "example-pass-1234" } as const;
 export const MOCK_CUSTOMER = { email: "renter@example.com", password: "example-pass-1234" } as const;
+/** 목 서버가 보내는 재설정 코드(계약 예시 값) */
+export const MOCK_RESET_CODE = "654321";
 /** 목 서버가 가입 메일로 "보내는" 인증 코드(계약 예시 값) */
 export const MOCK_EMAIL_CODE = "123456";
 
@@ -27,6 +29,8 @@ interface MockState {
   models: DeviceModel[];
   devices: Device[];
   rentals: Rental[];
+  /** 비밀번호 재설정 코드: 이메일 → 코드·남은 시도(0이면 폐기) */
+  resetCodes: Map<string, { code: string; remaining: number }>;
   /** WE3 리포트 목(렌탈 주인·타임라인·검사·사진·진단) */
   report: ReportState;
 }
@@ -88,6 +92,7 @@ function initialState(): MockState {
     accounts,
     accessTokens: new Map(),
     refreshAccount: null,
+    resetCodes: new Map(),
   };
 }
 

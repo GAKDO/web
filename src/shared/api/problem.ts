@@ -8,6 +8,8 @@ export class ApiError extends Error {
     readonly detail: string | null,
     /** 409 CAPTURE_FACES_MISSING일 때 빠진 면 */
     readonly missingFaces: CaptureFace[] = [],
+    /** 400 CODE_INVALID일 때 남은 시도 횟수 */
+    readonly remainingAttempts: number | null = null,
   ) {
     super(code ?? `HTTP ${status}`);
     this.name = "ApiError";
@@ -24,7 +26,8 @@ export function toApiError(status: number, body: unknown): ApiError {
   const code = typeof body.code === "string" ? (body.code as ErrorCode) : null;
   const detail = typeof body.detail === "string" ? body.detail : null;
   const missingFaces = Array.isArray(body.missingFaces) ? (body.missingFaces as CaptureFace[]) : [];
-  return new ApiError(status, code, detail, missingFaces);
+  const remainingAttempts = typeof body.remainingAttempts === "number" ? body.remainingAttempts : null;
+  return new ApiError(status, code, detail, missingFaces, remainingAttempts);
 }
 
 export function networkError(): ApiError {

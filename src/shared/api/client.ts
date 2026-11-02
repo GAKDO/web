@@ -65,16 +65,27 @@ export function expireSession(): void {
   onSessionExpired();
 }
 
+/** 토큰은 살아 있고 입력한 비밀번호만 틀린 401(탈퇴 확인 등). 세션 만료로 다루지 않는다 */
+async function isCredentialRejection(response: Response): Promise<boolean> {
+  try {
+    const body = (await response.clone().json()) as { code?: unknown };
+    return body.code === "INVALID_CREDENTIALS";
+  } catch {
+    return false;
+  }
+}
+
 async function authFetch(request: Request): Promise<Response> {
   const retry = request.clone();
   const response = await fetch(withToken(request));
   if (response.status !== 401 || NO_RETRY_PATHS.some((p) => new URL(request.url).pathname.endsWith(p)) || !tokenStore.get()) return response;
+  if (await isCredentialRejection(response)) return response;
   if (!(await refreshSession())) {
     expireSession();
     return response;
   }
   const second = await fetch(withToken(retry));
-  if (second.status === 401) expireSession();
+  if (second.status === 401 && !(await isCredentialRejection(second))) expireSession();
   return second;
 }
 

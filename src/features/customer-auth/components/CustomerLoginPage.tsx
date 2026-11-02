@@ -62,6 +62,9 @@ export function CustomerLoginPage({ demoEmails = demoCustomerEmails() }: { demoE
         </p>
       )}
       <p>
+        <Link to="/password/reset">비밀번호를 잊으셨나요?</Link>
+      </p>
+      <p>
         처음이신가요? <Link to={`/signup?${new URLSearchParams({ next }).toString()}`}>회원가입</Link>
       </p>
     </main>
