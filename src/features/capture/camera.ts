@@ -48,12 +48,12 @@ export function stopCamera(stream: MediaStream | null): void {
   stream?.getTracks().forEach((t) => t.stop());
 }
 
-function draw(video: HTMLVideoElement, longSide: number): HTMLCanvasElement {
-  const scale = Math.min(1, longSide / Math.max(video.videoWidth, video.videoHeight));
+function draw(source: CanvasImageSource, width: number, height: number, longSide: number): HTMLCanvasElement {
+  const scale = Math.min(1, longSide / Math.max(width, height));
   const canvas = document.createElement("canvas");
-  canvas.width = Math.round(video.videoWidth * scale);
-  canvas.height = Math.round(video.videoHeight * scale);
-  canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
+  canvas.width = Math.round(width * scale);
+  canvas.height = Math.round(height * scale);
+  canvas.getContext("2d")?.drawImage(source, 0, 0, canvas.width, canvas.height);
   return canvas;
 }
 
@@ -64,11 +64,14 @@ export async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
 
 /** 지금 화면을 JPEG로 찍고, 검사용 회색조와 해시를 함께 만든다 */
 export async function captureShot(video: HTMLVideoElement): Promise<Shot> {
-  const photo = draw(video, UPLOAD_SIZE);
+  // 첫 프레임 전(videoWidth 0)이면 빈 사진이 되므로 실패로 돌려 다시 찍게 한다
+  if (!video.videoWidth || !video.videoHeight) throw new CameraError("failed");
+  const photo = draw(video, video.videoWidth, video.videoHeight, UPLOAD_SIZE);
   const blob = await new Promise<Blob | null>((resolve) => photo.toBlob(resolve, "image/jpeg", 0.9));
   if (!blob) throw new CameraError("failed");
   const bytes = await blob.arrayBuffer();
-  const small = draw(video, CHECK_SIZE);
+  // 검사 이미지는 업로드할 사진과 같은 프레임(photo 캔버스)에서 만든다
+  const small = draw(photo, photo.width, photo.height, CHECK_SIZE);
   const pixels = small.getContext("2d")?.getImageData(0, 0, small.width, small.height);
   if (!pixels) throw new CameraError("failed");
   return { bytes, sha256: await sha256Hex(bytes), takenAt: new Date().toISOString(), previewUrl: URL.createObjectURL(blob), gray: toGray(pixels) };
