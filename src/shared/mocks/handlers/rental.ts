@@ -20,9 +20,11 @@ function denied(request: Request) {
   return null;
 }
 
-/** 브라우저 목에서만: 2초마다 촬영 → 등급 → 봉인. 주소에 ?mock=slow-seal이 있으면 등급에서 멈춘다 */
-function simulateCapture(rentalId: string, type: CheckpointType) {
+/** 브라우저 목에서만: 2초마다 촬영 → 등급 → 봉인. 주소에 ?mock=slow-seal이 있으면 등급에서 멈춘다.
+ * 수령(RCV)은 고객이 폰으로 찍어 제출해야 촬영됨이 되므로 여기서 올리지 않는다(capture 목의 완료가 올림) */
+export function simulateCapture(rentalId: string, type: CheckpointType, from: "start" | "captured" = "start") {
   if (import.meta.env.MODE === "test") return;
+  if (type === "RCV" && from === "start") return;
   const until = window.location.search.includes("mock=slow-seal") ? "GRADED" : "SEALED";
   [1, 2, 3].forEach((n) => setTimeout(() => advanceCheckpoint(rentalId, type, until), n * 2000));
 }

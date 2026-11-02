@@ -2,15 +2,17 @@ import { http, HttpResponse } from "msw";
 import { nanoid } from "nanoid";
 import type {
   CaptureFace,
+  CaptureLinkResponse,
   CaptureSet,
   CaptureSetCompleteRequest,
   CaptureSetCreateRequest,
   CaptureSetCreateResponse,
   CaptureTokenResponse,
 } from "../../api/types";
-import { accountFromRequest } from "../db";
+import { accountFromRequest, advanceCheckpoint, db } from "../db";
 import { captureDb, grantFromRequest, hexToBase64, MOCK_STORAGE_ORIGIN, objectPath, sha256Hex, type MockSet } from "../captureDb";
 import { problem } from "./problem";
+import { simulateCapture } from "./rental";
 
 // codes.yaml capture.face_required.PHONE (목 서버 검사용)
 const PHONE_REQUIRED: CaptureFace[] = ["TOP", "BOT", "SF", "SB", "SL", "SR", "SCR0"];
@@ -35,7 +37,20 @@ function toCaptureSet(set: MockSet): CaptureSet {
 }
 
 export const captureHandlers = [
-  // auth-server: 수령 QR 교환(고객). 발급(관리자) 목은 WE2-④에서 더한다
+  // auth-server: 수령 QR 발급(관리자)·교환(고객)
+  http.post("*/api/v1/auth/capture-links", async ({ request }) => {
+    const account = accountFromRequest(request);
+    if (!account) return problem(401, "UNAUTHENTICATED", "로그인이 필요합니다");
+    if (account.role !== "ADMIN") return problem(403, "FORBIDDEN", "권한이 없습니다");
+    const { rentalId, checkpointId } = (await request.json()) as { rentalId: string; checkpointId: string };
+    const link = { token: `qr-${nanoid(32)}`, rentalId, checkpointId, used: false, expiresAt: Date.now() + 60 * 60_000 };
+    captureDb.links.push(link);
+    const body: CaptureLinkResponse = {
+      url: `${new URL(request.url).origin}/capture?t=${link.token}`,
+      expiresAt: new Date(link.expiresAt).toISOString(),
+    };
+    return HttpResponse.json(body, { status: 201 });
+  }),
   http.post("*/api/v1/auth/capture-links/exchange", async ({ request }) => {
     const account = accountFromRequest(request);
     if (!account) return problem(401, "UNAUTHENTICATED", "로그인이 필요합니다");
@@ -116,6 +131,12 @@ export const captureHandlers = [
     set.completed = true;
     set.idempotencyKey = key;
     set.completeBody = text;
+    // 폰 제출이 끝나면 그 시점을 촬영됨으로 올리고, 브라우저 목에서는 등급·봉인까지 이어 간다
+    const type = db.rentals.find((r) => r.rentalId === set.rentalId)?.checkpoints.find((c) => c.checkpointId === set.checkpointId)?.type;
+    if (type) {
+      advanceCheckpoint(set.rentalId, type, "CAPTURED");
+      simulateCapture(set.rentalId, type, "captured");
+    }
     return HttpResponse.json(toCaptureSet(set), { status: 202 });
   }),
 
