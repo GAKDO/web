@@ -34,7 +34,7 @@ export function ModelListPage() {
               <span>{DEVICE_FORM_FACTOR_LABEL[m.formFactor]}</span>
             </div>
             <div className="row">
-              <Link className="button-link" to={`/admin/models/${encodeURIComponent(m.modelCode)}`}>
+              <Link className="button-link" to={`/admin/models/${encodeURIComponent(m.modelCode)}/edit`}>
                 고치기
               </Link>
             </div>

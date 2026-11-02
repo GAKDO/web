@@ -91,7 +91,7 @@ export function toRequest(v: FormValues): { body?: DeviceModelUpsertRequest; err
   };
 }
 
-/** 기종 등록(/admin/models/new)과 고치기(/admin/models/:modelCode). 3D 트윈·촬영 윤곽이 이 치수를 쓴다(FR-RNT-03) */
+/** 기종 등록(/admin/models/new)과 고치기(/admin/models/:modelCode/edit, 코드가 NEW여도 겹치지 않게). 3D 트윈·촬영 윤곽이 이 치수를 쓴다(FR-RNT-03) */
 export function ModelEditPage() {
   const { modelCode: editing } = useParams();
   const navigate = useNavigate();

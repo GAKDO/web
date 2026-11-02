@@ -57,7 +57,7 @@ export const routes: RouteObject[] = [
       { path: "devices/new", element: <DeviceCreatePage /> },
       { path: "models", element: <ModelListPage /> },
       { path: "models/new", element: <ModelEditPage /> },
-      { path: "models/:modelCode", element: <ModelEditPage /> },
+      { path: "models/:modelCode/edit", element: <ModelEditPage /> },
       { path: "rentals", element: <RentalListPage /> },
       { path: "rentals/new", element: <RentalCreatePage /> },
       { path: "rentals/:rentalId", element: <RentalDetailPage /> },

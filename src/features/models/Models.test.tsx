@@ -57,7 +57,7 @@ test("이미 있는 기종 코드로 새로 등록하면 덮어쓰지 않고 고
 
 test("기종을 고치면 지금 값이 채워져 있고, 바꾼 치수와 이름이 저장되며 기기 목록 이름도 바뀐다", async () => {
   const user = userEvent.setup();
-  const { router } = renderAsAdmin("/admin/models/MBA13-M2");
+  const { router } = renderAsAdmin("/admin/models/MBA13-M2/edit");
   await screen.findByRole("heading", { name: "기종 고치기" });
   expect(await screen.findByDisplayValue("MacBook Air (M2, 2022)")).toBeInTheDocument();
   expect(screen.getByLabelText("기종 코드")).toHaveAttribute("readonly");
@@ -74,8 +74,15 @@ test("기종을 고치면 지금 값이 채워져 있고, 바꾼 치수와 이�
   expect(db.devices.filter((d) => d.modelCode === "MBA13-M2").every((d) => d.modelName === "MacBook Air 13 (M2)")).toBe(true);
 });
 
+test("기종 코드가 NEW여도 고치기 화면이 열린다(새로 등록 경로와 겹치지 않음)", async () => {
+  db.models.push({ ...db.models[0], modelCode: "NEW", name: "새 기종 코드" });
+  renderAsAdmin("/admin/models/NEW/edit");
+  expect(await screen.findByRole("heading", { name: "기종 고치기" })).toBeInTheDocument();
+  expect(await screen.findByDisplayValue("새 기종 코드")).toBeInTheDocument();
+});
+
 test("없는 기종을 고치러 들어가면 찾을 수 없다는 안내와 목록 링크가 보인다", async () => {
-  renderAsAdmin("/admin/models/NOPE-1");
+  renderAsAdmin("/admin/models/NOPE-1/edit");
   expect(await screen.findByRole("alert")).toHaveTextContent("찾는 항목이 없습니다");
   expect(screen.getByRole("link", { name: "기종 목록으로" })).toBeInTheDocument();
 });

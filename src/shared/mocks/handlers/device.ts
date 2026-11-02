@@ -77,10 +77,16 @@ export const deviceHandlers = [
     if (no) return no;
     const modelCode = String(params.modelCode);
     if (!/^[A-Z0-9][A-Z0-9-]{1,63}$/.test(modelCode)) return problem(400, "VALIDATION_FAILED", "기종 코드 형식이 아닙니다");
-    const body = (await request.json()) as DeviceModelUpsertRequest;
+    const raw: unknown = await request.json();
+    if (!raw || typeof raw !== "object") return problem(400, "VALIDATION_FAILED", "본문이 객체가 아닙니다");
+    const body = raw as DeviceModelUpsertRequest;
     const d = body.dimensions;
-    if (!body.name?.trim() || !d || [d.widthMm, d.depthMm, d.baseHMm, d.lidHMm].some((n) => !(n > 0))) {
-      return problem(400, "VALIDATION_FAILED", "입력값 오류", "치수는 0보다 커야 합니다.");
+    const nameOk = typeof body.name === "string" && body.name.trim().length > 0 && body.name.length <= 128;
+    const manufacturerOk = body.manufacturer === undefined || (typeof body.manufacturer === "string" && body.manufacturer.length <= 64);
+    const dimsOk = !!d && [d.widthMm, d.depthMm, d.baseHMm, d.lidHMm].every((n) => typeof n === "number" && n > 0);
+    const specOk = !body.spec || [body.spec.ramGb, body.spec.ssdGb].every((n) => n === undefined || (Number.isInteger(n) && n >= 1));
+    if (!nameOk || !manufacturerOk || body.formFactor !== "CLAMSHELL" || !dimsOk || !specOk) {
+      return problem(400, "VALIDATION_FAILED", "입력값 오류", "이름·형태·치수(0 초과)·사양을 확인해 주세요.");
     }
     const saved = {
       modelCode,
