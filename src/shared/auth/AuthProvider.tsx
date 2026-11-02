@@ -37,8 +37,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let alive = true;
     void refreshSession().then((ok) => {
       if (!alive) return;
-      if (ok && tokenStore.get()?.role === "ADMIN") setStatus("authenticated");
-      else endSession(null);
+      if (ok && tokenStore.get()?.role === "ADMIN") {
+        setStatus("authenticated");
+      } else {
+        // 처음 되살리기에 실패하면 지울 캐시가 없다. queryClient.clear()를 부르면
+        // 로그인 없이 여는 공개 화면(검증 페이지)의 진행 중 요청이 사라져 "불러오는 중"에 멈춘다
+        tokenStore.clear();
+        setStatus("anonymous");
+      }
     });
     return () => {
       alive = false;

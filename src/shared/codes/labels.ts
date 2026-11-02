@@ -1,5 +1,5 @@
 // 코드 값(contracts codes.yaml)의 한국어 이름표. 값 자체는 생성 타입에서만 온다(FR-015).
-import type { CheckpointStatus, CheckpointType, DeviceOs, DeviceStatus, RentalStatus } from "../api/types";
+import type { CheckpointStatus, CheckpointType, DeviceOs, DeviceStatus, InspectionGrade, RentalStatus } from "../api/types";
 
 export const DEVICE_STATUS_LABEL: Record<DeviceStatus, string> = {
   ACTIVE: "사용 가능",
@@ -23,3 +23,5 @@ export const CHECKPOINT_STATUS_LABEL: Record<CheckpointStatus, string> = {
   GRADED: "등급 매김",
   SEALED: "봉인",
 };
+
+export const INSPECTION_GRADE_LABEL: Record<InspectionGrade, string> = { A: "A등급", B: "B등급", C: "C등급", D: "D등급" };

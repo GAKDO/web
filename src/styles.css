@@ -41,3 +41,12 @@ button { min-height: 44px; padding: 0 16px; font-size: 16px; }
 .switch input { width: 20px; height: 20px; }
 .steps { list-style: none; padding: 0; display: grid; gap: var(--gap); }
 .steps .card { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+/* 공개 검증 페이지(WE4): 정상·불일치는 색과 문구·기호로 함께 구분 */
+.verdict { border: 2px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: var(--gap); }
+.verdict p { margin: 4px 0; }
+.verdict-title { font-size: 1.25rem; font-weight: 700; }
+.verdict-ok { border-color: #1a7f37; background: #e7f6ec; }
+.verdict-bad { border-color: var(--danger); background: #fdecea; color: var(--danger); }
+.verdict-unknown { background: #eceef1; }
+.muted { color: #555; }
+.hash { overflow-wrap: anywhere; word-break: break-all; }

@@ -4,13 +4,23 @@
 
 **Created**: 2026-11-02
 
-**Status**: Draft
+**Status**: Implemented (목 기준, 실제 서버 확인은 RP1 뒤)
 
 **Input**: User description: "리포트의 검증 QR로 여는 공개 검증 페이지(등급·시점·해시 일치)를 만든다(FR-INT-02). 수용 기준: QR로 검증 결과 페이지가 열리고, 기록이 바뀌었으면 불일치를 보여 준다." (backlog WE4 중 검증 페이지. 파일럿 대시보드 FR-PIL-02는 다른 명세로 나눈다)
 
 **관련 요구사항**: FR-INT-02(화면), FR-INT-03(검증 응답을 보여 주는 부분)
 
 **의존**: report-server RP1 `GET /api/v1/verify/{verifyToken}` (contracts `openapi/report-server.yaml` operationId `verifyRecord`). RP1은 11/7 예정이라 그 전에는 MSW 목으로 만든다.
+
+## Clarifications
+
+### Session 2026-11-02 (chan이 "다 작업해줘"로 추천안 진행을 맡김)
+
+- Q: 기록이 바뀌었을 때 어느 시점이 바뀌었는지 짚어야 하나? → A: 아니다. 계약 VerifyResponse에 `valid` 하나만 있어 렌탈 전체의 정상/불일치만 보인다. 시점별로 짚으려면 계약을 바꿔야 해서 A에게 따로 묻는다(코드로 우회하지 않음, 헌법 I).
+- Q: 불일치일 때 시점 목록을 숨기나? → A: 숨기지 않고 "참고용" 문구와 함께 보인다. 어느 기록을 서버가 가졌는지 보는 것이 다음 조치(문의)에 필요하다.
+- Q: 로그인한 관리자가 열면 상세를 더 보여 주나? → A: 아니다. 같은 공개 응답만 보이고 토큰·쿠키를 보내지 않는다. 상세는 관리자 리포트 화면(WE3) 몫이다.
+- Q: 지문은 어떻게 보이나? → A: 앞 4자…뒤 4자, "전체 보기"로 64자, "복사" 버튼.
+- Q: 서버 오류 때 자동으로 다시 부르나? → A: 아니다. 문장과 "다시 시도" 버튼만 둔다(앱 기본 retry: false와 같게).
 
 ## User Scenarios & Testing *(mandatory)*
 
