@@ -7,6 +7,7 @@ import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { useDeviceModel, useTimeline } from "../api/report";
 import { CHECKPOINT_ORDER } from "../model/timeline";
 import { CompareTable } from "./CompareTable";
+import { TwinSection } from "./TwinSection";
 
 function formatDateTime(iso: string | null): string {
   return iso ? new Date(iso).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" }) : "";
@@ -94,6 +95,7 @@ export function ReportPage() {
           <CheckpointCard key={type} type={type} checkpoint={data.checkpoints.find((c) => c.type === type)} />
         ))}
       </ol>
+      <TwinSection modelCode={data.modelCode} checkpoints={data.checkpoints} />
       <CompareTable checkpoints={data.checkpoints} />
     </main>
   );

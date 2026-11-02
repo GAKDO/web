@@ -1,5 +1,16 @@
 // 코드 값(contracts codes.yaml)의 한국어 이름표. 값 자체는 생성 타입에서만 온다(FR-015).
-import type { CaptureFace, ChainStatus, CheckpointStatus, CheckpointType, DeviceOs, DeviceStatus, DiagnosticsFlagKind, InspectionGrade, RentalStatus } from "../api/types";
+import type {
+  CaptureFace,
+  ChainStatus,
+  CheckpointStatus,
+  CheckpointType,
+  DefectClass,
+  DeviceOs,
+  DeviceStatus,
+  DiagnosticsFlagKind,
+  InspectionGrade,
+  RentalStatus,
+} from "../api/types";
 
 export const DEVICE_STATUS_LABEL: Record<DeviceStatus, string> = {
   ACTIVE: "사용 가능",
@@ -39,6 +50,8 @@ export const CAPTURE_FACE_LABEL: Record<CaptureFace, string> = {
 export const INSPECTION_GRADE_LABEL: Record<InspectionGrade, string> = { A: "A등급", B: "B등급", C: "C등급", D: "D등급" };
 
 // WE3 리포트
+export const DEFECT_CLASS_LABEL: Record<DefectClass, string> = { scratch: "긁힘", dent: "찍힘", crack: "균열", stain: "오염" };
+
 export const FLAG_LABEL: Record<DiagnosticsFlagKind, string> = {
   COMPONENT_CHANGED: "부품 구성이 바뀌었습니다",
   CAPACITY_DROP: "배터리 용량이 크게 줄었습니다",
