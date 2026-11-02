@@ -9,12 +9,14 @@ import { SelectField } from "../../../shared/ui/Field";
 import { useDeviceModels } from "../../devices/api/devices";
 import { useRentals } from "../api/rentals";
 
-export const formatDate = (iso: string) => new Date(iso).toLocaleDateString("ko-KR");
+export const formatDate = (iso: string) => new Date(iso).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" });
 
 /** 렌탈 목록: 계약 RentalSummary의 시리얼·기종·상태·만든 날만(FR-021). ?status=OPEN으로 거른다 */
 export function RentalListPage() {
   const [params, setParams] = useSearchParams();
-  const status = (params.get("status") as RentalStatus | null) ?? undefined;
+  const raw = params.get("status");
+  // 계약에 없는 값(?status=INVALID)은 거르지 않고 전체를 보인다
+  const status = raw && Object.hasOwn(RENTAL_STATUS_LABEL, raw) ? (raw as RentalStatus) : undefined;
   const rentals = useRentals(status);
   const models = useDeviceModels();
   const modelName = (code: string) => models.data?.find((m) => m.modelCode === code)?.name ?? code;

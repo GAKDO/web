@@ -44,7 +44,15 @@ export function RentalCreatePage() {
       )}
       <form onSubmit={submit} noValidate>
         <label className="switch">
-          <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={showAll}
+            onChange={(e) => {
+              setShowAll(e.target.checked);
+              // 사용 가능 기기만 보기로 돌아가면 목록에서 사라질 선택은 지운다
+              if (!e.target.checked && picked && picked.status !== "ACTIVE") setDeviceId("");
+            }}
+          />
           다른 상태 기기도 보기
         </label>
         <SelectField label="기기" required value={deviceId} onChange={(e) => setDeviceId(e.target.value)}>
@@ -56,6 +64,11 @@ export function RentalCreatePage() {
             </option>
           ))}
         </SelectField>
+        {devices.hasNextPage && (
+          <Button type="button" busy={devices.isFetchingNextPage} onClick={() => void devices.fetchNextPage()}>
+            기기 더 불러오기
+          </Button>
+        )}
         <Field label="대여자 참조 번호" required maxLength={128} placeholder="이름 대신 쓰는 번호" value={renterRef} onChange={(e) => setRenterRef(e.target.value)} />
         <div className="row">
           <Link className="button-link" to="/admin/rentals">
