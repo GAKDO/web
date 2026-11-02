@@ -50,3 +50,16 @@ test("서버에 닿지 못하면 status 0 오류를 던진다", async () => {
   server.use(http.get("*/api/v1/auth/me", () => Response.error()));
   await expect(unwrap(api.GET("/api/v1/auth/me"))).rejects.toMatchObject({ status: 0 });
 });
+
+test("토큰 다시 받기와 로그아웃 요청은 리프레시 쿠키를 보내도록 credentials: include로 나간다", async () => {
+  await login();
+  const seen: Record<string, RequestCredentials> = {};
+  server.events.on("request:start", ({ request }) => {
+    const path = new URL(request.url).pathname;
+    if (path.endsWith("/auth/refresh") || path.endsWith("/auth/logout")) seen[path] = request.credentials;
+  });
+  await refreshSession();
+  await api.POST("/api/v1/auth/logout");
+  server.events.removeAllListeners();
+  expect(seen).toEqual({ "/api/v1/auth/refresh": "include", "/api/v1/auth/logout": "include" });
+});

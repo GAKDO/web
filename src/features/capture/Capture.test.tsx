@@ -90,7 +90,7 @@ test("윗면(덮개)을 고르면 윤곽 설명이 보이고, 흔들린 사진�
   asCustomer();
   renderApp(`/capture?t=${mockCaptureLink().token}`);
   const user = await openTop();
-  expect(screen.getByText(/위에서 덮개 전체가 윤곽선 안에/)).toBeInTheDocument();
+  expect(screen.getByText(/바로 위에서, 경첩이 화면 위쪽에/)).toBeInTheDocument();
   cam.captureShot.mockResolvedValueOnce(fakeShot(blurredGray()));
   await user.click(await screen.findByRole("button", { name: "찍기" }));
   expect(await screen.findByText(/사진이 흔들렸습니다/)).toBeInTheDocument();
