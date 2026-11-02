@@ -197,3 +197,18 @@ test("면 목록으로 돌아가면 쓰지 않은 사진의 미리보기 URL을 
   await user.click(screen.getByRole("button", { name: "면 목록으로" }));
   expect(revoke).toHaveBeenCalledTimes(1);
 });
+
+test("찍는 중에 면 목록으로 돌아가면 늦게 만들어진 미리보기 URL도 해제한다", async () => {
+  const revoke = vi.spyOn(URL, "revokeObjectURL");
+  let finish: (s: ReturnType<typeof fakeShot>) => void = () => undefined;
+  cam.captureShot.mockReturnValueOnce(new Promise((r) => (finish = r)));
+  asCustomer();
+  renderApp(`/capture?t=${mockCaptureLink().token}`);
+  const user = await openTop();
+  await user.click(await screen.findByRole("button", { name: "찍기" }));
+  await user.click(screen.getByRole("button", { name: "면 목록으로" }));
+  revoke.mockClear();
+  const late = fakeShot(sharpGray());
+  finish(late);
+  await vi.waitFor(() => expect(revoke).toHaveBeenCalledWith(late.previewUrl));
+});

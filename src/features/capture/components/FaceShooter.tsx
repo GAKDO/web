@@ -44,14 +44,17 @@ export function FaceShooter({ guide, onAccept, onCancel }: Props) {
   const label = CAPTURE_FACE_LABEL[guide.face];
 
   // 쓰지 않은 사진의 미리보기 URL은 이 화면을 떠날 때 해제한다(쓴 사진은 CapturePage가 맡는다)
+  // 찍는 중에 화면을 떠나면 늦게 만들어진 URL도 바로 해제한다
+  const mounted = useRef(false);
   const unaccepted = useRef<Accepted | null>(null);
   unaccepted.current = review;
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
       if (unaccepted.current) URL.revokeObjectURL(unaccepted.current.shot.previewUrl);
-    },
-    [],
-  );
+    };
+  }, []);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -75,11 +78,15 @@ export function FaceShooter({ guide, onAccept, onCancel }: Props) {
     setBusy(true);
     try {
       const shot = await captureShot(video.current);
+      if (!mounted.current) {
+        URL.revokeObjectURL(shot.previewUrl);
+        return;
+      }
       setReview({ shot, check: checkQuality(shot.gray, guide.face) });
     } catch {
       setPhase("failed");
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
 
