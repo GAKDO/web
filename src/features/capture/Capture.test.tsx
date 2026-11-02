@@ -179,7 +179,10 @@ test("QR 교환을 기다리는 사이 로그아웃하면 늦게 온 촬영 허�
   tokenStore.set(await unwrap(api.POST("/api/v1/auth/login", { body: MOCK_CUSTOMER })));
   const pending = exchangeOnce(link.token);
   captureTokenStore.clear();
+  const afterLogout = exchangeOnce(link.token);
+  expect(afterLogout).not.toBe(pending);
   await expect(pending).rejects.toThrow();
+  await afterLogout.catch(() => undefined);
   expect(captureTokenStore.get()).toBeNull();
 });
 
