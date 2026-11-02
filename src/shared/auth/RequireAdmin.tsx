@@ -5,10 +5,10 @@ import { pilotDashboardUrl } from "../config/pilotDashboard";
 
 /** 관리자만 들어오는 화면의 틀. 로그인하지 않았으면 로그인 화면으로 보낸다(FR-006) */
 export function RequireAdmin() {
-  const { status, logout } = useAuth();
+  const { status, role, logout } = useAuth();
   const pilotUrl = pilotDashboardUrl();
   if (status === "unknown") return <p className="page">로그인 상태를 확인하는 중…</p>;
-  if (status === "anonymous") return <Navigate to="/admin/login" replace />;
+  if (status === "anonymous" || role !== "ADMIN") return <Navigate to="/admin/login" replace />;
   return (
     <div className="admin">
       <header className="admin-header">

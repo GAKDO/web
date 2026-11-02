@@ -1,4 +1,4 @@
-// grafana/pilot-trend.dashboard.json이 FR-PIL-02와 trace-pilot 쓰기 규칙(specs/002 data-model.md)에 맞는지 본다
+// grafana/pilot-trend.dashboard.json이 FR-PIL-02와 trace-pilot 쓰기 규칙(specs/003 data-model.md)에 맞는지 본다
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 

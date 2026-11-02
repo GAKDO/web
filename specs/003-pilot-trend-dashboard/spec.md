@@ -1,6 +1,6 @@
 # Feature Specification: 파일럿 추이 대시보드 (WE4 일부)
 
-**Feature Branch**: `claude/project-thread-e4g1hx` (Spec Kit 기본 이름은 `feature/002-pilot-trend-dashboard`. 이 세션은 지정 브랜치만 푸시할 수 있어 이름을 바꿈)
+**Feature Branch**: `claude/project-thread-e4g1hx` (Spec Kit 기본 이름은 `feature/003-pilot-trend-dashboard`. 이 세션은 지정 브랜치만 푸시할 수 있어 이름을 바꿈)
 
 **Created**: 2026-11-02 · **Status**: Draft · **관련 요구사항**: FR-PIL-02 (데이터는 FR-PIL-01·DI2)
 
