@@ -224,3 +224,25 @@ test("영상 크기를 알기 전에는 찍기 버튼을 보이지 않는다", a
   ready();
   expect(await screen.findByRole("button", { name: "찍기" })).toBeInTheDocument();
 });
+
+test("렌탈의 기종 치수를 읽으면 윤곽선 비율을 그 치수로 그리고, 못 읽으면 기본 치수로 그린다", async () => {
+  asCustomer();
+  const rental = db.rentals.find((r) => db.report.owners.has(r.rentalId));
+  const modelCode = rental && db.report.timelines.get(rental.rentalId)?.modelCode;
+  const model = db.models.find((m) => m.modelCode === modelCode);
+  if (!rental || !model) throw new Error("고객 렌탈 목 데이터가 없습니다");
+  model.dimensions = { widthMm: 200, depthMm: 200, baseHMm: 10, lidHMm: 5 };
+  const { container, unmount } = renderApp(`/capture?t=${mockCaptureLink(rental.rentalId).token}`);
+  await screen.findByRole("heading", { name: "수령 사진 찍기" });
+  await openTop();
+  // 200 × 200 윗면은 정사각형: viewBox 높이 한도 60에 맞춰 60 × 60
+  await vi.waitFor(() => expect(container.querySelector(".outline rect")?.getAttribute("width")).toBe("60"));
+  expect(container.querySelector(".outline rect")?.getAttribute("height")).toBe("60");
+  unmount();
+
+  // 내 렌탈이 아니라 리포트를 못 읽으면 기본 치수(304.1 × 215) 윤곽
+  const other = renderApp(`/capture?t=${mockCaptureLink().token}`);
+  await screen.findByRole("heading", { name: "수령 사진 찍기" });
+  await openTop();
+  expect(other.container.querySelector(".outline rect")?.getAttribute("width")).toBe("80");
+});

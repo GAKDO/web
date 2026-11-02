@@ -3,7 +3,7 @@ import { useBlocker } from "react-router-dom";
 import type { CaptureFace } from "../../../shared/api/types";
 import { captureTokenStore, type CaptureGrant } from "../../../shared/auth/captureTokenStore";
 import { CAPTURE_FACE_LABEL } from "../../../shared/codes/labels";
-import { PHONE_FACES } from "../faces";
+import { useFaceGuides } from "../api/model";
 import { FaceShooter, type Accepted } from "./FaceShooter";
 import { SubmitPanel } from "./SubmitPanel";
 
@@ -52,8 +52,9 @@ export function CapturePage({ grant }: { grant: CaptureGrant }) {
   useLeaveWarning(hasShots);
   useInAppLeaveConfirm(hasShots);
   const minutesLeft = useMinutesLeft(grant.expiresAt);
-  const remaining = PHONE_FACES.filter((f) => f.required && !shots[f.face]).map((f) => f.face);
-  const guide = PHONE_FACES.find((f) => f.face === active);
+  const faces = useFaceGuides(grant.rentalId);
+  const remaining = faces.filter((f) => f.required && !shots[f.face]).map((f) => f.face);
+  const guide = faces.find((f) => f.face === active);
   const expired = minutesLeft <= 0;
 
   // 페이지를 떠날 때 남은 미리보기 URL을 한 번 해제한다
@@ -66,7 +67,7 @@ export function CapturePage({ grant }: { grant: CaptureGrant }) {
     if (previous) URL.revokeObjectURL(previous.shot.previewUrl);
     const next = { ...shots, [face]: accepted };
     setShots(next);
-    setActive(PHONE_FACES.find((f) => f.required && !next[f.face])?.face ?? null);
+    setActive(faces.find((f) => f.required && !next[f.face])?.face ?? null);
   }
 
   function forget(faces: CaptureFace[]) {
@@ -100,7 +101,7 @@ export function CapturePage({ grant }: { grant: CaptureGrant }) {
       ) : (
         <>
           <ol className="faces">
-            {PHONE_FACES.map((f) => (
+            {faces.map((f) => (
               <li key={f.face}>
                 <button type="button" className="face" disabled={submitting} onClick={() => setActive(f.face)}>
                   <span>
