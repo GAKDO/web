@@ -87,3 +87,13 @@ button { min-height: 44px; padding: 0 16px; font-size: 16px; }
 .twin-canvas { position: relative; height: 360px; border: 1px solid var(--border); border-radius: 8px; touch-action: none; background: #f4f6f8; }
 .twin-reset { position: absolute; right: 8px; bottom: 8px; }
 @media (min-width: 768px) { .twin-canvas { height: 480px; } }
+/* WE2 폰 수령 촬영 */
+.capture { max-width: 560px; }
+.capture .notice { background: #fff4d6; }
+.faces { list-style: none; padding: 0; display: grid; gap: 8px; }
+.face { width: 100%; min-height: 48px; display: flex; justify-content: space-between; align-items: center; padding: 0 12px; }
+.viewfinder { position: relative; aspect-ratio: 4 / 3; background: #000; border-radius: 8px; overflow: hidden; }
+.viewfinder video { width: 100%; height: 100%; object-fit: cover; }
+.outline { position: absolute; inset: 0; width: 100%; height: 100%; }
+.outline rect { fill: none; stroke: #fff; stroke-width: 0.6; stroke-dasharray: 2 1.5; }
+.review img { width: 100%; border-radius: 8px; }
