@@ -1,8 +1,19 @@
 import { CHECK_SIZE, toGray, type Gray } from "./quality";
 
 // 카메라·canvas·해시는 이 파일에서만 쓴다. 테스트는 vi.mock("./camera")로 바꿔 끼운다.
-/** 올릴 사진의 긴 변(px). 12MP 원본을 줄여 업로드를 빠르게 한다 */
-export const UPLOAD_SIZE = 2048;
+// 올릴 사진은 줄이지 않고 화면에 보인 4:3 부분만 잘라 낸다(11/2 A 답). 해시는 최종 JPEG 바이트로 계산한다.
+
+/** 후면 카메라를 4K로 요청한다. 폰이 못 주면 가장 가까운 해상도가 온다 */
+export const CAMERA_CONSTRAINTS: MediaTrackConstraints = {
+  facingMode: { ideal: "environment" },
+  width: { ideal: 3840 },
+  height: { ideal: 2160 },
+};
+
+/** 캔버스 한 장의 최대 픽셀(iOS Safari 한도 약 16.7MP). 넘는 사진은 영상 프레임으로 대신 찍는다 */
+export const MAX_CANVAS_PIXELS = 16_777_216;
+
+export const JPEG_QUALITY = 0.92;
 
 export interface Shot {
   /** 올릴 JPEG 바이트. 해시도 이 바이트로 계산한다 */
@@ -34,7 +45,7 @@ export function hasCameraApi(): boolean {
 /** 후면 카메라를 우선 연다(없으면 있는 카메라) */
 export async function openCamera(): Promise<MediaStream> {
   try {
-    return await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+    return await navigator.mediaDevices.getUserMedia({ video: CAMERA_CONSTRAINTS, audio: false });
   } catch (e) {
     const name = e instanceof DOMException ? e.name : "";
     if (name === "NotAllowedError" || name === "SecurityError") throw new CameraError("denied");
@@ -68,6 +79,39 @@ export function viewfinderCrop(width: number, height: number): { sx: number; sy:
   return { sx: 0, sy: Math.round((height - sh) / 2), sw: width, sh };
 }
 
+type Crop = ReturnType<typeof viewfinderCrop>;
+
+/**
+ * 정지 사진(takePhoto)에서 화면에 보인 부분을 고른다. 영상은 사진 가운데에서 영상 비율로 가장 크게 잘린 범위라고 보고,
+ * 그 안에서 viewfinderCrop과 같은 비율의 가운데를 고른다. 사진과 영상의 가로·세로 방향이 다르면 null(영상 프레임으로 찍음).
+ */
+export function stillCrop(videoW: number, videoH: number, photoW: number, photoH: number): Crop | null {
+  if (videoW > videoH !== photoW > photoH && videoW !== videoH && photoW !== photoH) return null;
+  const va = videoW / videoH;
+  const innerW = photoW / photoH > va ? photoH * va : photoW;
+  const scale = innerW / videoW;
+  const c = viewfinderCrop(videoW, videoH);
+  const sw = Math.min(photoW, Math.round(c.sw * scale));
+  const sh = Math.min(photoH, Math.round(c.sh * scale));
+  return { sx: Math.round((photoW - sw) / 2), sy: Math.round((photoH - sh) / 2), sw, sh };
+}
+
+/** 지원하는 폰(Android Chrome 등)은 ImageCapture.takePhoto()로 센서 해상도 사진을 받는다. EXIF 회전을 픽셀에 적용한다 */
+async function takeStill(video: HTMLVideoElement): Promise<ImageBitmap | null> {
+  const src = video.srcObject;
+  const track = src && "getVideoTracks" in src ? src.getVideoTracks()[0] : undefined;
+  if (!track || typeof ImageCapture === "undefined" || typeof createImageBitmap === "undefined") return null;
+  try {
+    const blob = await new ImageCapture(track).takePhoto();
+    const bitmap = await createImageBitmap(blob, { imageOrientation: "from-image" });
+    if (bitmap.width * bitmap.height <= MAX_CANVAS_PIXELS) return bitmap;
+    bitmap.close();
+  } catch {
+    // takePhoto를 못 쓰면 영상 프레임으로 찍는다
+  }
+  return null;
+}
+
 function draw(source: CanvasImageSource, width: number, height: number, longSide: number, crop = { sx: 0, sy: 0, sw: width, sh: height }): HTMLCanvasElement {
   const scale = Math.min(1, longSide / Math.max(crop.sw, crop.sh));
   const canvas = document.createElement("canvas");
@@ -86,10 +130,14 @@ export async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
 export async function captureShot(video: HTMLVideoElement): Promise<Shot> {
   // 첫 프레임 전(videoWidth 0)이면 빈 사진이 되므로 실패로 돌려 다시 찍게 한다
   if (!video.videoWidth || !video.videoHeight) throw new CameraError("failed");
-  // 고객이 윤곽선에 맞춘 화면과 같은 부분만 저장한다
+  // 고객이 윤곽선에 맞춘 화면과 같은 부분만, 줄이지 않고 저장한다
   const { videoWidth: w, videoHeight: h } = video;
-  const photo = draw(video, w, h, UPLOAD_SIZE, viewfinderCrop(w, h));
-  const blob = await new Promise<Blob | null>((resolve) => photo.toBlob(resolve, "image/jpeg", 0.9));
+  const still = await takeStill(video);
+  const crop = still && stillCrop(w, h, still.width, still.height);
+  const photo = still && crop ? draw(still, still.width, still.height, Infinity, crop) : draw(video, w, h, Infinity, viewfinderCrop(w, h));
+  still?.close();
+  // 캔버스로 다시 쓴 JPEG에는 EXIF가 없다(회전은 이미 픽셀에 적용됨). 해시는 이 최종 바이트로 계산한다
+  const blob = await new Promise<Blob | null>((resolve) => photo.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
   if (!blob) throw new CameraError("failed");
   const bytes = await blob.arrayBuffer();
   // 검사 이미지는 업로드할 사진과 같은 프레임(photo 캔버스)에서 만든다
