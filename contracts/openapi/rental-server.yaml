@@ -439,7 +439,9 @@ paths:
       summary: 기기 수정
       description: |
         색상·자산번호·OS·상태만 바꾼다. 시리얼·기종은 못 바꿔서 보내면 400. RETIRED로 바꾸면 retiredAt이 채워진다.
-        진행 중 렌탈이 있는데 MAINTENANCE·RETIRED로 바꾸면 409 DEVICE_HAS_OPEN_RENTAL. (FR-RNT-05)
+        진행 중 렌탈이 있는데 MAINTENANCE·RETIRED로 바꾸면 409 DEVICE_HAS_OPEN_RENTAL.
+        폐기(RETIRED) 기기는 수리 중(MAINTENANCE)으로만 되돌린다. RETIRED → ACTIVE는 409 DEVICE_STATUS_TRANSITION_INVALID
+        (점검을 거쳐 MAINTENANCE → ACTIVE). 되돌리면 retiredAt은 비운다. (FR-RNT-05, 11/2 결정)
       security:
         - bearerJwt: []
       x-trace-requirements: [FR-RNT-05]
@@ -483,17 +485,27 @@ paths:
         '404':
           $ref: './components/common.yaml#/components/responses/NotFound'
         '409':
-          description: 진행 중 렌탈이 있는데 수리 중·폐기로 바꿈
-          x-trace-error-codes: [DEVICE_HAS_OPEN_RENTAL]
+          description: 진행 중 렌탈이 있는데 수리 중·폐기로 바꿈, 또는 폐기 기기를 사용 가능으로 바로 바꿈
+          x-trace-error-codes: [DEVICE_HAS_OPEN_RENTAL, DEVICE_STATUS_TRANSITION_INVALID]
           content:
             application/problem+json:
               schema:
                 $ref: './components/common.yaml#/components/schemas/Problem'
-              example:
-                title: 진행 중인 렌탈이 있는 기기입니다
-                status: 409
-                code: DEVICE_HAS_OPEN_RENTAL
-                detail: 렌탈을 종료한 뒤에 수리 중이나 폐기로 바꿀 수 있습니다.
+              examples:
+                openRental:
+                  summary: 진행 중 렌탈이 있음
+                  value:
+                    title: 진행 중인 렌탈이 있는 기기입니다
+                    status: 409
+                    code: DEVICE_HAS_OPEN_RENTAL
+                    detail: 렌탈을 종료한 뒤에 수리 중이나 폐기로 바꿀 수 있습니다.
+                retiredToActive:
+                  summary: 폐기 기기를 바로 사용 가능으로
+                  value:
+                    title: 폐기한 기기는 수리 중으로만 되돌릴 수 있습니다
+                    status: 409
+                    code: DEVICE_STATUS_TRANSITION_INVALID
+                    detail: 수리 중으로 바꿔 점검한 뒤 사용 가능으로 바꿔 주세요.
   /api/v1/device-models:
     get:
       tags: [기종]

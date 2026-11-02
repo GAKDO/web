@@ -69,6 +69,17 @@ test("폐기 기기의 상태 메뉴는 수리 중으로 되돌리기만 고를 
   await waitFor(() => expect(within(card("C02PRO0002")).getByText("수리 중")).toBeInTheDocument());
 });
 
+test("그사이 다른 관리자가 폐기한 기기를 사용 가능으로 바꾸면 수리 중을 거치라는 문장이 보이고 폐기로 보인다", async () => {
+  const user = await openList();
+  const stale = db.devices.find((d) => d.serial === "LGGRAM0002");
+  if (stale) stale.status = "RETIRED";
+  await user.click(within(card("LGGRAM0002")).getByRole("button", { name: "사용 가능으로" }));
+  expect(await within(card("LGGRAM0002")).findByRole("alert")).toHaveTextContent(
+    "폐기한 기기는 바로 사용 가능으로 바꿀 수 없습니다. 먼저 수리 중으로 되돌리세요.",
+  );
+  await waitFor(() => expect(within(card("LGGRAM0002")).getByText("폐기")).toBeInTheDocument());
+});
+
 test("기기 정보에서 색상·자산번호·OS를 고치면 저장되고, 시리얼·기종은 고칠 수 없게 보인다", async () => {
   const user = await openList();
   await user.click(within(card("LGGRAM0002")).getByRole("button", { name: "고치기" }));

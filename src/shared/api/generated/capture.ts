@@ -39,10 +39,38 @@ export interface paths {
          *     - BOOTH: source=BOOTH, 자기 부스(scope=boothId)로만.
          *     - 고객 촬영 JWT: source=PHONE, 토큰의 checkpointId·rentalId와 같은 시점·렌탈만. 다르면 403 OUT_OF_SCOPE.
          *     - `rentalId`는 이벤트 봉투(trace.capture.uploaded 등)에 들어간다. 부스는 관리자 화면이 고른 렌탈·시점을 그대로 보낸다.
-         *     같은 세트 안에서 (face, light)는 겹치지 않는다.
+         *     같은 세트 안에서 (face, light, camera)는 겹치지 않는다(부스는 같은 면·조명을 CAM1·CAM2로 두 장).
+         *     URL이 만료되면 세트를 새로 만들지 않고 `POST /captures/sets/{setId}/uploads`로 남은 사진의 URL만 다시 받는다.
          *     응답 `uploads`는 요청 `photos`와 같은 순서·같은 개수로 돌려준다(i번째 업로드 = i번째 사진).
          */
         post: operations["createCaptureSet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captures/sets/{setId}/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 촬영 세트 ID(captureSetId) */
+                setId: components["parameters"]["SetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 업로드 URL 다시 받기
+         * @description 아직 올라가지 않은 사진의 사전 서명 PUT URL(10분)을 새로 받는다. 업로드가 끊겨 URL이 만료됐을 때 쓴다. (FR-CAP-05, 11/2 결정)
+         *     - 본문을 비우거나 `photos`를 빼면 아직 안 올라간 사진 전부, `photos`를 주면 그 사진만.
+         *     - 이미 올라간 사진은 다시 주지 않는다(응답에서 빠진다). 세트에 없는 (face, light, camera)는 400 VALIDATION_FAILED.
+         *     - 완료된 세트는 409 CAPTURE_SET_CLOSED. 권한은 세트 생성과 같다(BOOTH는 자기 부스, 고객 촬영 JWT는 같은 시점).
+         *     응답 `uploads`는 세트 생성 응답과 같은 형식이다.
+         */
+        post: operations["reissueUploadUrls"];
         delete?: never;
         options?: never;
         head?: never;
@@ -92,6 +120,9 @@ export interface paths {
         /**
          * 부스 탐지 결과 저장
          * @description Jetson이 촬영 직후 탐지한 결과를 올린다(부스 1차 탐지). 자기 부스 세트만. (FR-INS-01)
+         *     탐지마다 (face, light, camera)로 세트의 사진 한 장을 가리키고, polygon은 그 사진의 원본 px 좌표다.
+         *     표준 좌표(펼친 면, contracts/capture/faces.md)로 바꾸는 일은 inspect-worker가 trace.inspect.completed의
+         *     alignments(사진별 호모그래피)를 준 뒤 capture-server가 한다. 세트에 없는 (face, light, camera)면 400. (11/2 결정)
          */
         post: operations["saveBoothDetections"];
         delete?: never;
@@ -171,7 +202,9 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @description 표준 좌표(펼친 면 이미지 px) [[x, y], …] */
+        /** @description 원본 사진 px 좌표 [[x, y], …]. 탐지한 그 사진 기준(원점 왼쪽 위) */
+        PhotoPolygon: number[][];
+        /** @description 표준 좌표(펼친 면 이미지 px, contracts/capture/faces.md) [[x, y], …] */
         Polygon: number[][];
         PhotoSpec: {
             face: components["schemas"]["CaptureFace"];
@@ -207,6 +240,18 @@ export interface components {
             };
             expiresAt: components["schemas"]["DateTime"];
         };
+        UploadReissueRequest: {
+            /** @description 다시 받을 사진. 빼면 아직 안 올라간 사진 전부 */
+            photos?: {
+                face: components["schemas"]["CaptureFace"];
+                light: components["schemas"]["CaptureLight"];
+                camera: components["schemas"]["CaptureCamera"];
+            }[];
+        };
+        UploadReissueResponse: {
+            /** @description 아직 안 올라간 사진만. 모두 올라갔으면 빈 배열 */
+            uploads: components["schemas"]["UploadTarget"][];
+        };
         CaptureSetCreateResponse: {
             captureSetId: components["schemas"]["PublicId"];
             /** @description 요청 photos와 같은 순서·같은 개수 */
@@ -239,8 +284,9 @@ export interface components {
         Detection: {
             face: components["schemas"]["CaptureFace"];
             light: components["schemas"]["CaptureLight"];
+            camera: components["schemas"]["CaptureCamera"];
             class: components["schemas"]["InspectionDefectClass"];
-            polygon: components["schemas"]["Polygon"];
+            polygon: components["schemas"]["PhotoPolygon"];
             confidence: number;
         };
         DetectionBatchRequest: {
@@ -338,7 +384,7 @@ export interface components {
          * @description codes.yaml error_code
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "PILOT_ALIAS_EXISTS" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH";
         FieldError: {
             /** @description camelCase 필드 경로 (예 photos[0].sha256) */
             field: string;
@@ -585,6 +631,81 @@ export interface operations {
             };
         };
     };
+    reissueUploadUrls: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 촬영 세트 ID(captureSetId) */
+                setId: components["parameters"]["SetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                /**
+                 * @example {
+                 *       "photos": [
+                 *         {
+                 *           "face": "SL",
+                 *           "light": "L2",
+                 *           "camera": "CAM2"
+                 *         }
+                 *       ]
+                 *     }
+                 */
+                "application/json": components["schemas"]["UploadReissueRequest"];
+            };
+        };
+        responses: {
+            /** @description 새 URL */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "uploads": [
+                     *         {
+                     *           "face": "SL",
+                     *           "light": "L2",
+                     *           "camera": "CAM2",
+                     *           "method": "PUT",
+                     *           "url": "https://minio.example/trace-captures/U4aNk9bKxZfIZRBgSN2Uj/SL_L2_CAM2.jpg?X-Amz-Signature=...",
+                     *           "headers": {
+                     *             "Content-Type": "image/jpeg"
+                     *           },
+                     *           "expiresAt": "2026-11-10T10:20:00+09:00"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["UploadReissueResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description 이미 완료된 세트 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "이미 완료된 촬영 세트입니다",
+                     *       "status": 409,
+                     *       "code": "CAPTURE_SET_CLOSED"
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     completeCaptureSet: {
         parameters: {
             query?: never;
@@ -712,23 +833,24 @@ export interface operations {
                  *         {
                  *           "face": "TOP",
                  *           "light": "L2",
+                 *           "camera": "CAM1",
                  *           "class": "scratch",
                  *           "polygon": [
                  *             [
-                 *               120.5,
-                 *               80
+                 *               1520.5,
+                 *               980
                  *             ],
                  *             [
-                 *               180,
-                 *               82.5
+                 *               1680,
+                 *               982.5
                  *             ],
                  *             [
-                 *               179,
-                 *               90
+                 *               1679,
+                 *               1010
                  *             ],
                  *             [
-                 *               121,
-                 *               88
+                 *               1521,
+                 *               1008
                  *             ]
                  *           ],
                  *           "confidence": 0.87

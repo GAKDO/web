@@ -158,7 +158,9 @@ export interface paths {
         /**
          * 기기 수정
          * @description 색상·자산번호·OS·상태만 바꾼다. 시리얼·기종은 못 바꿔서 보내면 400. RETIRED로 바꾸면 retiredAt이 채워진다.
-         *     진행 중 렌탈이 있는데 MAINTENANCE·RETIRED로 바꾸면 409 DEVICE_HAS_OPEN_RENTAL. (FR-RNT-05)
+         *     진행 중 렌탈이 있는데 MAINTENANCE·RETIRED로 바꾸면 409 DEVICE_HAS_OPEN_RENTAL.
+         *     폐기(RETIRED) 기기는 수리 중(MAINTENANCE)으로만 되돌린다. RETIRED → ACTIVE는 409 DEVICE_STATUS_TRANSITION_INVALID
+         *     (점검을 거쳐 MAINTENANCE → ACTIVE). 되돌리면 retiredAt은 비운다. (FR-RNT-05, 11/2 결정)
          */
         patch: operations["updateDevice"];
         trace?: never;
@@ -382,7 +384,7 @@ export interface components {
          * @description codes.yaml error_code
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "PILOT_ALIAS_EXISTS" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH";
         FieldError: {
             /** @description camelCase 필드 경로 (예 photos[0].sha256) */
             field: string;
@@ -968,20 +970,12 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description 진행 중 렌탈이 있는데 수리 중·폐기로 바꿈 */
+            /** @description 진행 중 렌탈이 있는데 수리 중·폐기로 바꿈, 또는 폐기 기기를 사용 가능으로 바로 바꿈 */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "title": "진행 중인 렌탈이 있는 기기입니다",
-                     *       "status": 409,
-                     *       "code": "DEVICE_HAS_OPEN_RENTAL",
-                     *       "detail": "렌탈을 종료한 뒤에 수리 중이나 폐기로 바꿀 수 있습니다."
-                     *     }
-                     */
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };

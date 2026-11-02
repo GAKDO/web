@@ -8,8 +8,8 @@ C1(contracts PR #1)이 머지됐습니다. 아래는 WE1 화면이 정했거나 
 
 ## 아직 열린 것 (A에게, 2·4·5·6번은 11/2 A에게 전달함)
 
-2. **폐기 되돌리기:** 화면은 RETIRED → MAINTENANCE만 허용합니다(RETIRED → ACTIVE 없음). `PATCH /devices/{deviceId}`가 RETIRED → ACTIVE를 거절하나요? 거절한다면 오류 `code`가 필요합니다(지금 `error_code`에 없음). 되돌릴 때 `retiredAt`은 비워지는데, 폐기했던 이력은 어디에 남나요?
-3. **ID 형식:** OpenAPI의 `Uuid`(rental-server 12곳 등)를 헌법 1.1.0의 publicId(NanoID 21자)로 언제 바꾸나요? 바뀐 뒤에 화면의 API 타입을 다시 만듭니다.
+2. **폐기 되돌리기:** 화면은 RETIRED → MAINTENANCE만 허용합니다(RETIRED → ACTIVE 없음). `PATCH /devices/{deviceId}`가 RETIRED → ACTIVE를 거절하나요? 거절한다면 오류 `code`가 필요합니다(지금 `error_code`에 없음). 되돌릴 때 `retiredAt`은 비워지는데, 폐기했던 이력은 어디에 남나요? → **답(A, 11/02):** 거절한다. 409 `DEVICE_STATUS_TRANSITION_INVALID`(계약 codes.yaml 0.6.0). 화면 문장 반영, 닫힘.
+3. **ID 형식:** OpenAPI의 `Uuid`(rental-server 12곳 등)를 헌법 1.1.0의 publicId(NanoID 21자)로 언제 바꾸나요? 바뀐 뒤에 화면의 API 타입을 다시 만듭니다. → **답(A, 11/02):** contracts #6으로 PublicId로 바뀌었고 web 계약 사본·생성 타입도 c0dfcba로 갱신함, 닫힘.
 4. **렌탈 목록 필드(더하는 변경 요청):** `RentalSummary`에 `renterRef`와 지금 시점(마지막 시점의 type·status)을 더해 줄 수 있나요? 관리자가 목록에서 누구에게 나간 렌탈이 어디까지 왔는지 봐야 합니다.
 5. **렌탈 상세 필드(더하는 변경 요청):** `Rental`에 `serial`·`modelCode`(또는 `GET /devices/{deviceId}`)를 더해 줄 수 있나요? 지금은 상세 주소로 바로 들어오면 기기 시리얼을 보일 방법이 없습니다.
 6. **리프레시 쿠키와 출처(GW1):** web(8315)과 gateway(8314)는 출처가 달라, 쿠키(`Path=/api/v1/auth; SameSite=Strict`)가 실리려면 gateway CORS가 web 출처를 credentials 허용으로 열거나 web nginx가 `/api`를 gateway로 넘겨야 합니다. 어느 쪽으로 할까요?
@@ -19,5 +19,5 @@ C1(contracts PR #1)이 머지됐습니다. 아래는 WE1 화면이 정했거나 
 7. **실제 서버 확인용 관리자 계정:** AU1 초기 데이터의 관리자 계정을 C가 받는 방법. 비밀번호는 레포 밖으로 전달. 11/5까지.
 8. **계약 변경 알림:** web은 계약 사본(`contracts/VERSION`)으로 타입을 만든다. contracts PR이 머지되면 C에게 알려 주기(계속).
 9. **반납 봉인 지연:** 렌탈 종료가 반납 봉인(ML2 → CA2 → RP1)을 기다린다. 11/10 리허설 전에 봉인까지 도는지 함께 확인.
-10. **기종 초기 데이터:** 기종 등록 화면(WE1 T031)을 11/6 뒤로 미뤘습니다. 시연에 쓸 기종(예: MBA13-M2)을 RE1 초기 데이터로 넣어 줄 수 있나요? (11/02 결정, 아직 전달 전)
+10. **기종 초기 데이터:** 기종 등록 화면(WE1 T031)을 11/6 뒤로 미뤘습니다. 시연에 쓸 기종(예: MBA13-M2)을 RE1 초기 데이터로 넣어 줄 수 있나요? (11/02 결정, 아직 전달 전) → **답(A, 11/02):** A가 rental-server 시드로 11/4까지 넣는다.
 11. **다음 시점을 여는 조건:** `startCheckpoint` 설명은 "OUT → RCV → RET 순서로 하나씩"인데, 409 예시 문장은 "출고(OUT)가 봉인된 뒤에 수령(RCV)을 시작할 수 있습니다"입니다. 앞 시점이 봉인(SEALED)돼야 다음 시점을 열 수 있나요, 아니면 앞 시점이 있기만 하면 되나요? 지금 화면은 앞 시점이 있으면 다음 버튼을 켜고, 서버가 409를 주면 문장을 보이고 다시 읽습니다. → **11/02 C 결정:** 화면은 앞 시점이 봉인된 뒤에만 다음 버튼을 켠다(서버 409는 그대로 문장 + 다시 읽기). → **답(A, 11/02 스탠드업 공유):** rental-server도 "다음 시점은 앞 시점이 SEALED여야 시작"한다. 화면 규칙과 같음, 닫힘.

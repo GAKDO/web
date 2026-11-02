@@ -3,8 +3,9 @@
 # 0.3.0(2026-11-02): capture.face_required, auth.token_role, report.chain_status·progress_stage, error_code 추가 (C1).
 # 0.4.0(2026-11-02): diagnostics에 진단 JSON 값(battery_status·storage_status·skipped_reason·storage_protocol·battery_condition·thermal_state) 추가 (C2).
 # 0.5.0(2026-11-02): capture.face_required.PHONE 추가(7면, KB 제외·SCR1 선택).
+# 0.6.0(2026-11-02): error_code DEVICE_STATUS_TRANSITION_INVALID 추가(폐기 기기는 수리 중으로만 되돌림).
 #   OpenAPI용 enum은 scripts/gen_openapi_codes.py로 만든다. 값은 문자열이어야 한다(OFF·ON·YES·NO는 따옴표).
-version: 0.5.0
+version: 0.6.0
 
 rental:
   status: [OPEN, RETURNED, CLOSED]
@@ -87,6 +88,7 @@ error_code:
   - RENTAL_NOT_CLOSABLE          # 409 반납 전 종료
   - DEVICE_SERIAL_EXISTS         # 409
   - DEVICE_HAS_OPEN_RENTAL       # 409 진행 중 렌탈이 있는데 수리 중·폐기로 바꿈
+  - DEVICE_STATUS_TRANSITION_INVALID  # 409 폐기 기기를 사용 가능으로 바로 바꿈(수리 중을 거쳐야 함)
   - PILOT_ALIAS_EXISTS           # 409
   # capture
   - CAPTURE_FACES_MISSING        # 409 빠진 면
