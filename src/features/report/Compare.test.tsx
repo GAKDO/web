@@ -1,6 +1,9 @@
 import { screen, within } from "@testing-library/react";
 import { renderAsCustomer } from "../../test/renderApp";
+import { http } from "msw";
 import { db } from "../../shared/mocks/db";
+import { server } from "../../shared/mocks/node";
+import { problem } from "../../shared/mocks/handlers/problem";
 
 const firstRentalId = () => [...db.report.owners.keys()][0];
 
@@ -39,4 +42,20 @@ test("진단 기록이 없는 시점은 '진단 기록 없음'으로 보인다",
   await openCompare(rentalId);
   const col = await screen.findByRole("region", { name: "출고 비교" });
   expect((await within(col).findAllByText("읽지 못함 (진단 기록 없음)")).length).toBeGreaterThan(0);
+});
+
+test("진단 서버 오류는 '진단 기록 없음'이 아니라 '진단을 불러오지 못함'과 다시 불러오기 버튼으로 보인다", async () => {
+  server.use(http.get("*/api/v1/diagnostics/checkpoints/:checkpointId", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
+  await openCompare();
+  const rcv = await screen.findByRole("region", { name: "수령 비교" });
+  expect((await within(rcv).findAllByText("읽지 못함 (진단을 불러오지 못함)")).length).toBeGreaterThan(0);
+  expect(within(rcv).getByRole("button", { name: "진단 다시 불러오기" })).toBeInTheDocument();
+  expect(within(rcv).queryByText(/진단 기록 없음/)).not.toBeInTheDocument();
+});
+
+test("흠집 크롭 사진을 받지 못하면 신규 흠집 칸에 '사진 없음'이 보인다", async () => {
+  server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/media", () => problem(404, "NOT_FOUND", "없음")));
+  await openCompare();
+  const rcv = await screen.findByRole("region", { name: "수령 비교" });
+  expect(await within(rcv).findByText("(사진 없음)")).toBeInTheDocument();
 });

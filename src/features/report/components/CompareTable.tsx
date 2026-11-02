@@ -1,5 +1,6 @@
 import type { TimelineCheckpoint } from "../../../shared/api/types";
 import { CHECKPOINT_TYPE_LABEL } from "../../../shared/codes/labels";
+import { ApiError } from "../../../shared/api/client";
 import { useCheckpointMedia, useDiagnostics } from "../api/report";
 import { compareColumn, deltaText, type Reading } from "../model/compare";
 import { sliderCheckpoints } from "../model/timeline";
@@ -11,8 +12,11 @@ function ReadingText({ reading }: { reading: Reading }) {
 function Column({ checkpoint, isFirst }: { checkpoint: TimelineCheckpoint; isFirst: boolean }) {
   const diag = useDiagnostics(checkpoint.checkpointId);
   const media = useCheckpointMedia(checkpoint.checkpointId);
-  const col = compareColumn(checkpoint, diag.data ?? null);
+  // 404는 "진단 기록 없음", 그 밖의 오류는 "불러오지 못함" + 다시 시도
+  const diagFailed = diag.isError && !(diag.error instanceof ApiError && diag.error.status === 404);
+  const col = compareColumn(checkpoint, diag.data ?? null, diagFailed);
   const crops = media.data?.crops.filter((c) => col.newDefectIds.includes(c.defectId)) ?? [];
+  const cropsMissing = !media.isPending && col.newDefectIds.length > crops.length;
   const label = CHECKPOINT_TYPE_LABEL[col.type];
   const dropped = col.batteryDeltaPct != null && col.batteryDeltaPct < 0;
   return (
@@ -31,12 +35,20 @@ function Column({ checkpoint, isFirst }: { checkpoint: TimelineCheckpoint; isFir
               ))}
             </span>
           )}
+          {cropsMissing && <span className="muted"> (사진 없음)</span>}
         </dd>
         <dt>배터리 최대 용량</dt>
         <dd className={dropped ? "warn" : undefined}>
           <ReadingText reading={col.battery} />
           {col.batteryDeltaPct != null ? ` (${deltaText(col.batteryDeltaPct)})` : !isFirst ? " (비교할 이전 시점 없음)" : ""}
         </dd>
+        {diagFailed && (
+          <dd className="full">
+            <button type="button" onClick={() => void diag.refetch()}>
+              진단 다시 불러오기
+            </button>
+          </dd>
+        )}
         <dt>배터리 충전 횟수</dt>
         <dd>
           <ReadingText reading={col.cycles} />

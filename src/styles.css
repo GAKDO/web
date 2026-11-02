@@ -60,6 +60,7 @@ button { min-height: 44px; padding: 0 16px; font-size: 16px; }
 .compare-col dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; }
 .compare-col dt { color: #555; }
 .compare-col dd { margin: 0; }
+.compare-col dd.full { grid-column: 1 / -1; }
 .crops { display: flex; gap: 4px; margin-top: 4px; }
 .crops img { border-radius: 4px; border: 1px solid var(--border); }
 .flags { margin: 0; padding-left: 16px; }

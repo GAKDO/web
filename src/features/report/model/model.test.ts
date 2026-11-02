@@ -46,4 +46,14 @@ describe("비교표 값", () => {
     expect(col.battery).toEqual({ kind: "missing", reason: "진단 기록 없음" });
     expect(col.batteryDeltaPct).toBeNull();
   });
+
+  test("SSD는 사용률을 그대로 보이고(100% 넘어도), 경고·오류를 함께 적는다", () => {
+    const ssd = { percentUsed: 120, availableSparePct: 5, criticalWarning: 1, powerOnHours: 9000, mediaErrors: 2, skippedReason: null };
+    const col = compareColumn(cp("RCV", "SEALED"), { ...diag, current: { ...diag.current, ssd } });
+    expect(col.ssd).toEqual({ kind: "value", text: "사용률 120% · 경고 있음 · 오류 2건" });
+  });
+
+  test("진단 요청이 실패하면 '진단을 불러오지 못함'으로 기록 없음과 구분한다", () => {
+    expect(compareColumn(cp("OUT", "SEALED"), null, true).battery).toEqual({ kind: "missing", reason: "진단을 불러오지 못함" });
+  });
 });

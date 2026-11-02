@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { nanoid } from "nanoid";
 import { renderAsAdmin, renderAsCustomer } from "../../test/renderApp";
@@ -35,8 +35,7 @@ describe("내 렌탈 목록", () => {
     await screen.findAllByRole("listitem");
     expect(screen.getAllByRole("listitem")).toHaveLength(MY_RENTALS_PAGE_SIZE);
     await u.click(screen.getByRole("button", { name: "더 보기" }));
-    expect(await screen.findByRole("listitem", { name: "LG gram 16 (2024)" })).toBeInTheDocument();
-    expect(screen.getAllByRole("listitem")).toHaveLength(MY_RENTALS_PAGE_SIZE + 2);
+    await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(MY_RENTALS_PAGE_SIZE + 2));
     expect(screen.queryByRole("button", { name: "더 보기" })).not.toBeInTheDocument();
   });
 

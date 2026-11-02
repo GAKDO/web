@@ -43,7 +43,7 @@ export function MyRentalsPage() {
       {rentals.isError && (
         <ErrorBanner
           message={rentals.error instanceof ApiError ? messageFor(rentals.error) : "목록을 불러오지 못했습니다."}
-          onRetry={() => void rentals.refetch()}
+          onRetry={() => void (rentals.isFetchNextPageError ? rentals.fetchNextPage() : rentals.refetch())}
         />
       )}
       {rentals.isSuccess && items.length === 0 && <p>아직 렌탈 기록이 없습니다.</p>}
@@ -51,7 +51,7 @@ export function MyRentalsPage() {
         {items.map((rental) => <RentalCard key={rental.rentalId} rental={rental} />)}
       </ul>
       {rentals.hasNextPage && (
-        <Button busy={rentals.isFetchingNextPage} onClick={() => void rentals.fetchNextPage()}>
+        <Button busy={rentals.isFetchingNextPage} disabled={rentals.isFetching} onClick={() => void rentals.fetchNextPage()}>
           더 보기
         </Button>
       )}

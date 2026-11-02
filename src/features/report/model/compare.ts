@@ -20,6 +20,16 @@ export interface CompareColumn {
 export type Reading = { kind: "value"; text: string } | { kind: "missing"; reason: string };
 
 const NO_DIAG: Reading = { kind: "missing", reason: "진단 기록 없음" };
+const DIAG_FAILED: Reading = { kind: "missing", reason: "진단을 불러오지 못함" };
+
+/** SSD는 사용률(%)을 그대로 보이고, 경고·오류가 있으면 함께 적는다. 사용률은 100을 넘을 수 있어 남은 수명으로 바꾸지 않는다 */
+function ssdReading(s: NonNullable<CheckpointDiagnostics["current"]["ssd"]>): Reading {
+  const parts: string[] = [];
+  if (s.percentUsed != null) parts.push(`사용률 ${s.percentUsed}%`);
+  if (s.criticalWarning != null && s.criticalWarning !== 0) parts.push("경고 있음");
+  if (s.mediaErrors != null && s.mediaErrors > 0) parts.push(`오류 ${s.mediaErrors}건`);
+  return parts.length === 0 ? { kind: "missing", reason: "값을 읽지 못함" } : { kind: "value", text: parts.join(" · ") };
+}
 
 function percent(value: number | null | undefined): Reading {
   return value == null ? { kind: "missing", reason: "값을 읽지 못함" } : { kind: "value", text: `${value.toFixed(1)}%` };
@@ -33,17 +43,19 @@ export function flagText(kind: DiagnosticsFlagKind): string {
   return FLAG_LABEL[kind];
 }
 
-export function compareColumn(checkpoint: TimelineCheckpoint, diag: CheckpointDiagnostics | null | undefined): CompareColumn {
+/** diagFailed: 진단 요청이 404가 아닌 오류로 실패함(기록 없음과 구분) */
+export function compareColumn(checkpoint: TimelineCheckpoint, diag: CheckpointDiagnostics | null | undefined, diagFailed = false): CompareColumn {
   const current = diag?.current;
-  const battery = current ? (current.battery ? percent(current.battery.maxCapacityPct) : { kind: "missing" as const, reason: "배터리를 읽지 못함" }) : NO_DIAG;
+  const none = diagFailed ? DIAG_FAILED : NO_DIAG;
+  const battery = current ? (current.battery ? percent(current.battery.maxCapacityPct) : { kind: "missing" as const, reason: "배터리를 읽지 못함" }) : none;
   const cycleCount = current?.battery?.cycleCount;
-  const cycles: Reading = !current ? NO_DIAG : cycleCount == null ? { kind: "missing", reason: "값을 읽지 못함" } : { kind: "value", text: `${cycleCount}회` };
-  let ssd: Reading = NO_DIAG;
+  const cycles: Reading = !current ? none : cycleCount == null ? { kind: "missing", reason: "값을 읽지 못함" } : { kind: "value", text: `${cycleCount}회` };
+  let ssd: Reading = none;
   if (current) {
     const s = current.ssd;
     if (!s) ssd = { kind: "missing", reason: "SSD를 읽지 못함" };
     else if (s.skippedReason) ssd = { kind: "missing", reason: s.skippedReason };
-    else ssd = s.percentUsed == null ? { kind: "missing", reason: "값을 읽지 못함" } : { kind: "value", text: `수명 ${100 - s.percentUsed}% 남음` };
+    else ssd = ssdReading(s);
   }
   const now = current?.battery?.maxCapacityPct ?? checkpoint.diagnosticsSummary?.maxCapacityPct ?? null;
   const before = diag?.previous?.battery?.maxCapacityPct ?? null;
