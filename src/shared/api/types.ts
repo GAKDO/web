@@ -4,12 +4,14 @@ import type { components as AuthComponents, paths as AuthPaths } from "./generat
 import type { components as RentalComponents, paths as RentalPaths } from "./generated/rental";
 import type { components as ReportComponents, paths as ReportPaths } from "./generated/report";
 import type { components as CaptureComponents, paths as CapturePaths } from "./generated/capture";
+import type { components as DiagnosticsComponents, paths as DiagnosticsPaths } from "./generated/diagnostics";
 
 type AuthSchemas = AuthComponents["schemas"];
 type RentalSchemas = RentalComponents["schemas"];
 type ReportSchemas = ReportComponents["schemas"];
 
-export type ApiPaths = AuthPaths & RentalPaths & ReportPaths;
+// 로그인 JWT로 부르는 경로. capture-server의 리포트용 GET(검사·사진)도 로그인 JWT로 부른다(WE3)
+export type ApiPaths = AuthPaths & RentalPaths & ReportPaths & CapturePaths & DiagnosticsPaths;
 
 export type LoginRequest = AuthSchemas["LoginRequest"];
 export type TokenResponse = AuthSchemas["TokenResponse"];
@@ -56,3 +58,26 @@ export type CaptureSet = CaptureSchemas["CaptureSet"];
 export type CaptureFace = CaptureSchemas["CaptureFace"];
 export type CaptureLight = CaptureSchemas["CaptureLight"];
 export type CaptureCamera = CaptureSchemas["CaptureCamera"];
+
+export type MeResponse = AuthSchemas["MeResponse"];
+
+// WE3 리포트: report-server 타임라인·진행률, capture-server 검사 결과·사진, diagnostics-server(contracts fd35e33)
+
+type DiagnosticsSchemas = DiagnosticsComponents["schemas"];
+
+export type RentalTimeline = ReportSchemas["RentalTimeline"];
+export type TimelineCheckpoint = ReportSchemas["TimelineCheckpoint"];
+export type Pin = ReportSchemas["Pin"];
+export type ProgressEvent = ReportSchemas["ProgressEvent"];
+export type DoneEvent = ReportSchemas["DoneEvent"];
+export type ChainStatus = ReportSchemas["ReportChainStatus"];
+export type ProgressStage = ReportSchemas["ReportProgressStage"];
+export type Grade = ReportSchemas["InspectionGrade"];
+export type Inspection = CaptureSchemas["Inspection"];
+export type Defect = CaptureSchemas["Defect"];
+export type DefectClass = CaptureSchemas["InspectionDefectClass"];
+export type CheckpointMedia = CaptureSchemas["CheckpointMedia"];
+export type CheckpointDiagnostics = DiagnosticsSchemas["CheckpointDiagnostics"];
+export type RunSummary = DiagnosticsSchemas["RunSummary"];
+export type DiagnosticsFlag = DiagnosticsSchemas["InspectionFlag"];
+export type DiagnosticsFlagKind = DiagnosticsSchemas["DiagnosticsFlagKind"];

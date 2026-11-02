@@ -1,4 +1,5 @@
 import { nanoid } from "nanoid";
+import { customerFixtures, type ReportState } from "./report";
 import type { CheckpointStatus, CheckpointType, Device, DeviceModel, DeviceStatus, Rental, TokenRole } from "../api/types";
 
 // MSW 목 서버의 메모리 데이터. ID는 계약대로 NanoID 21자(헌법 1.1.0). 테스트마다 resetDb()로 처음 상태로 돌린다.
@@ -22,6 +23,8 @@ interface MockState {
   models: DeviceModel[];
   devices: Device[];
   rentals: Rental[];
+  /** WE3 리포트 목(렌탈 주인·타임라인·검사·사진·진단) */
+  report: ReportState;
 }
 
 const NOW = "2026-11-01T09:00:00Z";
@@ -67,14 +70,18 @@ function initialState(): MockState {
   const rentals: Rental[] = [
     { rentalId: nanoid(), deviceId: devices[0].deviceId, renterRef: "R-1001", status: "OPEN", startedAt: NOW, endedAt: null, createdAt: NOW, checkpoints: [] },
   ];
+  const accounts: Account[] = [
+    { accountId: nanoid(), ...MOCK_ADMIN, role: "ADMIN" },
+    { accountId: nanoid(), ...MOCK_CUSTOMER, role: "CUSTOMER" },
+  ];
+  // 고객 계정의 렌탈 2개(WE3 리포트)
+  const customer = customerFixtures(accounts[1].accountId, [devices[3], devices[5]]);
   return {
     models: [air, pro, gram],
     devices,
-    rentals,
-    accounts: [
-      { accountId: nanoid(), ...MOCK_ADMIN, role: "ADMIN" },
-      { accountId: nanoid(), ...MOCK_CUSTOMER, role: "CUSTOMER" },
-    ],
+    rentals: [...rentals, ...customer.rentals],
+    report: customer.report,
+    accounts,
     accessTokens: new Map(),
     refreshAccount: null,
   };
