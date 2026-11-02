@@ -29,7 +29,7 @@
 | III. 기록은 고칠 수 없다 | 완료는 Idempotency-Key로 한 번만. 해시 불일치면 새 세트 | 통과 |
 | IV. 테스트 | 수용 시나리오마다 테스트, `npm run typecheck && npm test && npm run build` | 통과 |
 | V. 비밀·개인정보 | 토큰·사전 서명 URL을 로그·저장소에 남기지 않음. 교환 뒤 주소창에서 토큰 지움 | 통과 |
-| VI. 단순하게 | 기종 치수 윤곽·SSE 진행률·회원가입 제외 | 통과 |
+| VI. 단순하게 | 기종 치수 윤곽·SSE 진행률 제외(회원가입·메일 인증은 11/02 A 답으로 추가) | 통과 |
 | ID 규칙 | publicId만, 목 ID nanoid 21자 | 통과 |
 
 ## Project Structure

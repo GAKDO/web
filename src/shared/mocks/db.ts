@@ -8,12 +8,16 @@ export const MOCK_ADMIN = { email: "admin@example.com", password: "example-pass-
 export const MOCK_CUSTOMER = { email: "renter@example.com", password: "example-pass-1234" } as const;
 /** 목 서버가 보내는 재설정 코드(계약 예시 값) */
 export const MOCK_RESET_CODE = "654321";
+/** 목 서버가 가입 메일로 "보내는" 인증 코드(계약 예시 값) */
+export const MOCK_EMAIL_CODE = "123456";
 
 interface Account {
   accountId: string;
   email: string;
   password: string;
   role: TokenRole;
+  /** 가입 뒤 메일 인증 전이면 true(로그인 403 EMAIL_NOT_VERIFIED) */
+  pending?: boolean;
 }
 
 interface MockState {

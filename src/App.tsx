@@ -3,6 +3,8 @@ import { Navigate, type RouteObject } from "react-router-dom";
 import { PasswordResetPage } from "./features/account/components/PasswordResetPage";
 import { WithdrawnPage, WithdrawPage } from "./features/account/components/WithdrawPage";
 import { LoginPage } from "./features/auth/components/LoginPage";
+import { SignupPage } from "./features/signup/components/SignupPage";
+import { VerifyEmailPage } from "./features/signup/components/VerifyEmailPage";
 import { CaptureEntryPage } from "./features/capture/components/CaptureEntryPage";
 import { CustomerLoginPage } from "./features/customer-auth/components/CustomerLoginPage";
 import { DeviceCreatePage } from "./features/devices/components/DeviceCreatePage";
@@ -32,6 +34,8 @@ export const routes: RouteObject[] = [
   { path: "/login", element: <CustomerLoginPage /> },
   { path: "/password/reset", element: <PasswordResetPage /> },
   { path: "/account/withdrawn", element: <WithdrawnPage /> },
+  { path: "/signup", element: <SignupPage /> },
+  { path: "/signup/verify", element: <VerifyEmailPage /> },
   { path: "/capture", element: <RequireCustomer />, children: [{ index: true, element: <CaptureEntryPage /> }] },
   {
     // 고객 화면(WE3): 고객·관리자 모두 연다
