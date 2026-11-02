@@ -3,12 +3,12 @@ import { CHECK_SIZE, toGray, type Gray } from "./quality";
 // 카메라·canvas·해시는 이 파일에서만 쓴다. 테스트는 vi.mock("./camera")로 바꿔 끼운다.
 // 올릴 사진은 줄이지 않고 화면에 보인 4:3 부분만 잘라 낸다(11/2 A 답). 해시는 최종 JPEG 바이트로 계산한다.
 
-/** 후면 카메라를 4K로 요청한다. 폰이 못 주면 가장 가까운 해상도가 온다 */
-export const CAMERA_CONSTRAINTS: MediaTrackConstraints = {
-  facingMode: { ideal: "environment" },
-  width: { ideal: 3840 },
-  height: { ideal: 2160 },
-};
+/** 4K로 요청한다. 폰이 못 주면 가장 가까운 해상도가 온다 */
+const RESOLUTION: MediaTrackConstraints = { width: { ideal: 3840 }, height: { ideal: 2160 } };
+/** 후면 카메라를 exact로 먼저 요청한다(ideal이면 해상도가 더 높은 전면이 골라질 수 있음) */
+export const CAMERA_CONSTRAINTS: MediaTrackConstraints = { ...RESOLUTION, facingMode: { exact: "environment" } };
+/** 후면이 없는 기기(노트북 등)에서 다시 시도할 때 */
+export const FALLBACK_CONSTRAINTS: MediaTrackConstraints = { ...RESOLUTION, facingMode: { ideal: "environment" } };
 
 /** 캔버스 한 장의 최대 픽셀(iOS Safari 한도 약 16.7MP). 넘는 사진은 영상 프레임으로 대신 찍는다 */
 export const MAX_CANVAS_PIXELS = 16_777_216;
@@ -42,10 +42,16 @@ export function hasCameraApi(): boolean {
   return !!navigator.mediaDevices?.getUserMedia;
 }
 
-/** 후면 카메라를 우선 연다(없으면 있는 카메라) */
+/** 후면 카메라를 연다. 후면이 없을 때만 있는 카메라로 다시 연다 */
 export async function openCamera(): Promise<MediaStream> {
   try {
-    return await navigator.mediaDevices.getUserMedia({ video: CAMERA_CONSTRAINTS, audio: false });
+    try {
+      return await navigator.mediaDevices.getUserMedia({ video: CAMERA_CONSTRAINTS, audio: false });
+    } catch (e) {
+      const name = e instanceof DOMException ? e.name : "";
+      if (name !== "OverconstrainedError" && name !== "NotFoundError") throw e;
+      return await navigator.mediaDevices.getUserMedia({ video: FALLBACK_CONSTRAINTS, audio: false });
+    }
   } catch (e) {
     const name = e instanceof DOMException ? e.name : "";
     if (name === "NotAllowedError" || name === "SecurityError") throw new CameraError("denied");
@@ -81,15 +87,17 @@ export function viewfinderCrop(width: number, height: number): { sx: number; sy:
 
 type Crop = ReturnType<typeof viewfinderCrop>;
 
+/** 사진과 영상 비율이 이만큼(1%) 안에서 같으면 같은 범위를 찍었다고 본다 */
+const SAME_ASPECT = 0.01;
+
 /**
- * 정지 사진(takePhoto)에서 화면에 보인 부분을 고른다. 영상은 사진 가운데에서 영상 비율로 가장 크게 잘린 범위라고 보고,
- * 그 안에서 viewfinderCrop과 같은 비율의 가운데를 고른다. 사진과 영상의 가로·세로 방향이 다르면 null(영상 프레임으로 찍음).
+ * 정지 사진(takePhoto)에서 화면에 보인 부분을 고른다. takePhoto는 영상과 같은 범위를 찍는다고 보장하지 않으므로,
+ * 사진과 영상의 비율이 같을 때만 같은 범위로 보고 viewfinderCrop을 사진 크기로 늘린다.
+ * 비율·방향이 다르면(예: 16:9 영상에 4:3 사진) null을 돌려 영상 프레임으로 찍는다.
  */
 export function stillCrop(videoW: number, videoH: number, photoW: number, photoH: number): Crop | null {
-  if (videoW > videoH !== photoW > photoH && videoW !== videoH && photoW !== photoH) return null;
-  const va = videoW / videoH;
-  const innerW = photoW / photoH > va ? photoH * va : photoW;
-  const scale = innerW / videoW;
+  if (Math.abs(photoW / photoH / (videoW / videoH) - 1) > SAME_ASPECT) return null;
+  const scale = photoW / videoW;
   const c = viewfinderCrop(videoW, videoH);
   const sw = Math.min(photoW, Math.round(c.sw * scale));
   const sh = Math.min(photoH, Math.round(c.sh * scale));
@@ -102,7 +110,12 @@ async function takeStill(video: HTMLVideoElement): Promise<ImageBitmap | null> {
   const track = src && "getVideoTracks" in src ? src.getVideoTracks()[0] : undefined;
   if (!track || typeof ImageCapture === "undefined" || typeof createImageBitmap === "undefined") return null;
   try {
-    const blob = await new ImageCapture(track).takePhoto();
+    const capture = new ImageCapture(track);
+    // 디코드 전에 사진 크기를 확인한다. 크기를 모르거나 캔버스 한도를 넘으면 디코드하지 않고 영상 프레임으로 찍는다
+    const settings = await capture.getPhotoSettings();
+    const { imageWidth: pw = 0, imageHeight: ph = 0 } = settings;
+    if (!pw || !ph || pw * ph > MAX_CANVAS_PIXELS) return null;
+    const blob = await capture.takePhoto();
     const bitmap = await createImageBitmap(blob, { imageOrientation: "from-image" });
     if (bitmap.width * bitmap.height <= MAX_CANVAS_PIXELS) return bitmap;
     bitmap.close();
@@ -131,11 +144,13 @@ export async function captureShot(video: HTMLVideoElement): Promise<Shot> {
   // 첫 프레임 전(videoWidth 0)이면 빈 사진이 되므로 실패로 돌려 다시 찍게 한다
   if (!video.videoWidth || !video.videoHeight) throw new CameraError("failed");
   // 고객이 윤곽선에 맞춘 화면과 같은 부분만, 줄이지 않고 저장한다
-  const { videoWidth: w, videoHeight: h } = video;
   const still = await takeStill(video);
+  // takePhoto를 기다리는 동안 폰을 돌렸을 수 있으므로 영상 크기는 이 시점에 다시 읽는다
+  const { videoWidth: w, videoHeight: h } = video;
   const crop = still && stillCrop(w, h, still.width, still.height);
   const photo = still && crop ? draw(still, still.width, still.height, Infinity, crop) : draw(video, w, h, Infinity, viewfinderCrop(w, h));
   still?.close();
+  if (!photo.width || !photo.height) throw new CameraError("failed");
   // 캔버스로 다시 쓴 JPEG에는 EXIF가 없다(회전은 이미 픽셀에 적용됨). 해시는 이 최종 바이트로 계산한다
   const blob = await new Promise<Blob | null>((resolve) => photo.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
   if (!blob) throw new CameraError("failed");
