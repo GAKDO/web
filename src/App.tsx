@@ -5,6 +5,7 @@ import { CustomerLoginPage } from "./features/customer-auth/components/CustomerL
 import { DeviceCreatePage } from "./features/devices/components/DeviceCreatePage";
 import { DeviceListPage } from "./features/devices/components/DeviceListPage";
 import { RentalDetailPage } from "./features/rentals/components/RentalDetailPage";
+import { VerifyPage } from "./features/verify/components/VerifyPage";
 import { RequireAdmin } from "./shared/auth/RequireAdmin";
 
 function Home() {
@@ -19,6 +20,7 @@ function Home() {
 export const routes: RouteObject[] = [
   { path: "/", element: <Home /> },
   { path: "/admin/login", element: <LoginPage /> },
+  { path: "/verify/:verifyToken", element: <VerifyPage /> },
   { path: "/login", element: <CustomerLoginPage /> },
   {
     path: "/admin",

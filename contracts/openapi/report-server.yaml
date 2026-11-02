@@ -1,0 +1,497 @@
+openapi: 3.1.0
+info:
+  title: TRACE report-server
+  version: 0.1.0
+  description: |
+    타임라인 리포트·진행률 SSE·해시 체인·공개 검증·기록 검색. 원본은 GAKDO/docs design/rest-api-v0.md "report-server" 표.
+
+    - 진행률 SSE는 Authorization 헤더가 필요해서 web은 fetch 기반 SSE(@microsoft/fetch-event-source)로 붙는다.
+    - 검증 응답에는 사진·진단 상세와 개인정보를 넣지 않는다.
+    - 오류는 모두 `application/problem+json`(Problem, `code`는 codes.yaml `error_code`).
+servers:
+  - url: https://{gateway}
+    description: gateway(8314) 뒤
+    variables:
+      gateway:
+        default: localhost:8314
+tags:
+  - name: 리포트
+    description: 타임라인·진행률·체인·검색
+  - name: 검증
+    description: 공개 검증
+  - name: 운영
+    description: ping
+paths:
+  /api/v1/reports/ping:
+    get:
+      tags: [운영]
+      operationId: reportPing
+      summary: 배포 확인
+      description: 로그인 없이 연다.
+      security: []
+      responses:
+        '200':
+          description: 정상
+          content:
+            application/json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/PingResponse'
+              example:
+                service: report-server
+                version: 0.1.0
+                commit: fd69858
+  /api/v1/reports/rentals/{rentalId}:
+    parameters:
+      - $ref: '#/components/parameters/RentalId'
+    get:
+      tags: [리포트]
+      operationId: getRentalTimeline
+      summary: 타임라인 리포트
+      description: 시점별 등급·흠집 핀(신규 표시)·진단 비교·체인 상태. (FR-RPT-03)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RPT-03]
+      x-trace-access:
+        roles: [ADMIN, CUSTOMER]
+        scope: OWN_RENTAL
+        captureToken: false
+      responses:
+        '200':
+          description: 타임라인
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RentalTimeline'
+              example:
+                rentalId: Ws0HLv6QRbDILPWOcz5I2
+                modelCode: MBA13-M2
+                chainStatus: VALID
+                verifyUrl: https://trace.example.com/verify/0123456789abcdef0123456789abcdef
+                checkpoints:
+                  - checkpointId: aJ3bYet82WYF8iVlHstT2
+                    type: OUT
+                    status: SEALED
+                    occurredAt: '2026-11-12T09:00:00+09:00'
+                    grade: A
+                    newDefectCount: 0
+                    pins: []
+                    diagnosticsSummary:
+                      maxCapacityPct: 91.2
+                      flags: []
+                    sealedAt: '2026-11-12T09:10:00+09:00'
+                  - checkpointId: h40b9AN9xMQhXRHrOyJWB
+                    type: RCV
+                    status: SEALED
+                    occurredAt: '2026-11-12T13:05:00+09:00'
+                    grade: B
+                    newDefectCount: 1
+                    pins:
+                      - defectId: wcMFSsKlYBJ0vrxTlC8t5
+                        face: TOP
+                        x: 150.2
+                        y: 85.0
+                        isNew: true
+                    diagnosticsSummary:
+                      maxCapacityPct: 84.0
+                      flags: [CAPACITY_DROP]
+                    sealedAt: '2026-11-12T13:30:00+09:00'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+  /api/v1/reports/rentals/{rentalId}/stream:
+    parameters:
+      - $ref: '#/components/parameters/RentalId'
+    get:
+      tags: [리포트]
+      operationId: streamRentalProgress
+      summary: 검사 진행률 SSE
+      description: |
+        `text/event-stream`. 이벤트 3종 — 데이터는 JSON 한 줄. (FR-RPT-04)
+        - `event: progress` → `ProgressEvent` (stage는 codes.yaml report.progress_stage)
+        - `event: done` → `DoneEvent` (시점 봉인 끝)
+        - `event: error` → `Problem`
+        15초마다 주석 줄(`: keep-alive`)을 보낸다. 고객 촬영 JWT로도 그 시점의 진행률을 볼 수 있다.
+
+        예:
+        ```
+        event: progress
+        data: {"checkpointId":"h40b9AN9xMQhXRHrOyJWB","stage":"INSPECTED","percent":60,"at":"2026-11-12T13:20:00+09:00"}
+
+        event: done
+        data: {"checkpointId":"h40b9AN9xMQhXRHrOyJWB","grade":"B"}
+        ```
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RPT-04]
+      x-trace-access:
+        roles: [ADMIN, CUSTOMER]
+        scope: OWN_RENTAL
+        captureToken: true
+        note: 촬영 JWT는 진행률만(scope=CHECKPOINT의 렌탈)
+      x-trace-sse-events:
+        progress:
+          $ref: '#/components/schemas/ProgressEvent'
+        done:
+          $ref: '#/components/schemas/DoneEvent'
+        error:
+          $ref: './components/common.yaml#/components/schemas/Problem'
+      responses:
+        '200':
+          description: 이벤트 스트림
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE 텍스트. 각 이벤트의 data 줄은 ProgressEvent·DoneEvent·Problem 중 하나의 JSON.
+                contentMediaType: application/json
+                contentSchema:
+                  oneOf:
+                    - $ref: '#/components/schemas/ProgressEvent'
+                    - $ref: '#/components/schemas/DoneEvent'
+                    - $ref: './components/common.yaml#/components/schemas/Problem'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+  /api/v1/reports/rentals/{rentalId}/chain:
+    parameters:
+      - $ref: '#/components/parameters/RentalId'
+    get:
+      tags: [리포트]
+      operationId: getRentalChain
+      summary: 해시 체인 전체
+      description: 렌탈의 기록 체인(seq 순)과 서명, 지금 다시 계산한 체인 정상 여부. (FR-INT-01)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-INT-01]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      responses:
+        '200':
+          description: 체인
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chain'
+              example:
+                rentalId: Ws0HLv6QRbDILPWOcz5I2
+                valid: true
+                records:
+                  - seq: 1
+                    checkpointId: aJ3bYet82WYF8iVlHstT2
+                    checkpointType: OUT
+                    payloadHash: 7f3a0c1e5b9d2f4a6c8e0b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7de21b
+                    prevHash: null
+                    signature: ZXhhbXBsZS1lZDI1NTE5LXNpZ25hdHVyZQ==
+                    signedAt: '2026-11-12T09:00:00+09:00'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+  /api/v1/verify/{verifyToken}:
+    parameters:
+      - name: verifyToken
+        in: path
+        required: true
+        description: 검증 QR에 들어가는 32자 토큰
+        schema:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+    get:
+      tags: [검증]
+      operationId: verifyRecord
+      summary: 공개 검증
+      description: 로그인 없이 체인 정상 여부와 시점별 등급·지문·서명 시각을 본다. 개인정보·사진·진단 상세는 없다. (FR-INT-02·03)
+      security: []
+      x-trace-requirements: [FR-INT-02, FR-INT-03]
+      responses:
+        '200':
+          description: 검증 결과
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResponse'
+              example:
+                valid: true
+                modelName: MacBook Air (M2, 2022)
+                records:
+                  - seq: 1
+                    checkpointType: OUT
+                    grade: A
+                    payloadHash: 7f3a0c1e5b9d2f4a6c8e0b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7de21b
+                    signedAt: '2026-11-12T09:00:00+09:00'
+                  - seq: 2
+                    checkpointType: RCV
+                    grade: A
+                    payloadHash: c41d2b6f8a0c3e5d7f9b1a3c5e7d9f0b2a4c6e8d0f1b3a5c7e9d1f2b4a6c9a07
+                    signedAt: '2026-11-12T13:10:00+09:00'
+                checkedAt: '2026-11-18T15:00:00+09:00'
+        '404':
+          description: 없는 토큰
+          x-trace-error-codes: [NOT_FOUND]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 검증할 기록을 찾을 수 없습니다
+                status: 404
+                code: NOT_FOUND
+  /api/v1/reports/search:
+    get:
+      tags: [리포트]
+      operationId: searchReports
+      summary: 기록 검색(선택)
+      description: 시리얼·렌탈 참조 번호 일부로 렌탈 기록을 찾는다. MVP에서 선택 기능이지만 계약에는 둔다. (FR-RPT-05)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RPT-05]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 64
+        - $ref: './components/common.yaml#/components/parameters/Limit'
+        - $ref: './components/common.yaml#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: 검색 결과
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportSearchPage'
+              example:
+                items:
+                  - rentalId: Ws0HLv6QRbDILPWOcz5I2
+                    serial: C02EXAMPLE01
+                    modelCode: MBA13-M2
+                    chainStatus: VALID
+                    updatedAt: '2026-11-12T13:30:00+09:00'
+                nextCursor: null
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+components:
+  securitySchemes:
+    bearerJwt:
+      $ref: './components/common.yaml#/components/securitySchemes/bearerJwt'
+  parameters:
+    RentalId:
+      name: rentalId
+      in: path
+      required: true
+      schema:
+        $ref: './components/common.yaml#/components/schemas/PublicId'
+  schemas:
+    Pin:
+      type: object
+      required: [defectId, face, x, y, isNew]
+      properties:
+        defectId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        face:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+        x:
+          type: number
+          description: 표준 좌표(펼친 면 px) 중심
+        y:
+          type: number
+        isNew:
+          type: boolean
+          description: 이전 시점에 없던 흠집
+    TimelineCheckpoint:
+      type: object
+      required: [checkpointId, type, status, occurredAt, grade, newDefectCount, pins, diagnosticsSummary, sealedAt]
+      properties:
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        type:
+          $ref: './components/codes.gen.yaml#/components/schemas/RentalCheckpointType'
+        status:
+          $ref: './components/codes.gen.yaml#/components/schemas/RentalCheckpointStatus'
+        occurredAt:
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+        grade:
+          oneOf:
+            - $ref: './components/codes.gen.yaml#/components/schemas/InspectionGrade'
+            - type: 'null'
+        newDefectCount:
+          type: integer
+          minimum: 0
+        pins:
+          type: array
+          items:
+            $ref: '#/components/schemas/Pin'
+        diagnosticsSummary:
+          oneOf:
+            - type: object
+              required: [maxCapacityPct, flags]
+              properties:
+                maxCapacityPct:
+                  type: [number, 'null']
+                flags:
+                  type: array
+                  items:
+                    $ref: './components/codes.gen.yaml#/components/schemas/DiagnosticsFlagKind'
+            - type: 'null'
+        sealedAt:
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+    RentalTimeline:
+      type: object
+      required: [rentalId, modelCode, chainStatus, verifyUrl, checkpoints]
+      properties:
+        rentalId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        modelCode:
+          type: string
+        chainStatus:
+          $ref: './components/codes.gen.yaml#/components/schemas/ReportChainStatus'
+        verifyUrl:
+          type: [string, 'null']
+          format: uri
+          description: 공개 검증 페이지 주소(첫 봉인 전에는 null)
+        checkpoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimelineCheckpoint'
+    ProgressEvent:
+      type: object
+      description: SSE `progress` 이벤트 데이터
+      required: [checkpointId, stage, percent, at]
+      properties:
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        stage:
+          $ref: './components/codes.gen.yaml#/components/schemas/ReportProgressStage'
+        percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+        at:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+    DoneEvent:
+      type: object
+      description: SSE `done` 이벤트 데이터(시점 봉인 끝)
+      required: [checkpointId, grade]
+      properties:
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        grade:
+          oneOf:
+            - $ref: './components/codes.gen.yaml#/components/schemas/InspectionGrade'
+            - type: 'null'
+    ChainRecord:
+      type: object
+      required: [seq, checkpointId, checkpointType, payloadHash, prevHash, signature, signedAt]
+      properties:
+        seq:
+          type: integer
+          minimum: 1
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        checkpointType:
+          $ref: './components/codes.gen.yaml#/components/schemas/RentalCheckpointType'
+        payloadHash:
+          $ref: './components/common.yaml#/components/schemas/Sha256'
+        prevHash:
+          description: 첫 기록은 null
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/Sha256'
+            - type: 'null'
+        signature:
+          type: string
+          description: Ed25519 서명(base64)
+          contentEncoding: base64
+        signedAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+    Chain:
+      type: object
+      required: [rentalId, valid, records]
+      properties:
+        rentalId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        valid:
+          type: boolean
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChainRecord'
+    VerifyRecord:
+      type: object
+      required: [seq, checkpointType, grade, payloadHash, signedAt]
+      properties:
+        seq:
+          type: integer
+          minimum: 1
+        checkpointType:
+          $ref: './components/codes.gen.yaml#/components/schemas/RentalCheckpointType'
+        grade:
+          oneOf:
+            - $ref: './components/codes.gen.yaml#/components/schemas/InspectionGrade'
+            - type: 'null'
+        payloadHash:
+          $ref: './components/common.yaml#/components/schemas/Sha256'
+          description: 지문(전체 해시). 화면에서 줄여 보여 준다(예 7f3a…e21b).
+        signedAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+    VerifyResponse:
+      type: object
+      additionalProperties: false
+      description: 개인정보·사진·진단 상세 필드를 두지 않는다.
+      required: [valid, modelName, records, checkedAt]
+      properties:
+        valid:
+          type: boolean
+        modelName:
+          type: string
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/VerifyRecord'
+        checkedAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+    ReportSearchPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [rentalId, serial, modelCode, chainStatus, updatedAt]
+            properties:
+              rentalId:
+                $ref: './components/common.yaml#/components/schemas/PublicId'
+              serial:
+                type: string
+              modelCode:
+                type: string
+              chainStatus:
+                $ref: './components/codes.gen.yaml#/components/schemas/ReportChainStatus'
+              updatedAt:
+                $ref: './components/common.yaml#/components/schemas/DateTime'
+        nextCursor:
+          type: [string, 'null']

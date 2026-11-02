@@ -62,6 +62,13 @@ async function authFetch(request: Request): Promise<Response> {
 
 export const api = createClient<ApiPaths>({ baseUrl: BASE, fetch: authFetch });
 
+/** 공개 API(검증 페이지)용. 로그인해 있어도 토큰·쿠키를 붙이지 않는다(WE4 FR-002).
+ * fetch는 부를 때 찾는다(만들 때 잡아 두면 테스트의 MSW가 끼어들지 못함) */
+export const publicApi = createClient<ApiPaths>({
+  baseUrl: BASE,
+  fetch: (request: Request) => fetch(new Request(request, { credentials: "omit" })),
+});
+
 interface FetchResult<T> {
   data?: T;
   error?: unknown;
