@@ -109,6 +109,20 @@ export const captureHandlers = [
     const response: CaptureSetCreateResponse = { captureSetId, uploads };
     return HttpResponse.json(response, { status: 201 });
   }),
+  // 만료된 업로드 URL 다시 받기: 아직 안 올라간 사진만 새 URL(계약 c0dfcba)
+  http.post("*/api/v1/captures/sets/:setId/uploads", ({ request, params }) => {
+    const grant = grantFromRequest(request);
+    if (!grant) return problem(401, "UNAUTHENTICATED", "촬영 권한이 없습니다");
+    const set = captureDb.sets.find((s) => s.captureSetId === params.setId);
+    if (!set) return problem(404, "NOT_FOUND", "세트가 없습니다");
+    if (set.checkpointId !== grant.checkpointId) return problem(403, "OUT_OF_SCOPE", "이 시점의 촬영 권한이 없습니다");
+    if (set.completed) return problem(409, "CAPTURE_SET_CLOSED", "이미 완료된 세트입니다");
+    captureDb.reissued += 1;
+    const expiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
+    set.uploads = set.uploads.map((u) => (captureDb.objects.has(new URL(u.url).pathname) ? u : { ...u, expiresAt }));
+    const uploads = set.uploads.filter((u) => !captureDb.objects.has(new URL(u.url).pathname));
+    return HttpResponse.json({ uploads });
+  }),
   http.post("*/api/v1/captures/sets/:setId/complete", async ({ request, params }) => {
     const grant = grantFromRequest(request);
     if (!grant) return problem(401, "UNAUTHENTICATED", "촬영 권한이 없습니다");

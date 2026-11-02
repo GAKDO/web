@@ -70,6 +70,16 @@ export async function uploadPending(session: UploadSession, photos: Photo[], onP
   return expired ? "expired" : failed ? "failed" : "ok";
 }
 
+const sameTarget = (a: UploadTarget, b: UploadTarget) => a.face === b.face && a.light === b.light && a.camera === b.camera;
+
+/** 만료된 사전 서명 URL을 같은 세트에서 다시 받는다(아직 안 올린 사진만). 이미 올린 사진은 다시 올리지 않는다 */
+export async function reissueUploads(session: UploadSession): Promise<void> {
+  const { uploads } = await unwrap(
+    captureApi.POST("/api/v1/captures/sets/{setId}/uploads", { params: { path: { setId: session.setId } }, body: {} }),
+  );
+  session.uploads = session.uploads.map((old) => uploads.find((u) => sameTarget(u, old)) ?? old);
+}
+
 export async function completeSession(session: UploadSession, skippedFaces: Partial<Record<CaptureFace, string>>): Promise<CaptureSet> {
   return unwrap(
     captureApi.POST("/api/v1/captures/sets/{setId}/complete", {
