@@ -63,8 +63,11 @@ export function FaceShooter({ guide, onAccept, onCancel }: Props) {
       .then((s) => {
         stream = s;
         if (!alive) return stopCamera(s);
-        if (video.current) attachStream(video.current, s);
-        setPhase("live");
+        // 영상 크기를 알기 전에 찍으면 빈 사진이 되므로, 첫 프레임 정보가 온 뒤에 찍기 버튼을 보인다
+        return video.current ? attachStream(video.current, s) : undefined;
+      })
+      .then(() => {
+        if (alive && stream) setPhase("live");
       })
       .catch((e) => alive && setPhase(e instanceof CameraError ? e.kind : "failed"));
     return () => {

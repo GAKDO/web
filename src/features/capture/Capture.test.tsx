@@ -212,3 +212,15 @@ test("찍는 중에 면 목록으로 돌아가면 늦게 만들어진 미리보�
   finish(late);
   await vi.waitFor(() => expect(revoke).toHaveBeenCalledWith(late.previewUrl));
 });
+
+test("영상 크기를 알기 전에는 찍기 버튼을 보이지 않는다", async () => {
+  let ready: () => void = () => undefined;
+  cam.attachStream.mockReturnValueOnce(new Promise<void>((r) => (ready = r)));
+  asCustomer();
+  renderApp(`/capture?t=${mockCaptureLink().token}`);
+  await openTop();
+  await screen.findByRole("button", { name: "면 목록으로" });
+  expect(screen.queryByRole("button", { name: "찍기" })).toBeNull();
+  ready();
+  expect(await screen.findByRole("button", { name: "찍기" })).toBeInTheDocument();
+});

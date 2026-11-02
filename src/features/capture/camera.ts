@@ -43,22 +43,37 @@ export async function openCamera(): Promise<MediaStream> {
   }
 }
 
-/** video에 스트림을 붙이고 재생한다 */
-export function attachStream(video: HTMLVideoElement, stream: MediaStream): void {
+/** video에 스트림을 붙이고 재생한다. 영상 크기를 알게 되면(첫 프레임 정보) 끝난다 */
+export function attachStream(video: HTMLVideoElement, stream: MediaStream): Promise<void> {
   video.srcObject = stream;
   void video.play().catch(() => undefined);
+  if (video.videoWidth && video.videoHeight) return Promise.resolve();
+  return new Promise((resolve) => video.addEventListener("loadedmetadata", () => resolve(), { once: true }));
 }
 
 export function stopCamera(stream: MediaStream | null): void {
   stream?.getTracks().forEach((t) => t.stop());
 }
 
-function draw(source: CanvasImageSource, width: number, height: number, longSide: number): HTMLCanvasElement {
-  const scale = Math.min(1, longSide / Math.max(width, height));
+/** 뷰파인더 비율(가로 4 : 세로 3). styles.css `.viewfinder`와 같아야 한다 */
+export const VIEWFINDER_ASPECT = 4 / 3;
+
+/** 화면(object-fit: cover)에 보이는 가운데 4:3 부분만 고른다 */
+export function viewfinderCrop(width: number, height: number): { sx: number; sy: number; sw: number; sh: number } {
+  if (width / height > VIEWFINDER_ASPECT) {
+    const sw = Math.round(height * VIEWFINDER_ASPECT);
+    return { sx: Math.round((width - sw) / 2), sy: 0, sw, sh: height };
+  }
+  const sh = Math.round(width / VIEWFINDER_ASPECT);
+  return { sx: 0, sy: Math.round((height - sh) / 2), sw: width, sh };
+}
+
+function draw(source: CanvasImageSource, width: number, height: number, longSide: number, crop = { sx: 0, sy: 0, sw: width, sh: height }): HTMLCanvasElement {
+  const scale = Math.min(1, longSide / Math.max(crop.sw, crop.sh));
   const canvas = document.createElement("canvas");
-  canvas.width = Math.round(width * scale);
-  canvas.height = Math.round(height * scale);
-  canvas.getContext("2d")?.drawImage(source, 0, 0, canvas.width, canvas.height);
+  canvas.width = Math.round(crop.sw * scale);
+  canvas.height = Math.round(crop.sh * scale);
+  canvas.getContext("2d")?.drawImage(source, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, canvas.width, canvas.height);
   return canvas;
 }
 
@@ -71,7 +86,9 @@ export async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
 export async function captureShot(video: HTMLVideoElement): Promise<Shot> {
   // 첫 프레임 전(videoWidth 0)이면 빈 사진이 되므로 실패로 돌려 다시 찍게 한다
   if (!video.videoWidth || !video.videoHeight) throw new CameraError("failed");
-  const photo = draw(video, video.videoWidth, video.videoHeight, UPLOAD_SIZE);
+  // 고객이 윤곽선에 맞춘 화면과 같은 부분만 저장한다
+  const { videoWidth: w, videoHeight: h } = video;
+  const photo = draw(video, w, h, UPLOAD_SIZE, viewfinderCrop(w, h));
   const blob = await new Promise<Blob | null>((resolve) => photo.toBlob(resolve, "image/jpeg", 0.9));
   if (!blob) throw new CameraError("failed");
   const bytes = await blob.arrayBuffer();
