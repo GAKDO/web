@@ -15,6 +15,7 @@ export function RequireAdmin() {
         <strong>TRACE 관리</strong>
         <nav aria-label="관리 메뉴">
           <NavLink to="/admin/devices">기기</NavLink>
+          <NavLink to="/admin/models">기종</NavLink>
           <NavLink to="/admin/rentals">렌탈</NavLink>
           {/* 파일럿 추이는 학교 Grafana에 있어 새 탭으로 연다(FR-PIL-02) */}
           {pilotUrl && (

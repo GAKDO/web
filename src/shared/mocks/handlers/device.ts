@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import type { DeviceCreateRequest, DevicePage, DeviceUpdateRequest } from "../../api/types";
+import type { DeviceCreateRequest, DeviceModelUpsertRequest, DevicePage, DeviceUpdateRequest } from "../../api/types";
 import { accountFromRequest, db, mockDevice } from "../db";
 import { problem } from "./problem";
 
@@ -69,5 +69,38 @@ export const deviceHandlers = [
     if (no) return no;
     const items = db.models.map(({ modelCode, name, manufacturer, formFactor }) => ({ modelCode, name, manufacturer, formFactor }));
     return HttpResponse.json({ items });
+  }),
+
+  // 기종 등록·수정: 없으면 만들고 있으면 바꾼다. 이름을 바꾸면 기기의 modelName도 따라간다
+  http.put("*/api/v1/device-models/:modelCode", async ({ request, params }) => {
+    const no = denied(request);
+    if (no) return no;
+    const modelCode = String(params.modelCode);
+    if (!/^[A-Z0-9][A-Z0-9-]{1,63}$/.test(modelCode)) return problem(400, "VALIDATION_FAILED", "기종 코드 형식이 아닙니다");
+    const raw: unknown = await request.json();
+    if (!raw || typeof raw !== "object") return problem(400, "VALIDATION_FAILED", "본문이 객체가 아닙니다");
+    const body = raw as DeviceModelUpsertRequest;
+    const d = body.dimensions;
+    const nameOk = typeof body.name === "string" && body.name.trim().length > 0 && body.name.length <= 128;
+    const manufacturerOk = body.manufacturer === undefined || (typeof body.manufacturer === "string" && body.manufacturer.length <= 64);
+    const dimsOk = !!d && [d.widthMm, d.depthMm, d.baseHMm, d.lidHMm].every((n) => typeof n === "number" && n > 0);
+    const specOk = !body.spec || [body.spec.ramGb, body.spec.ssdGb].every((n) => n === undefined || (Number.isInteger(n) && n >= 1));
+    if (!nameOk || !manufacturerOk || body.formFactor !== "CLAMSHELL" || !dimsOk || !specOk) {
+      return problem(400, "VALIDATION_FAILED", "입력값 오류", "이름·형태·치수(0 초과)·사양을 확인해 주세요.");
+    }
+    const saved = {
+      modelCode,
+      name: body.name,
+      manufacturer: body.manufacturer ?? null,
+      formFactor: body.formFactor,
+      spec: body.spec ?? null,
+      dimensions: d,
+      updatedAt: new Date().toISOString(),
+    };
+    const index = db.models.findIndex((m) => m.modelCode === modelCode);
+    if (index >= 0) db.models[index] = saved;
+    else db.models.push(saved);
+    for (const device of db.devices) if (device.modelCode === modelCode) device.modelName = saved.name;
+    return HttpResponse.json(saved);
   }),
 ];
