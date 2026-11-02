@@ -2,6 +2,7 @@ import { http, HttpResponse } from "msw";
 import { nanoid } from "nanoid";
 import type {
   CaptureFace,
+  CaptureLinkResponse,
   CaptureSet,
   CaptureSetCompleteRequest,
   CaptureSetCreateRequest,
@@ -35,7 +36,20 @@ function toCaptureSet(set: MockSet): CaptureSet {
 }
 
 export const captureHandlers = [
-  // auth-server: 수령 QR 교환(고객). 발급(관리자) 목은 WE2-④에서 더한다
+  // auth-server: 수령 QR 발급(관리자)·교환(고객)
+  http.post("*/api/v1/auth/capture-links", async ({ request }) => {
+    const account = accountFromRequest(request);
+    if (!account) return problem(401, "UNAUTHENTICATED", "로그인이 필요합니다");
+    if (account.role !== "ADMIN") return problem(403, "FORBIDDEN", "권한이 없습니다");
+    const { rentalId, checkpointId } = (await request.json()) as { rentalId: string; checkpointId: string };
+    const link = { token: `qr-${nanoid(32)}`, rentalId, checkpointId, used: false, expiresAt: Date.now() + 60 * 60_000 };
+    captureDb.links.push(link);
+    const body: CaptureLinkResponse = {
+      url: `${new URL(request.url).origin}/capture?t=${link.token}`,
+      expiresAt: new Date(link.expiresAt).toISOString(),
+    };
+    return HttpResponse.json(body, { status: 201 });
+  }),
   http.post("*/api/v1/auth/capture-links/exchange", async ({ request }) => {
     const account = accountFromRequest(request);
     if (!account) return problem(401, "UNAUTHENTICATED", "로그인이 필요합니다");
