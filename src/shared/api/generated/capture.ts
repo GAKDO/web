@@ -40,7 +40,7 @@ export interface paths {
          *     - 고객 촬영 JWT: source=PHONE, 토큰의 checkpointId·rentalId와 같은 시점·렌탈만. 다르면 403 OUT_OF_SCOPE.
          *     - `rentalId`는 이벤트 봉투(trace.capture.uploaded 등)에 들어간다. 부스는 관리자 화면이 고른 렌탈·시점을 그대로 보낸다.
          *     같은 세트 안에서 (face, light, camera)는 겹치지 않는다(부스는 같은 면·조명을 CAM1·CAM2로 두 장).
-         *     URL이 만료되면 세트를 새로 만들지 않고 `POST /captures/sets/{setId}/uploads`로 남은 사진의 URL만 다시 받는다.
+         *     URL이 만료되면 세트를 새로 만들지 않고 `POST /api/v1/captures/sets/{setId}/uploads`로 남은 사진의 URL만 다시 받는다.
          *     응답 `uploads`는 요청 `photos`와 같은 순서·같은 개수로 돌려준다(i번째 업로드 = i번째 사진).
          */
         post: operations["createCaptureSet"];
@@ -123,6 +123,8 @@ export interface paths {
          *     탐지마다 (face, light, camera)로 세트의 사진 한 장을 가리키고, polygon은 그 사진의 원본 px 좌표다.
          *     표준 좌표(펼친 면, contracts/capture/faces.md)로 바꾸는 일은 inspect-worker가 trace.inspect.completed의
          *     alignments(사진별 호모그래피)를 준 뒤 capture-server가 한다. 세트에 없는 (face, light, camera)면 400. (11/2 결정)
+         *     같은 세트에 다시 보내면 그 세트의 부스 탐지를 **통째로 바꾼다**(마지막 요청이 남는다. modelVersion이 달라도 같다).
+         *     그래서 같은 요청을 다시 보내도 중복이 생기지 않고 Idempotency-Key는 받지 않는다. 등급이 매겨진 세트는 409 CAPTURE_SET_CLOSED. (11/2 결정)
          */
         post: operations["saveBoothDetections"];
         delete?: never;
@@ -220,7 +222,7 @@ export interface components {
             rentalId: components["schemas"]["PublicId"];
             checkpointId: components["schemas"]["PublicId"];
             source: components["schemas"]["CaptureSource"];
-            /** @description 9면 × 조명 최대 6 */
+            /** @description 사진 목록. (face, light, camera)는 겹치지 않는다. 부스 촬영 목록은 한 대 29장(패스 1 18장 + 패스 2 10장 + SCR1), 80은 여유를 둔 상한 */
             photos: components["schemas"]["PhotoSpec"][];
         };
         UploadTarget: {
