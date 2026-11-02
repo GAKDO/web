@@ -1,5 +1,7 @@
 // 화면 라우트. 관리자 화면(WE1)은 /admin 아래, 고객 폰 촬영·3D 리포트·검증 페이지는 이 아래에 더한다
 import { Navigate, type RouteObject } from "react-router-dom";
+import { PasswordResetPage } from "./features/account/components/PasswordResetPage";
+import { WithdrawnPage, WithdrawPage } from "./features/account/components/WithdrawPage";
 import { LoginPage } from "./features/auth/components/LoginPage";
 import { CaptureEntryPage } from "./features/capture/components/CaptureEntryPage";
 import { CustomerLoginPage } from "./features/customer-auth/components/CustomerLoginPage";
@@ -28,6 +30,8 @@ export const routes: RouteObject[] = [
   { path: "/admin/login", element: <LoginPage /> },
   { path: "/verify/:verifyToken", element: <VerifyPage /> },
   { path: "/login", element: <CustomerLoginPage /> },
+  { path: "/password/reset", element: <PasswordResetPage /> },
+  { path: "/account/withdrawn", element: <WithdrawnPage /> },
   { path: "/capture", element: <RequireCustomer />, children: [{ index: true, element: <CaptureEntryPage /> }] },
   {
     // 고객 화면(WE3): 고객·관리자 모두 연다
@@ -35,6 +39,7 @@ export const routes: RouteObject[] = [
     children: [
       { path: "/my/rentals", element: <MyRentalsPage /> },
       { path: "/my/rentals/:rentalId", element: <ReportPage /> },
+      { path: "/my/account/withdraw", element: <WithdrawPage /> },
     ],
   },
   {

@@ -21,6 +21,8 @@ interface AuthValue {
   /** expected와 다른 역할이면 로그아웃하고 notice로 알린다. 기본은 관리자(WE1) */
   login(email: string, password: string, expected?: SessionRole): Promise<void>;
   logout(): Promise<void>;
+  /** 서버가 이미 세션을 끝냈을 때(탈퇴 등): 서버를 부르지 않고 이 화면의 세션만 지운다 */
+  clearSession(): void;
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
@@ -91,7 +93,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [logout],
   );
 
-  const value = useMemo(() => ({ status, role, notice, login, logout }), [status, role, notice, login, logout]);
+  const clearSession = useCallback(() => endSession(null), [endSession]);
+
+  const value = useMemo(() => ({ status, role, notice, login, logout, clearSession }), [status, role, notice, login, logout, clearSession]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

@@ -104,3 +104,15 @@ test("토큰 다시 받기와 로그아웃 요청은 리프레시 쿠키를 보�
   server.events.removeAllListeners();
   expect(seen).toEqual({ "/api/v1/auth/refresh": "include", "/api/v1/auth/logout": "include" });
 });
+
+test("입력한 비밀번호가 틀린 401(INVALID_CREDENTIALS)은 토큰이 만료돼 다시 받은 뒤라도 세션을 끝내지 않는다", async () => {
+  await login();
+  expireAccessTokens();
+  const expired = vi.fn();
+  setSessionExpiredHandler(expired);
+  const error = await unwrap(api.DELETE("/api/v1/auth/me", { body: { password: "wrong-pass" } })).catch((e: unknown) => e);
+  expect(error).toBeInstanceOf(ApiError);
+  expect((error as ApiError).code).toBe("INVALID_CREDENTIALS");
+  expect(expired).not.toHaveBeenCalled();
+  expect(tokenStore.get()).not.toBeNull();
+});

@@ -55,6 +55,9 @@ export function MyRentalsPage() {
           더 보기
         </Button>
       )}
+      <p className="muted">
+        <Link to="/my/account/withdraw">계정 탈퇴</Link>
+      </p>
     </main>
   );
 }
