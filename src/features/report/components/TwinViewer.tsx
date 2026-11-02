@@ -1,44 +1,28 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState, type ElementRef } from "react";
+import { useEffect, useMemo, useRef, type ElementRef } from "react";
 import * as THREE from "three";
 import type { CaptureFace, CheckpointMedia, Pin } from "../../../shared/api/types";
-import { faceNormal, lidInnerFace, pinPosition, pinRatio, type Dimensions, type TextureSize } from "../model/pins";
+import { CAPTURE_FACE_LABEL } from "../../../shared/codes/labels";
+import { useTextures, type LoadedTexture } from "../hooks/useTextures";
+import { faceNormal, lidInnerFace, pinPosition, pinRatio, type Dimensions } from "../model/pins";
 
 // 3D 트윈(FR-RPT-01·02). 리포트 화면에서만 지연 로딩한다. 단위는 mm, 화면 상자는 110° 열린 모습 하나(명세 Q2)
 const OPEN_DEG = 110;
 const GRAY = new THREE.MeshStandardMaterial({ color: "#b8bec7" });
 
-interface Loaded {
-  texture: THREE.Texture;
-  size: TextureSize;
-}
-
-/** 사진 보기 주소로 텍스처를 읽는다. 주소가 바뀌어도(만료 전 새 주소) 같은 면이면 바꿔 끼운다 */
-function useTextures(media: CheckpointMedia | undefined): Partial<Record<CaptureFace, Loaded>> {
-  const [loaded, setLoaded] = useState<Partial<Record<CaptureFace, Loaded>>>({});
-  useEffect(() => {
-    let alive = true;
-    const loader = new THREE.TextureLoader();
-    setLoaded({});
-    for (const { face, url } of media?.textures ?? []) {
-      loader.load(url, (texture) => {
-        if (!alive) return;
-        texture.colorSpace = THREE.SRGBColorSpace;
-        const image = texture.image as HTMLImageElement;
-        setLoaded((prev) => ({ ...prev, [face]: { texture, size: { width: image.naturalWidth || image.width, height: image.naturalHeight || image.height } } }));
-      });
-    }
-    return () => {
-      alive = false;
-    };
-    // 같은 시점의 새 주소는 바꿔 끼우지 않아도 된다: 사진 내용이 같다
-  }, [media?.checkpointId]);
-  return loaded;
-}
-
-function material(loaded: Loaded | undefined): THREE.Material {
+function material(loaded: LoadedTexture | undefined): THREE.Material {
   return loaded ? new THREE.MeshStandardMaterial({ map: loaded.texture }) : GRAY;
+}
+
+/** 재질 묶음이 바뀌거나 화면이 닫히면 이전 재질을 해제한다. 공유 재질 GRAY는 남긴다 */
+function useDisposeMaterials(materials: THREE.Material[]): void {
+  useEffect(
+    () => () => {
+      for (const m of materials) if (m !== GRAY) m.dispose();
+    },
+    [materials],
+  );
 }
 
 interface Props {
@@ -50,7 +34,7 @@ interface Props {
 }
 
 export default function TwinViewer({ dimensions: d, media, pins, selected, onSelect }: Props) {
-  const textures = useTextures(media);
+  const { loaded: textures, failed } = useTextures(media);
   const controls = useRef<ElementRef<typeof OrbitControls>>(null);
   const inner = lidInnerFace(Object.keys(textures) as CaptureFace[]);
   // BoxGeometry 재질 순서: +x, −x, +y, −y, +z, −z
@@ -59,6 +43,8 @@ export default function TwinViewer({ dimensions: d, media, pins, selected, onSel
     [textures],
   );
   const lidMaterials = useMemo(() => [GRAY, GRAY, material(textures.TOP), material(inner ? textures[inner] : undefined), GRAY, GRAY], [textures, inner]);
+  useDisposeMaterials(baseMaterials);
+  useDisposeMaterials(lidMaterials);
   const angle = (OPEN_DEG * Math.PI) / 180;
   const size = Math.max(d.widthMm, d.depthMm);
 
@@ -113,6 +99,11 @@ export default function TwinViewer({ dimensions: d, media, pins, selected, onSel
       <button type="button" className="twin-reset" onClick={() => controls.current?.reset()}>
         처음 보기
       </button>
+      {failed.length > 0 && (
+        <p role="status" className="muted">
+          {failed.map((f) => CAPTURE_FACE_LABEL[f]).join(", ")} 사진을 불러오지 못해 회색으로 표시했습니다.
+        </p>
+      )}
     </div>
   );
 }
