@@ -4,7 +4,7 @@
 
 **Tests**: 헌법 IV에 따라 수용 시나리오마다 테스트를 먼저 쓴다. 테스트 이름은 명세 문장 그대로.
 
-**PR**: ① Phase 1·2·3(US1) → ② Phase 4·5(US2·US3) → ③ Phase 6(US4)·7. 모두 `develop`으로, 앞 PR이 머지된 뒤 다음 PR.
+**PR**: ① Phase 1·2·3(US1) → ② Phase 4·5(US2·US3) → ③ Phase 6(US4)·7. ①의 코드가 400줄을 넘으면 ①-a(Phase 1·2 기반)와 ①-b(US1 로그인)로 나눈다. 모두 `develop`으로, 앞 PR이 머지된 뒤 다음 PR.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -66,8 +66,8 @@
 ## Phase 5: US3 기종·기기 등록 (P2) — PR ②
 
 - [ ] T029 [P] [US3] MSW 핸들러: 기기 등록(409 `DEVICE_SERIAL_EXISTS`), 기종 PUT (`src/shared/mocks/handlers/device.ts`)
-- [ ] T030 [P] [US3] 테스트: 시나리오 1~4(기종 선택 목록, 시리얼 중복 409, 치수 검증, 같은 코드면 수정) (`src/features/deviceModels/*.test.tsx`, `src/features/devices/DeviceCreatePage.test.tsx`)
-- [ ] T031 [US3] 기종 목록·등록·수정 폼 (`src/features/deviceModels/`)
+- [ ] T030 [P] [US3] 테스트: 시나리오 1~2(기종 선택 목록, 시리얼 중복 409). 시나리오 3~4(치수 검증, 같은 코드면 수정)는 T031과 함께 미룸 (`src/features/deviceModels/*.test.tsx`, `src/features/devices/DeviceCreatePage.test.tsx`)
+- [ ] T031 [US3] (11/6 뒤로 미룸, 11/02 결정) 기종 목록·등록·수정 폼 (`src/features/deviceModels/`). 그때까지 기종은 A의 초기 데이터로 넣는다(c1-questions 10)
 - [ ] T032 [US3] 기기 등록 화면 (`src/features/devices/components/DeviceCreatePage.tsx`)
 
 **Checkpoint**: PR ② — 기기·기종 관리 끝
@@ -90,8 +90,10 @@
 ## Phase 7: 마무리 — PR ③
 
 - [ ] T041 [P] 375px·1280px 렌더 테스트(matchMedia 목으로 카드·표 둘 다) (`src/shared/ui/ResponsiveList.test.tsx`)
+- [ ] T041a [P] SC-006: 목 기기 100대에서 검색 결과가 1초 안에 보이는 테스트 (`src/features/devices/DeviceListPage.perf.test.tsx`)
 - [ ] T042 [P] 기존 nginx·`/version.txt`·Dockerfile 그대로인지 확인, `npm run build` 통과
 - [ ] T043 quickstart.md 순서대로 목 화면 확인, 스크린샷(375·1280) PR 본문에
+- [ ] T043a (11/10 리허설로 미룸, 11/02 결정) SC-001·002: 팀 밖 3명이 설명 없이 로그인 → 렌탈 → 출고, 409 문장 이해 확인
 - [ ] T044 c1-questions.md 답 반영(A 답이 오면 sync-contracts → gen:api → 타입 오류 고치기)
 
 ---
