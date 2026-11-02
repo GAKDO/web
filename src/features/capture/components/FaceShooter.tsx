@@ -31,8 +31,9 @@ function Outline({ guide }: { guide: FaceGuide }) {
       <text x="50" y={y - 2} textAnchor="middle">
         ▲ {guide.top}
       </text>
+      {/* 왼쪽 표시는 글자를 반시계로 90° 돌려 ▲가 왼쪽을 가리키게 한다 */}
       <text x={x - 2} y={37.5} textAnchor="middle" transform={`rotate(-90 ${x - 2} 37.5)`}>
-        ◀ {guide.left}
+        ▲ {guide.left}
       </text>
     </svg>
   );
