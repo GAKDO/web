@@ -13,3 +13,9 @@ C1(contracts PR #1)이 머지됐습니다. 아래는 WE1 화면이 정했거나 
 4. **렌탈 목록 필드(더하는 변경 요청):** `RentalSummary`에 `renterRef`와 지금 시점(마지막 시점의 type·status)을 더해 줄 수 있나요? 관리자가 목록에서 누구에게 나간 렌탈이 어디까지 왔는지 봐야 합니다.
 5. **렌탈 상세 필드(더하는 변경 요청):** `Rental`에 `serial`·`modelCode`(또는 `GET /devices/{deviceId}`)를 더해 줄 수 있나요? 지금은 상세 주소로 바로 들어오면 기기 시리얼을 보일 방법이 없습니다.
 6. **리프레시 쿠키와 출처(GW1):** web(8315)과 gateway(8314)는 출처가 달라, 쿠키(`Path=/api/v1/auth; SameSite=Strict`)가 실리려면 gateway CORS가 web 출처를 credentials 허용으로 열거나 web nginx가 `/api`를 gateway로 넘겨야 합니다. 어느 쪽으로 할까요?
+
+## 함께 정할 것 (A에게, 11/2 전달함)
+
+7. **실제 서버 확인용 관리자 계정:** AU1 초기 데이터의 관리자 계정을 C가 받는 방법. 비밀번호는 레포 밖으로 전달. 11/5까지.
+8. **계약 변경 알림:** web은 계약 사본(`contracts/VERSION`)으로 타입을 만든다. contracts PR이 머지되면 C에게 알려 주기(계속).
+9. **반납 봉인 지연:** 렌탈 종료가 반납 봉인(ML2 → CA2 → RP1)을 기다린다. 11/10 리허설 전에 봉인까지 도는지 함께 확인.
