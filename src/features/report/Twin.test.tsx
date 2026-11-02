@@ -48,7 +48,7 @@ test("핀을 누르면 그 흠집의 크롭 사진, 종류, 면, 크기가 보�
   expect(within(detail).getByText("3.1mm²")).toBeInTheDocument();
   expect(within(detail).getByRole("img", { name: "흠집 확대 사진" })).toBeInTheDocument();
   expect(within(detail).getByText("직전 시점에 없던 흠집")).toBeInTheDocument();
-  expect(within(detail).getByText("grade-rules-v1")).toBeInTheDocument();
+  expect(within(twin).getByText("판정 규칙: grade-rules-v1")).toBeInTheDocument();
 });
 
 test("출고 시점 핀은 '이전부터 있음' 대신 비교하지 않는다고 보인다", async () => {

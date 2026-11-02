@@ -14,7 +14,7 @@ interface Props {
   onClose(): void;
 }
 
-/** 핀을 누르면 보이는 흠집 상세(FR-014): 크롭·종류·면·크기, 직전 시점과 비교, 판정 규칙 버전 */
+/** 핀을 누르면 보이는 흠집 상세(FR-014): 크롭·종류·면·크기, 직전 시점과 비교 */
 export function PinDetail({ pin, checkpointType, inspection, inspectionError = false, onRetry, media, onClose }: Props) {
   const defect = inspection?.defects.find((d) => d.defectId === pin.defectId);
   const crop = media?.crops.find((c) => c.defectId === pin.defectId);
@@ -40,12 +40,6 @@ export function PinDetail({ pin, checkpointType, inspection, inspectionError = f
         )}
         <dt>직전 시점과 비교</dt>
         <dd>{matchText(checkpointType, defect, pin)}</dd>
-        {inspection?.ruleVersion && (
-          <>
-            <dt>판정 규칙</dt>
-            <dd>{inspection.ruleVersion}</dd>
-          </>
-        )}
       </dl>
       {inspectionError && !defect && onRetry && (
         <button type="button" onClick={onRetry}>
