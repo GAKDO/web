@@ -3,6 +3,7 @@
 import type { components as AuthComponents, paths as AuthPaths } from "./generated/auth";
 import type { components as RentalComponents, paths as RentalPaths } from "./generated/rental";
 import type { components as ReportComponents, paths as ReportPaths } from "./generated/report";
+import type { components as CaptureComponents, paths as CapturePaths } from "./generated/capture";
 
 type AuthSchemas = AuthComponents["schemas"];
 type RentalSchemas = RentalComponents["schemas"];
@@ -38,3 +39,20 @@ export type CheckpointStatus = RentalSchemas["RentalCheckpointStatus"];
 export type VerifyResponse = ReportSchemas["VerifyResponse"];
 export type VerifyRecord = ReportSchemas["VerifyRecord"];
 export type InspectionGrade = ReportSchemas["InspectionGrade"];
+
+// WE2 폰 수령 촬영: capture-server와 auth-server 수령 QR(contracts fd35e33)
+
+type CaptureSchemas = CaptureComponents["schemas"];
+
+export type CaptureApiPaths = CapturePaths;
+export type CaptureLinkResponse = AuthSchemas["CaptureLinkResponse"];
+export type CaptureTokenResponse = AuthSchemas["CaptureTokenResponse"];
+export type PhotoSpec = CaptureSchemas["PhotoSpec"];
+export type CaptureSetCreateRequest = CaptureSchemas["CaptureSetCreateRequest"];
+export type CaptureSetCreateResponse = CaptureSchemas["CaptureSetCreateResponse"];
+export type CaptureSetCompleteRequest = CaptureSchemas["CaptureSetCompleteRequest"];
+export type UploadTarget = CaptureSchemas["UploadTarget"];
+export type CaptureSet = CaptureSchemas["CaptureSet"];
+export type CaptureFace = CaptureSchemas["CaptureFace"];
+export type CaptureLight = CaptureSchemas["CaptureLight"];
+export type CaptureCamera = CaptureSchemas["CaptureCamera"];
