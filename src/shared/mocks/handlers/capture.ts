@@ -69,7 +69,10 @@ export const captureHandlers = [
       return new HttpResponse(null, { status: 403 });
     }
     if (Date.parse(target.expiresAt) <= Date.now()) return new HttpResponse(null, { status: 403 });
-    captureDb.objects.set(url.pathname, await sha256Hex(await request.arrayBuffer()));
+    // 서명한 체크섬과 본문 해시가 다르면 저장소가 거절한다(실제 MinIO와 같게)
+    const bodyHash = await sha256Hex(await request.arrayBuffer());
+    if (hexToBase64(bodyHash) !== target.headers?.["x-amz-checksum-sha256"]) return new HttpResponse(null, { status: 400 });
+    captureDb.objects.set(url.pathname, bodyHash);
     return new HttpResponse(null, { status: 200 });
   }),
 ];

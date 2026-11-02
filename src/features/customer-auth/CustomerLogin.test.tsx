@@ -74,3 +74,14 @@ test("로그인하면 이전 계정의 촬영 권한이 지워진다", async () 
   await screen.findByText("내 화면");
   expect(captureTokenStore.get()).toBeNull();
 });
+
+test("고객으로 로그인한 채 관리자 로그인에서 비밀번호를 틀려도 고객 세션은 끝나지 않는다", async () => {
+  const router = renderWithCustomerRoute("/login?next=/my");
+  await login(MOCK_CUSTOMER.email, MOCK_CUSTOMER.password);
+  await screen.findByText("내 화면");
+  await router.navigate("/admin/login");
+  await login(MOCK_ADMIN.email, "wrong-password");
+  expect(await screen.findByText(/이메일 또는 비밀번호가 맞지 않습니다/)).toBeInTheDocument();
+  await router.navigate("/my");
+  expect(await screen.findByText("내 화면")).toBeInTheDocument();
+});

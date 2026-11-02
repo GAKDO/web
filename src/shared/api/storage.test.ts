@@ -65,3 +65,9 @@ test("만료된 촬영 권한으로 세트를 만들면 401", async () => {
   });
   await expect(unwrap(call)).rejects.toMatchObject({ status: 401 });
 });
+
+test("알린 해시와 다른 본문을 올리면 저장소가 거절한다", async () => {
+  const { created } = await createSet(new Uint8Array([5]));
+  expect(await putToStorage(created.uploads[0], new Uint8Array([6]).buffer)).toBe("failed");
+  expect(captureDb.objects.size).toBe(0);
+});

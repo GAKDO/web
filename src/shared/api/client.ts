@@ -8,6 +8,8 @@ import type { ApiPaths, CaptureApiPaths, TokenResponse } from "./types";
 // 비우면 같은 출처. Request에는 절대 주소가 필요해 location.origin을 쓴다
 const BASE = import.meta.env.VITE_API_BASE || window.location.origin;
 const REFRESH_PATH = "/api/v1/auth/refresh";
+/** 이 요청의 401은 세션 만료가 아니다(틀린 비밀번호·리프레시 실패). 다시 받기·세션 종료를 하지 않는다 */
+const NO_RETRY_PATHS = [REFRESH_PATH, "/api/v1/auth/login"];
 
 let onSessionExpired: () => void = () => {};
 let refreshing: Promise<boolean> | null = null;
@@ -44,7 +46,7 @@ function withToken(request: Request): Request {
 async function authFetch(request: Request): Promise<Response> {
   const retry = request.clone();
   const response = await fetch(withToken(request));
-  if (response.status !== 401 || request.url.endsWith(REFRESH_PATH) || !tokenStore.get()) return response;
+  if (response.status !== 401 || NO_RETRY_PATHS.some((p) => new URL(request.url).pathname === p) || !tokenStore.get()) return response;
   if (!(await refreshSession())) {
     tokenStore.clear();
     onSessionExpired();
