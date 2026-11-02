@@ -4,7 +4,7 @@
 
 **Tests**: 헌법 IV에 따라 수용 시나리오마다 테스트를 먼저 쓴다. 테스트 이름은 명세 문장 그대로.
 
-**PR**: ① Phase 1·2·3(US1) → ② Phase 4·5(US2·US3) → ③ Phase 6(US4)·7. ①의 코드가 400줄을 넘으면 ①-a(Phase 1·2 기반)와 ①-b(US1 로그인)로 나눈다. 모두 `develop`으로, 앞 PR이 머지된 뒤 다음 PR.
+**PR**: ① Phase 1·2·3(US1) → ② Phase 4·5(US2·US3) → ③ Phase 6(US4)·7. ②도 400줄을 넘어 ②-a(T023~T027 목록·상태)와 ②-b(T028~T032 고치기·등록)로 나눈다. ①의 코드가 400줄을 넘으면 ①-a(Phase 1·2 기반)와 ①-b(US1 로그인)로 나눈다. 모두 `develop`으로, 앞 PR이 머지된 뒤 다음 PR.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -15,38 +15,38 @@
 
 ## Phase 1: Setup — PR ①
 
-- [ ] T001 의존성 추가: `react-router-dom@6.30`, `@tanstack/react-query@5`, `openapi-fetch@0.17` / dev: `openapi-typescript@7`, `msw@2.15`, `nanoid@5`, `@testing-library/user-event@14` (`package.json`, `package-lock.json`)
-- [ ] T002 `scripts/sync-contracts.sh` 작성: 인자 경로(기본 `../contracts`)에서 `openapi/auth-server.yaml`·`rental-server.yaml`·`components/*`·`codes.yaml`을 `contracts/`로 복사하고 `contracts/VERSION`에 커밋 SHA 기록
-- [ ] T003 contracts `4234950` 사본을 `contracts/`에 넣기 (T002 실행)
-- [ ] T004 `npm run gen:api` 스크립트: openapi-typescript로 `src/shared/api/generated/{auth,rental}.ts` 생성, 결과 커밋 (`package.json`)
-- [ ] T005 [P] 환경 값 `VITE_API_BASE`·`VITE_USE_MOCK` 타입 선언 (`src/vite-env.d.ts`)
+- [x] T001 의존성 추가: `react-router-dom@6.30`, `@tanstack/react-query@5`, `openapi-fetch@0.17` / dev: `openapi-typescript@7`, `msw@2.15`, `nanoid@5`, `@testing-library/user-event@14` (`package.json`, `package-lock.json`)
+- [x] T002 `scripts/sync-contracts.sh` 작성: 인자 경로(기본 `../contracts`)에서 `openapi/auth-server.yaml`·`rental-server.yaml`·`components/*`·`codes.yaml`을 `contracts/`로 복사하고 `contracts/VERSION`에 커밋 SHA 기록
+- [x] T003 contracts `4234950` 사본을 `contracts/`에 넣기 (T002 실행)
+- [x] T004 `npm run gen:api` 스크립트: openapi-typescript로 `src/shared/api/generated/{auth,rental}.ts` 생성, 결과 커밋 (`package.json`)
+- [x] T005 [P] 환경 값 `VITE_API_BASE`·`VITE_USE_MOCK` 타입 선언 (`src/vite-env.d.ts`)
 
 ## Phase 2: Foundational — PR ①
 
 **⚠️ 이 단계가 끝나야 사용자 이야기를 시작할 수 있다**
 
-- [ ] T006 화면용 타입 별칭(`Device`, `DeviceModel`, `Rental`, `RentalSummary`, `Checkpoint`, `ErrorCode`, 코드 enum) (`src/shared/api/types.ts`)
-- [ ] T007 [P] 테스트: Problem Details → `ApiError` 변환(code·detail·네트워크 0) (`src/shared/api/problem.test.ts`)
-- [ ] T008 [P] `ApiError`·`toApiError` (`src/shared/api/problem.ts`)
-- [ ] T009 [P] 오류 문장 표 `Record<ErrorCode, string>`(ui-api-usage.md와 같게) + `messageFor(error, ctx)` (`src/shared/api/errorMessages.ts`)
-- [ ] T010 [P] 코드 이름표 `Record<DeviceStatus|...,string>` (`src/shared/codes/labels.ts`)
-- [ ] T011 [P] 메모리 토큰 저장소 `tokenStore` (`src/shared/auth/tokenStore.ts`)
-- [ ] T012 테스트: 401이면 refresh를 한 번만 부르고 원래 요청을 다시 보낸다 / 동시에 401이 여러 번 나도 refresh는 한 번 / 다시 401이면 세션을 비운다 (`src/shared/api/client.test.ts`)
-- [ ] T013 openapi-fetch 클라이언트 + 인증·401 재시도 미들웨어, `credentials: 'include'` (`src/shared/api/client.ts`)
-- [ ] T014 [P] MSW 메모리 db(기종 3, 기기 8, 렌탈 3, nanoid 21자, 테스트마다 초기화) (`src/shared/mocks/db.ts`)
-- [ ] T015 [P] MSW 인증 핸들러(login·refresh·logout, 고객 계정 하나 포함) (`src/shared/mocks/handlers/auth.ts`)
-- [ ] T016 MSW 서버·워커 연결과 Vitest 설정 (`src/shared/mocks/{node,browser,handlers/index}.ts`, `src/setupTests.ts`)
-- [ ] T017 [P] 공통 UI: Button(처리 중 잠금), Field(레이블·오류), ConfirmDialog, ErrorBanner(다시 시도), ResponsiveList(768px 표·카드) (`src/shared/ui/`)
-- [ ] T018 QueryClient·Router·개발 목 시작 (`src/main.tsx`, `src/App.tsx`), 기존 `App.test.tsx` 고치기
+- [x] T006 화면용 타입 별칭(`Device`, `DeviceModel`, `Rental`, `RentalSummary`, `Checkpoint`, `ErrorCode`, 코드 enum) (`src/shared/api/types.ts`)
+- [x] T007 [P] 테스트: Problem Details → `ApiError` 변환(code·detail·네트워크 0) (`src/shared/api/problem.test.ts`)
+- [x] T008 [P] `ApiError`·`toApiError` (`src/shared/api/problem.ts`)
+- [x] T009 [P] 오류 문장 표 `Record<ErrorCode, string>`(ui-api-usage.md와 같게) + `messageFor(error, ctx)` (`src/shared/api/errorMessages.ts`)
+- [x] T010 [P] 코드 이름표 `Record<DeviceStatus|...,string>` (`src/shared/codes/labels.ts`)
+- [x] T011 [P] 메모리 토큰 저장소 `tokenStore` (`src/shared/auth/tokenStore.ts`)
+- [x] T012 테스트: 401이면 refresh를 한 번만 부르고 원래 요청을 다시 보낸다 / 동시에 401이 여러 번 나도 refresh는 한 번 / 다시 401이면 세션을 비운다 (`src/shared/api/client.test.ts`)
+- [x] T013 openapi-fetch 클라이언트 + 인증·401 재시도 미들웨어, `credentials: 'include'` (`src/shared/api/client.ts`)
+- [x] T014 [P] MSW 메모리 db(기종 3, 기기 8, 렌탈 3, nanoid 21자, 테스트마다 초기화) (`src/shared/mocks/db.ts`)
+- [x] T015 [P] MSW 인증 핸들러(login·refresh·logout, 고객 계정 하나 포함) (`src/shared/mocks/handlers/auth.ts`)
+- [x] T016 MSW 서버·워커 연결과 Vitest 설정 (`src/shared/mocks/{node,browser,handlers/index}.ts`, `src/setupTests.ts`)
+- [x] T017 [P] 공통 UI: Button(처리 중 잠금), Field·SelectField(레이블·오류), ConfirmDialog, ErrorBanner(다시 시도). ResponsiveList는 따로 두지 않고 CSS(768px부터 카드가 한 줄)로 처리 (`src/shared/ui/`)
+- [x] T018 QueryClient·Router·개발 목 시작 (`src/main.tsx`, `src/App.tsx`), 기존 `App.test.tsx` 고치기
 
 ## Phase 3: US1 로그인·로그아웃 (P1) 🎯 MVP — PR ①
 
 **Independent Test**: 목 관리자로 로그인 → 기기 목록, 로그아웃 → 로그인 화면
 
-- [ ] T019 [P] [US1] 테스트: 시나리오 1~8(로그인 성공, 틀린 비밀번호, 429, 토큰 만료 뒤 이어서, 리프레시 만료, 로그아웃, 고객 계정, 저장소에 토큰 없음) (`src/features/auth/LoginPage.test.tsx`, `src/shared/auth/AuthProvider.test.tsx`)
-- [ ] T020 [US1] AuthProvider(시작 때 refresh, 세션 상태 unknown·authenticated·anonymous, 로그아웃 때 Query 캐시 비우기) (`src/shared/auth/AuthProvider.tsx`)
-- [ ] T021 [US1] RequireAdmin 레이아웃 라우트와 관리자 메뉴·로그아웃 버튼 (`src/shared/auth/RequireAdmin.tsx`)
-- [ ] T022 [US1] 로그인 화면(오류 문장, 비밀번호 칸만 비우기, `?reason=expired` 안내) (`src/features/auth/components/LoginPage.tsx`)
+- [x] T019 [P] [US1] 테스트: 시나리오 1~8(로그인 성공, 틀린 비밀번호, 429, 토큰 만료 뒤 이어서, 리프레시 만료, 로그아웃, 고객 계정, 저장소에 토큰 없음) (`src/features/auth/LoginPage.test.tsx`, `src/shared/auth/AuthProvider.test.tsx`)
+- [x] T020 [US1] AuthProvider(시작 때 refresh, 세션 상태 unknown·authenticated·anonymous, 로그아웃 때 Query 캐시 비우기) (`src/shared/auth/AuthProvider.tsx`)
+- [x] T021 [US1] RequireAdmin 레이아웃 라우트와 관리자 메뉴·로그아웃 버튼 (`src/shared/auth/RequireAdmin.tsx`)
+- [x] T022 [US1] 로그인 화면(오류 문장, 비밀번호 칸만 비우기, `?reason=expired` 안내) (`src/features/auth/components/LoginPage.tsx`)
 
 **Checkpoint**: PR ① — 로그인만 되는 관리자 뼈대
 
@@ -56,12 +56,12 @@
 
 **Independent Test**: 목 기기 8대로 거르기·검색·상태 바꾸기
 
-- [ ] T023 [P] [US2] MSW 기기·기종 핸들러(목록 거르기·q·커서, PATCH 상태 규칙과 409 `DEVICE_HAS_OPEN_RENTAL`) (`src/shared/mocks/handlers/device.ts`)
-- [ ] T024 [P] [US2] 테스트: 시나리오 1~8(기종·상태 거르기, 검색, 수리 중으로 바꾸기, 409 문장, 폐기 확인 창·목록에 남음, 폐기 → 수리 중만, 시리얼·기종 읽기 전용) (`src/features/devices/*.test.tsx`)
-- [ ] T025 [US2] 쿼리·뮤테이션 훅 `useDevices`, `useUpdateDevice` (`src/features/devices/api/`)
-- [ ] T026 [US2] 기기 목록 화면(거르기·검색·다음 쪽·빈 목록 안내) (`src/features/devices/components/DeviceListPage.tsx`)
-- [ ] T027 [US2] 상태 메뉴(data-model의 바꿀 수 있는 길만) (`src/features/devices/components/StatusMenu.tsx`)
-- [ ] T028 [US2] 기기 상세·수정(색상·자산번호·OS) (`src/features/devices/components/DeviceDetailPage.tsx`)
+- [x] T023 [P] [US2] MSW 기기·기종 핸들러(목록 거르기·q·커서, PATCH 상태 규칙과 409 `DEVICE_HAS_OPEN_RENTAL`) (`src/shared/mocks/handlers/device.ts`)
+- [x] T024 [P] [US2] 테스트: 시나리오 1~8(기종·상태 거르기, 검색, 수리 중으로 바꾸기, 409 문장, 폐기 확인 창·목록에 남음, 폐기 → 수리 중만, 시리얼·기종 읽기 전용) (`src/features/devices/*.test.tsx`)
+- [x] T025 [US2] 쿼리·뮤테이션 훅 `useDevices`, `useUpdateDevice` (`src/features/devices/api/`)
+- [x] T026 [US2] 기기 목록 화면(거르기·검색·다음 쪽·빈 목록 안내) (`src/features/devices/components/DeviceListPage.tsx`)
+- [x] T027 [US2] 상태 메뉴(data-model의 바꿀 수 있는 길만) (`src/features/devices/components/StatusMenu.tsx`)
+- [ ] T028 [US2] 기기 정보 고치기(색상·자산번호·OS). 계약에 기기 하나 조회(GET /devices/{id})가 없어 상세 화면 대신 목록 카드 안에서 고친다 (`src/features/devices/components/DeviceEditor.tsx`) — PR ②-b
 
 ## Phase 5: US3 기종·기기 등록 (P2) — PR ②
 
