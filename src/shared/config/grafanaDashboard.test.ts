@@ -12,7 +12,7 @@ interface Panel {
   };
 }
 interface Dashboard {
-  __inputs: { name: string; type: string; pluginId: string }[];
+  __inputs?: unknown;
   uid: string;
   time: { from: string; to: string };
   timezone: string;
@@ -74,10 +74,10 @@ test("기본 기간은 최근 30일, 시간대는 Asia/Seoul이다(FR-005)", () 
   expect(dashboard.timezone).toBe("Asia/Seoul");
 });
 
-test("데이터 소스는 Import 입력으로만 받고 토큰을 담지 않는다(FR-006)", () => {
-  expect(dashboard.__inputs).toEqual([expect.objectContaining({ name: "DS_TRACE_PILOT", type: "datasource", pluginId: "influxdb" })]);
-  for (const p of dashboard.panels) expect(p.datasource.uid).toBe("${DS_TRACE_PILOT}");
-  for (const v of dashboard.templating.list) expect(v.datasource.uid).toBe("${DS_TRACE_PILOT}");
+test("데이터 소스는 provisioning이 만드는 uid trace-pilot만 쓰고 토큰을 담지 않는다(FR-006)", () => {
+  expect(dashboard.__inputs).toBeUndefined();
+  for (const p of dashboard.panels) expect(p.datasource.uid).toBe("trace-pilot");
+  for (const v of dashboard.templating.list) expect(v.datasource.uid).toBe("trace-pilot");
   expect(JSON.stringify(dashboard)).not.toMatch(/token|password|secret/i);
 });
 
