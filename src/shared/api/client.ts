@@ -46,7 +46,7 @@ function withToken(request: Request): Request {
 async function authFetch(request: Request): Promise<Response> {
   const retry = request.clone();
   const response = await fetch(withToken(request));
-  if (response.status !== 401 || NO_RETRY_PATHS.some((p) => new URL(request.url).pathname === p) || !tokenStore.get()) return response;
+  if (response.status !== 401 || NO_RETRY_PATHS.some((p) => new URL(request.url).pathname.endsWith(p)) || !tokenStore.get()) return response;
   if (!(await refreshSession())) {
     tokenStore.clear();
     onSessionExpired();
