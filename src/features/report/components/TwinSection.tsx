@@ -74,6 +74,10 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
           {CHECKPOINT_TYPE_LABEL[c.type]}: 검사 중이라 아직 볼 수 없습니다.
         </p>
       ))}
+      {inspection.data?.ruleVersion && (
+        // 흠집이 없는 검사도 어떤 규칙으로 판정했는지 보이도록 핀 선택과 상관없이 둔다(defect_match.rule_version)
+        <p className="muted">판정 규칙: {inspection.data.ruleVersion}</p>
+      )}
       {current && (
         <div className="twin-body">
           {media.isError && (
@@ -100,6 +104,7 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
             {selected && (
               <PinDetail
                 pin={selected}
+                checkpointType={current.type}
                 inspection={inspection.data}
                 inspectionError={inspection.isError}
                 onRetry={() => void inspection.refetch()}

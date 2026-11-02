@@ -9,7 +9,9 @@ function ReadingText({ reading }: { reading: Reading }) {
   return reading.kind === "value" ? <>{reading.text}</> : <span className="muted">읽지 못함 ({reading.reason})</span>;
 }
 
-function Column({ checkpoint, isFirst }: { checkpoint: TimelineCheckpoint; isFirst: boolean }) {
+function Column({ checkpoint }: { checkpoint: TimelineCheckpoint }) {
+  // 출고는 기준 시점이라 짝이 없다. 수령은 출고와, 반납은 수령과 비교한다(CA2)
+  const isFirst = checkpoint.type === "OUT";
   const diag = useDiagnostics(checkpoint.checkpointId);
   const media = useCheckpointMedia(checkpoint.checkpointId);
   // 404는 "진단 기록 없음", 그 밖의 오류는 "불러오지 못함" + 다시 시도
@@ -72,8 +74,8 @@ export function CompareTable({ checkpoints }: { checkpoints: TimelineCheckpoint[
     <section aria-labelledby="compare-title">
       <h2 id="compare-title">시점 비교</h2>
       <div className="compare">
-        {sealed.map((c, i) => (
-          <Column key={c.checkpointId} checkpoint={c} isFirst={i === 0} />
+        {sealed.map((c) => (
+          <Column key={c.checkpointId} checkpoint={c} />
         ))}
       </div>
     </section>

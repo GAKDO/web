@@ -47,6 +47,16 @@ test("핀을 누르면 그 흠집의 크롭 사진, 종류, 면, 크기가 보�
   expect(within(detail).getByText("12mm")).toBeInTheDocument();
   expect(within(detail).getByText("3.1mm²")).toBeInTheDocument();
   expect(within(detail).getByRole("img", { name: "흠집 확대 사진" })).toBeInTheDocument();
+  expect(within(detail).getByText("직전 시점에 없던 흠집")).toBeInTheDocument();
+  expect(within(twin).getByText("판정 규칙: grade-rules-v1")).toBeInTheDocument();
+});
+
+test("출고 시점 핀은 '이전부터 있음' 대신 비교하지 않는다고 보인다", async () => {
+  const { u, twin } = await openTwin();
+  fireEvent.change(slider(), { target: { value: "0" } });
+  await u.click(within(twin).getAllByRole("button", { name: /바닥/ })[0]);
+  const detail = await screen.findByRole("dialog", { name: "흠집 상세" });
+  expect(within(detail).getByText("출고는 기준 시점이라 비교하지 않음")).toBeInTheDocument();
 });
 
 test("아직 봉인되지 않은 시점은 '검사 중'으로 보이고 슬라이더에 오르지 않는다", async () => {
