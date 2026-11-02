@@ -37,7 +37,7 @@ export const authHandlers = [
       name: account.role === "ADMIN" ? "관리자" : "고객",
       role: account.role === "ADMIN" ? "ADMIN" : "CUSTOMER",
       status: "ACTIVE",
-      rentalIds: [],
+      rentalIds: [...db.report.owners].filter(([, owner]) => owner === account.accountId).map(([rentalId]) => rentalId),
     } satisfies components["schemas"]["MeResponse"];
     return HttpResponse.json(me);
   }),

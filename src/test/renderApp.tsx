@@ -21,3 +21,9 @@ export function renderAsAdmin(path: string) {
   db.refreshAccount = db.accounts.find((a) => a.role === "ADMIN") ?? null;
   return renderApp(path);
 }
+
+/** 고객으로 로그인된 상태에서 한 주소를 연다(WE3) */
+export function renderAsCustomer(path: string) {
+  db.refreshAccount = db.accounts.find((a) => a.role === "CUSTOMER") ?? null;
+  return renderApp(path);
+}

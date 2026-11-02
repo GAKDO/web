@@ -7,6 +7,12 @@ import { problem } from "./problem";
 // 렌탈·시점 목. 규칙은 계약 C1 rental-server.yaml을 따른다
 const ORDER: CheckpointType[] = ["OUT", "RCV", "RET"];
 
+/** 고객이 읽을 수 있는 GET(목록·상세)은 자기 렌탈만 보인다(FR-USR-03) */
+function ownedBy(request: Request): string | null {
+  const account = accountFromRequest(request);
+  return account?.role === "CUSTOMER" ? account.accountId : null;
+}
+
 function denied(request: Request) {
   const account = accountFromRequest(request);
   if (!account) return problem(401, "UNAUTHENTICATED", "로그인이 필요합니다");
@@ -23,13 +29,17 @@ function simulateCapture(rentalId: string, type: CheckpointType) {
 
 export const rentalHandlers = [
   http.get("*/api/v1/rentals", ({ request }) => {
-    const no = denied(request);
+    const owner = ownedBy(request);
+    const no = owner ? null : denied(request);
     if (no) return no;
     const url = new URL(request.url);
     const status = url.searchParams.get("status");
     const limit = Number(url.searchParams.get("limit") ?? 20);
     const start = Number(url.searchParams.get("cursor") ?? 0);
-    const matched = [...db.rentals].reverse().filter((r) => !status || r.status === status);
+    const matched = [...db.rentals]
+      .reverse()
+      .filter((r) => !status || r.status === status)
+      .filter((r) => !owner || db.report.owners.get(r.rentalId) === owner);
     const items = matched.slice(start, start + limit).map((r) => {
       const device = db.devices.find((d) => d.deviceId === r.deviceId);
       return { rentalId: r.rentalId, deviceId: r.deviceId, serial: device?.serial ?? "", modelCode: device?.modelCode ?? "", status: r.status, createdAt: r.createdAt };
@@ -55,9 +65,11 @@ export const rentalHandlers = [
   }),
 
   http.get("*/api/v1/rentals/:rentalId", ({ request, params }) => {
-    const no = denied(request);
+    const owner = ownedBy(request);
+    const no = owner ? null : denied(request);
     if (no) return no;
     const rental = db.rentals.find((r) => r.rentalId === params.rentalId);
+    if (rental && owner && db.report.owners.get(rental.rentalId) !== owner) return problem(403, "OUT_OF_SCOPE", "이 렌탈을 볼 권한이 없습니다");
     return rental ? HttpResponse.json(rental) : problem(404, "NOT_FOUND", "렌탈이 없습니다");
   }),
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import type { CheckpointType, Rental } from "../../../shared/api/types";
 import { ApiError } from "../../../shared/api/problem";
 import { messageFor } from "../../../shared/api/errorMessages";
@@ -81,6 +81,11 @@ export function RentalDetailPage() {
       {rental.isError && <ErrorBanner message={toMessage(rental.error)} onRetry={() => void rental.refetch()} />}
       {error && <ErrorBanner message={error} />}
       <CheckpointSteps rental={data} onError={setError} />
+      {data.checkpoints.length > 0 && (
+        <p>
+          <Link to={`/my/rentals/${data.rentalId}`}>리포트 보기</Link>
+        </p>
+      )}
       {action.kind === "waitSeal" && action.type === "RET" && (
         <p role="status">반납 기록이 봉인되면 종료할 수 있습니다. 지금 반납 시점: {CHECKPOINT_STATUS_LABEL[action.status]}</p>
       )}
