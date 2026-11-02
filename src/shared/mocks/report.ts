@@ -23,25 +23,54 @@ export interface ReportState {
   diagnostics: Map<string, CheckpointDiagnostics>;
 }
 
-/** 면 사진 크기(px). 핀 좌표는 이 펼친 면 기준이다 */
+// 목 기종 치수(db.ts와 같음)와 contracts capture/faces.md의 배율 1 px = 0.25 mm로 면 사진 크기를 정한다
+const MOCK_DIMS = { widthMm: 304, depthMm: 215, baseHMm: 11, lidHMm: 6 };
+const PX_PER_MM = 4;
+const flat = { width: MOCK_DIMS.widthMm * PX_PER_MM, height: MOCK_DIMS.depthMm * PX_PER_MM };
+const sideH = (MOCK_DIMS.baseHMm + MOCK_DIMS.lidHMm) * PX_PER_MM;
+
+/** 면 사진 크기(px). 핀 좌표는 이 표준 좌표 이미지 기준이다 */
 export const TEXTURE_SIZE: Record<CaptureFace, { width: number; height: number }> = {
-  TOP: { width: 600, height: 420 },
-  BOT: { width: 600, height: 420 },
-  KB: { width: 600, height: 420 },
-  SCR0: { width: 600, height: 420 },
-  SCR1: { width: 600, height: 420 },
-  SF: { width: 600, height: 60 },
-  SB: { width: 600, height: 60 },
-  SL: { width: 420, height: 60 },
-  SR: { width: 420, height: 60 },
+  TOP: flat,
+  BOT: flat,
+  KB: flat,
+  SCR0: flat,
+  SCR1: flat,
+  SF: { width: flat.width, height: sideH },
+  SB: { width: flat.width, height: sideH },
+  SL: { width: flat.height, height: sideH },
+  SR: { width: flat.height, height: sideH },
+};
+
+/** 면별 이미지 위쪽·왼쪽(faces.md). 목 사진에 적어 3D에서 방향을 눈으로 확인한다 */
+const ORIENT: Record<CaptureFace, [string, string]> = {
+  TOP: ["뒤", "왼"],
+  BOT: ["뒤", "오른"],
+  KB: ["뒤", "왼"],
+  SCR0: ["화면 위", "왼"],
+  SCR1: ["화면 위", "왼"],
+  SF: ["위", "왼"],
+  SB: ["위", "오른"],
+  SL: ["위", "뒤"],
+  SR: ["위", "앞"],
 };
 
 const PHONE_FACES: CaptureFace[] = ["TOP", "BOT", "SF", "SB", "SL", "SR", "SCR0"];
 const BOOTH_FACES: CaptureFace[] = ["TOP", "BOT", "SF", "SB", "SL", "SR", "KB", "SCR0"];
 
-/** 면 이름이 적힌 SVG(외부 요청 없음) */
-function svgUrl(label: string, width: number, height: number, fill: string): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="${fill}"/><text x="50%" y="50%" font-size="${Math.min(height / 2, 40)}" text-anchor="middle" dominant-baseline="middle" fill="#334">${label}</text></svg>`;
+/** 면 이름이 적힌 SVG(외부 요청 없음). 방향(위쪽·왼쪽)과 옆면의 본체·덮개 경계도 그린다 */
+function svgUrl(label: string, width: number, height: number, fill: string, face?: CaptureFace): string {
+  const size = Math.min(height / 2, 80);
+  const small = Math.min(height / 3, 40);
+  const [up, left] = face ? ORIENT[face] : ["", ""];
+  const side = face === "SF" || face === "SB" || face === "SL" || face === "SR";
+  const split = (MOCK_DIMS.lidHMm * PX_PER_MM).toString();
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="${fill}"/>` +
+    `<text x="50%" y="50%" font-size="${size}" text-anchor="middle" dominant-baseline="middle" fill="#334">${label}</text>` +
+    (face ? `<text x="50%" y="${small}" font-size="${small}" text-anchor="middle" fill="#a33">↑${up}</text><text x="4" y="${height / 2}" font-size="${small}" fill="#33a">←${left}</text>` : "") +
+    (side ? `<line x1="0" x2="${width}" y1="${split}" y2="${split}" stroke="#555" stroke-width="2"/>` : "") +
+    `</svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
@@ -49,7 +78,7 @@ function media(checkpointId: string, faces: CaptureFace[], crops: string[], tint
   return {
     checkpointId,
     expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
-    textures: faces.map((face) => ({ face, url: svgUrl(face, TEXTURE_SIZE[face].width, TEXTURE_SIZE[face].height, tint) })),
+    textures: faces.map((face) => ({ face, url: svgUrl(face, TEXTURE_SIZE[face].width, TEXTURE_SIZE[face].height, tint, face) })),
     crops: crops.map((defectId) => ({ defectId, url: svgUrl("흠집", 120, 120, "#f4d6c4") })),
   };
 }
