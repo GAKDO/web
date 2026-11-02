@@ -84,3 +84,10 @@ test("데이터 소스는 Import 입력으로만 받고 토큰을 담지 않는�
 test("모든 쿼리는 시간순으로 정렬한다", () => {
   for (const q of queries) expect(q).toContain('sort(columns: ["_time"])');
 });
+
+test("기기 별칭표는 타입이 다른 값을 묶기 전에 버리고 마지막 측정은 최댓값으로 고른다", () => {
+  const q = dashboard.panels.find((p) => p.type === "table")?.targets[0].query ?? "";
+  expect(q.indexOf('keep(columns: ["deviceId", "_time"])')).toBeGreaterThan(-1);
+  expect(q.indexOf("keep(")).toBeLessThan(q.indexOf("group("));
+  expect(q).toContain('max(column: "_time")');
+});
