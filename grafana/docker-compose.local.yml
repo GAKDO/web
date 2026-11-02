@@ -1,0 +1,49 @@
+# 학교 InfluxDB에 닿지 않을 때 쓰는 로컬 개발용 InfluxDB + 가짜 측정값.
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+# 버킷·measurement·field 이름은 contracts diagnostics/influx.md 그대로라, 실제 서버로 바꿀 땐
+# 이 파일을 빼고 `docker compose up -d --force-recreate`만 하면 된다(.env의 INFLUX_URL·ORG·토큰을 씀).
+services:
+  influxdb:
+    image: influxdb:2.7.12
+    container_name: trace-influxdb-local
+    restart: unless-stopped
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: trace
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?.env에 GRAFANA_ADMIN_PASSWORD를 넣으세요}
+      DOCKER_INFLUXDB_INIT_ORG: trace-local
+      DOCKER_INFLUXDB_INIT_BUCKET: trace-pilot
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${LOCAL_INFLUX_TOKEN:?.env에 LOCAL_INFLUX_TOKEN(아무 긴 문자열)을 넣으세요}
+    ports:
+      # 로컬 InfluxDB 화면(http://localhost:8086, 아이디 trace + 관리자 비밀번호). 이 노트북에서만 연다
+      - "127.0.0.1:${LOCAL_INFLUX_PORT:-8086}:8086"
+    volumes:
+      - influx-data:/var/lib/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 5s
+      retries: 24
+  # 최근 30일 안에 가짜 기기 3대의 측정값을 넣고 끝난다. 다시 넣으려면 `docker compose ... run --rm influx-seed`
+  influx-seed:
+    image: influxdb:2.7.12
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: ["bash", "/seed/seed.sh"]
+    environment:
+      INFLUX_HOST: http://influxdb:8086
+      INFLUX_ORG: trace-local
+      INFLUX_TOKEN: ${LOCAL_INFLUX_TOKEN}
+    volumes:
+      - ./local/seed.sh:/seed/seed.sh:ro
+  grafana:
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    environment:
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_ORG: trace-local
+      INFLUX_READ_TOKEN: ${LOCAL_INFLUX_TOKEN}
+volumes:
+  influx-data:
