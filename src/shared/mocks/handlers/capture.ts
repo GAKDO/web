@@ -1,13 +1,38 @@
 import { http, HttpResponse } from "msw";
 import { nanoid } from "nanoid";
 import type {
+  CaptureFace,
+  CaptureSet,
+  CaptureSetCompleteRequest,
   CaptureSetCreateRequest,
   CaptureSetCreateResponse,
   CaptureTokenResponse,
 } from "../../api/types";
 import { accountFromRequest } from "../db";
-import { captureDb, grantFromRequest, hexToBase64, MOCK_STORAGE_ORIGIN, objectPath, sha256Hex } from "../captureDb";
+import { captureDb, grantFromRequest, hexToBase64, MOCK_STORAGE_ORIGIN, objectPath, sha256Hex, type MockSet } from "../captureDb";
 import { problem } from "./problem";
+
+// codes.yaml capture.face_required.PHONE (목 서버 검사용)
+const PHONE_REQUIRED: CaptureFace[] = ["TOP", "BOT", "SF", "SB", "SL", "SR", "SCR0"];
+
+function toCaptureSet(set: MockSet): CaptureSet {
+  return {
+    captureSetId: set.captureSetId,
+    checkpointId: set.checkpointId,
+    source: "PHONE",
+    boothId: null,
+    status: set.completed ? "UPLOADED" : "UPLOADING",
+    quality: "OK",
+    photos: set.photos.map((p) => ({
+      face: p.face,
+      light: p.light,
+      camera: p.camera,
+      sha256: p.sha256,
+      uploaded: captureDb.objects.has(objectPath(set.captureSetId, p.face, p.light)),
+      qualityOk: true,
+    })),
+  };
+}
 
 export const captureHandlers = [
   // auth-server: 수령 QR 교환(고객). 발급(관리자) 목은 WE2-④에서 더한다
@@ -36,7 +61,7 @@ export const captureHandlers = [
     return HttpResponse.json(body);
   }),
 
-  // capture-server: 세트 생성(완료 목은 WE2-③에서 더한다)
+  // capture-server: 세트 생성·완료
   http.post("*/api/v1/captures/sets", async ({ request }) => {
     const grant = grantFromRequest(request);
     if (!grant) return problem(401, "UNAUTHENTICATED", "촬영 권한이 없습니다");
@@ -58,6 +83,38 @@ export const captureHandlers = [
     captureDb.sets.push({ captureSetId, rentalId: body.rentalId, checkpointId: body.checkpointId, photos: body.photos, uploads, completed: false, idempotencyKey: null });
     const response: CaptureSetCreateResponse = { captureSetId, uploads };
     return HttpResponse.json(response, { status: 201 });
+  }),
+  http.post("*/api/v1/captures/sets/:setId/complete", async ({ request, params }) => {
+    const grant = grantFromRequest(request);
+    if (!grant) return problem(401, "UNAUTHENTICATED", "촬영 권한이 없습니다");
+    const set = captureDb.sets.find((s) => s.captureSetId === params.setId);
+    if (!set) return problem(404, "NOT_FOUND", "세트가 없습니다");
+    if (set.checkpointId !== grant.checkpointId) return problem(403, "OUT_OF_SCOPE", "이 시점의 촬영 권한이 없습니다");
+    const key = request.headers.get("Idempotency-Key");
+    if (!key) return problem(400, "VALIDATION_FAILED", "Idempotency-Key가 필요합니다");
+    if (set.completed) {
+      if (set.idempotencyKey === key) return HttpResponse.json(toCaptureSet(set), { status: 202 });
+      return problem(409, "CAPTURE_SET_CLOSED", "이미 완료된 세트입니다");
+    }
+    const text = await request.text();
+    const skipped = (text ? (JSON.parse(text) as CaptureSetCompleteRequest).skippedFaces : undefined) ?? {};
+    if (Object.keys(skipped).some((f) => PHONE_REQUIRED.includes(f as CaptureFace))) {
+      return problem(400, "VALIDATION_FAILED", "필수 면은 건너뛸 수 없습니다");
+    }
+    const uploaded = set.photos.filter((p) => captureDb.objects.has(objectPath(set.captureSetId, p.face, p.light)));
+    const missingFaces = PHONE_REQUIRED.filter((f) => !uploaded.some((p) => p.face === f));
+    if (missingFaces.length > 0) {
+      return HttpResponse.json(
+        { type: "about:blank", title: "촬영하지 않은 면이 있습니다", status: 409, code: "CAPTURE_FACES_MISSING", missingFaces },
+        { status: 409, headers: { "Content-Type": "application/problem+json" } },
+      );
+    }
+    if (uploaded.some((p) => captureDb.objects.get(objectPath(set.captureSetId, p.face, p.light)) !== p.sha256)) {
+      return problem(409, "CAPTURE_HASH_MISMATCH", "올린 사진이 처음 알린 사진과 다릅니다");
+    }
+    set.completed = true;
+    set.idempotencyKey = key;
+    return HttpResponse.json(toCaptureSet(set), { status: 202 });
   }),
 
   // 저장소(MinIO) 사전 서명 PUT: 서명 헤더가 없으면 403, 본문 해시를 기록한다

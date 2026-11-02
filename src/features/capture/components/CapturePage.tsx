@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CaptureFace } from "../../../shared/api/types";
-import type { CaptureGrant } from "../../../shared/auth/captureTokenStore";
+import { captureTokenStore, type CaptureGrant } from "../../../shared/auth/captureTokenStore";
 import { CAPTURE_FACE_LABEL } from "../../../shared/codes/labels";
 import { PHONE_FACES } from "../faces";
 import { FaceShooter, type Accepted } from "./FaceShooter";
+import { SubmitPanel } from "./SubmitPanel";
 
 export type Shots = Partial<Record<CaptureFace, Accepted>>;
 
@@ -17,16 +18,25 @@ function useMinutesLeft(expiresAt: number): number {
   return Math.ceil((expiresAt - now) / 60_000);
 }
 
-interface Props {
-  grant: CaptureGrant;
-  /** 제출 부분(WE2-③). 찍은 사진과 남은 필수 면을 받는다 */
-  renderSubmit?(shots: Shots, remaining: CaptureFace[]): ReactNode;
+/** 찍은 사진이 있는 동안 페이지를 떠나려 하면 브라우저가 묻게 한다(FR-007a) */
+function useLeaveWarning(active: boolean): void {
+  useEffect(() => {
+    if (!active) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [active]);
 }
 
 /** 면 목록 → 면 하나 찍기 → 다음 면(US3·US4-1) */
-export function CapturePage({ grant, renderSubmit }: Props) {
+export function CapturePage({ grant }: { grant: CaptureGrant }) {
   const [shots, setShots] = useState<Shots>({});
   const [active, setActive] = useState<CaptureFace | null>(null);
+  const [done, setDone] = useState(false);
+  useLeaveWarning(!done && Object.keys(shots).length > 0);
   const minutesLeft = useMinutesLeft(grant.expiresAt);
   const remaining = PHONE_FACES.filter((f) => f.required && !shots[f.face]).map((f) => f.face);
   const guide = PHONE_FACES.find((f) => f.face === active);
@@ -43,6 +53,23 @@ export function CapturePage({ grant, renderSubmit }: Props) {
     const next = { ...shots, [face]: accepted };
     setShots(next);
     setActive(PHONE_FACES.find((f) => f.required && !next[f.face])?.face ?? null);
+  }
+
+  function forget(faces: CaptureFace[]) {
+    faces.forEach((f) => {
+      const gone = shots[f];
+      if (gone) URL.revokeObjectURL(gone.shot.previewUrl);
+    });
+    setShots((prev) => Object.fromEntries(Object.entries(prev).filter(([f]) => !faces.includes(f as CaptureFace))));
+  }
+
+  if (done) {
+    return (
+      <main className="page capture">
+        <h1>제출 완료</h1>
+        <p role="status">수령 사진이 접수되었습니다. 검사가 끝나면 내 렌탈에서 결과를 볼 수 있습니다.</p>
+      </main>
+    );
   }
 
   return (
@@ -76,7 +103,16 @@ export function CapturePage({ grant, renderSubmit }: Props) {
               ? `남은 필수 면: ${remaining.map((f) => CAPTURE_FACE_LABEL[f]).join(", ")}`
               : "필수 면을 모두 찍었습니다."}
           </p>
-          {renderSubmit?.(shots, remaining)}
+          <SubmitPanel
+            grant={grant}
+            shots={shots}
+            remaining={remaining}
+            onMissing={forget}
+            onDone={() => {
+              captureTokenStore.clear();
+              setDone(true);
+            }}
+          />
         </>
       )}
     </main>

@@ -48,3 +48,11 @@ export function fakeShot(g: Gray, n = 0): Shot {
   const bytes = new Uint8Array([n, 1, 2, 3]).buffer;
   return { bytes, sha256: n.toString(16).padStart(64, "0"), takenAt: "2026-11-12T13:05:00+09:00", previewUrl: `blob:shot-${n}`, gray: g };
 }
+
+/** 바이트의 진짜 SHA-256을 가진 선명한 사진(업로드·완료 목이 해시를 대조한다) */
+export async function hashedShot(n: number): Promise<Shot> {
+  const bytes = new Uint8Array([n, 7, 7, 7]).buffer;
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const sha256 = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return { ...fakeShot(sharpGray(n + 1), n), bytes, sha256 };
+}
