@@ -2,6 +2,7 @@
 // 계약이 바뀌면 scripts/sync-contracts.sh → npm run gen:api 뒤 이 파일만 맞춘다(FR-034).
 import type { components as AuthComponents, paths as AuthPaths } from "./generated/auth";
 import type { components as RentalComponents, paths as RentalPaths } from "./generated/rental";
+import type { components as CaptureComponents, paths as CapturePaths } from "./generated/capture";
 
 type AuthSchemas = AuthComponents["schemas"];
 type RentalSchemas = RentalComponents["schemas"];
@@ -32,3 +33,20 @@ export type DeviceOs = RentalSchemas["DeviceOs"];
 export type RentalStatus = RentalSchemas["RentalStatus"];
 export type CheckpointType = RentalSchemas["RentalCheckpointType"];
 export type CheckpointStatus = RentalSchemas["RentalCheckpointStatus"];
+
+// WE2 폰 수령 촬영: capture-server와 auth-server 수령 QR(contracts fd35e33)
+
+type CaptureSchemas = CaptureComponents["schemas"];
+
+export type CaptureApiPaths = CapturePaths;
+export type CaptureLinkResponse = AuthSchemas["CaptureLinkResponse"];
+export type CaptureTokenResponse = AuthSchemas["CaptureTokenResponse"];
+export type PhotoSpec = CaptureSchemas["PhotoSpec"];
+export type CaptureSetCreateRequest = CaptureSchemas["CaptureSetCreateRequest"];
+export type CaptureSetCreateResponse = CaptureSchemas["CaptureSetCreateResponse"];
+export type CaptureSetCompleteRequest = CaptureSchemas["CaptureSetCompleteRequest"];
+export type UploadTarget = CaptureSchemas["UploadTarget"];
+export type CaptureSet = CaptureSchemas["CaptureSet"];
+export type CaptureFace = CaptureSchemas["CaptureFace"];
+export type CaptureLight = CaptureSchemas["CaptureLight"];
+export type CaptureCamera = CaptureSchemas["CaptureCamera"];

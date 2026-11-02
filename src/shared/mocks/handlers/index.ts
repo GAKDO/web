@@ -1,5 +1,6 @@
 import { authHandlers } from "./auth";
+import { captureHandlers } from "./capture";
 import { deviceHandlers } from "./device";
 import { rentalHandlers } from "./rental";
 
-export const handlers = [...authHandlers, ...deviceHandlers, ...rentalHandlers];
+export const handlers = [...authHandlers, ...deviceHandlers, ...rentalHandlers, ...captureHandlers];
