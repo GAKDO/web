@@ -4,8 +4,7 @@ name: 화면 CI
 # 언제 도나: ① PR ② develop push ③ 배포(deploy.yml)가 이미지 전에 불러 쓸 때(workflow_call)
 # 흐름: 의존성 설치 → 타입 검사 → 테스트 → 배포용 빌드. 하나라도 실패하면 빨간불
 on:
-  pull_request:
-    paths-ignore: ["**/*.md"]
+  pull_request:   # PR은 문서만 바뀌어도 돈다: 필수 검사가 '대기'로 멈춰 머지가 막히지 않게
   push:
     branches: [develop]
     paths-ignore: ["**/*.md"]
