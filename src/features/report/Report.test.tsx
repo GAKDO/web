@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { nanoid } from "nanoid";
 import { renderAsAdmin, renderAsCustomer } from "../../test/renderApp";
 import { db } from "../../shared/mocks/db";
+import { MY_RENTALS_PAGE_SIZE } from "./api/report";
 
 /** 목의 고객 렌탈 ①(출고·수령 봉인, 반납 검사 중) */
 function firstRentalId(): string {
@@ -18,6 +19,25 @@ describe("내 렌탈 목록", () => {
     const other = screen.getByRole("listitem", { name: "LG gram 16 (2024)" });
     expect(await within(other).findByText(/최근 출고 · 등급 A/)).toBeInTheDocument();
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
+  });
+
+  test("렌탈이 한 쪽보다 많으면 더 보기로 나머지 렌탈을 불러온다", async () => {
+    const u = userEvent.setup();
+    const base = db.rentals.find((r) => r.rentalId === firstRentalId());
+    if (!base) throw new Error("목 렌탈 없음");
+    const owner = db.report.owners.get(base.rentalId) ?? "";
+    for (let i = 0; i < MY_RENTALS_PAGE_SIZE; i += 1) {
+      const rentalId = nanoid();
+      db.rentals.unshift({ ...base, rentalId });
+      db.report.owners.set(rentalId, owner);
+    }
+    renderAsCustomer("/my/rentals");
+    await screen.findAllByRole("listitem");
+    expect(screen.getAllByRole("listitem")).toHaveLength(MY_RENTALS_PAGE_SIZE);
+    await u.click(screen.getByRole("button", { name: "더 보기" }));
+    expect(await screen.findByRole("listitem", { name: "LG gram 16 (2024)" })).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(MY_RENTALS_PAGE_SIZE + 2);
+    expect(screen.queryByRole("button", { name: "더 보기" })).not.toBeInTheDocument();
   });
 
   test("렌탈이 없는 고객이 목록을 열면 '아직 렌탈 기록이 없습니다'가 보인다", async () => {
