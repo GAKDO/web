@@ -1,13 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "../../../shared/api/client";
 
 // WE3 리포트 화면의 서버 상태. 모두 GET이고, 사진 보기 주소는 Query 캐시(메모리)에만 둔다(FR-023)
 export const REPORT = ["report"] as const;
 
+export const MY_RENTALS_PAGE_SIZE = 20;
+
+/** 내 렌탈 목록. "더 보기"는 커서로 다음 쪽을 이어 붙인다 */
 export function useMyRentals() {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: [...REPORT, "rentals"],
-    queryFn: () => unwrap(api.GET("/api/v1/rentals", { params: { query: { limit: 50 } } })),
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => unwrap(api.GET("/api/v1/rentals", { params: { query: { limit: MY_RENTALS_PAGE_SIZE, cursor: pageParam } } })),
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
 }
 
