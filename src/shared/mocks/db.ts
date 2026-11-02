@@ -6,12 +6,16 @@ import type { CheckpointStatus, CheckpointType, Device, DeviceModel, DeviceStatu
 // 계정·비밀번호는 계약 예시 값이고 실제 비밀이 아니다.
 export const MOCK_ADMIN = { email: "admin@example.com", password: "example-pass-1234" } as const;
 export const MOCK_CUSTOMER = { email: "renter@example.com", password: "example-pass-1234" } as const;
+/** 목 서버가 가입 메일로 "보내는" 인증 코드(계약 예시 값) */
+export const MOCK_EMAIL_CODE = "123456";
 
 interface Account {
   accountId: string;
   email: string;
   password: string;
   role: TokenRole;
+  /** 가입 뒤 메일 인증 전이면 true(로그인 403 EMAIL_NOT_VERIFIED) */
+  pending?: boolean;
 }
 
 interface MockState {

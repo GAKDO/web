@@ -14,6 +14,8 @@ type ReportSchemas = ReportComponents["schemas"];
 export type ApiPaths = AuthPaths & RentalPaths & ReportPaths & CapturePaths & DiagnosticsPaths;
 
 export type LoginRequest = AuthSchemas["LoginRequest"];
+export type SignupRequest = AuthSchemas["SignupRequest"];
+export type EmailVerifyRequest = AuthSchemas["EmailVerifyRequest"];
 export type TokenResponse = AuthSchemas["TokenResponse"];
 export type TokenRole = AuthSchemas["AuthTokenRole"];
 export type Problem = AuthSchemas["Problem"];

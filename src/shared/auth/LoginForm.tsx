@@ -5,8 +5,14 @@ import { Button } from "../ui/Button";
 import { Field } from "../ui/Field";
 
 /** 관리자·고객 로그인 화면이 같이 쓰는 입력 부분. 실패하면 비밀번호 칸만 비운다 */
-export function LoginForm({ onLogin }: { onLogin(email: string, password: string): Promise<void> }) {
-  const [email, setEmail] = useState("");
+interface Props {
+  onLogin(email: string, password: string): Promise<void>;
+  /** 처음 채워 둘 이메일(가입·인증 뒤, 데모 계정 고르기) */
+  initialEmail?: string;
+}
+
+export function LoginForm({ onLogin, initialEmail = "" }: Props) {
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

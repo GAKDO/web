@@ -1,7 +1,8 @@
 import { http, HttpResponse } from "msw";
 import type { components } from "../../api/generated/auth";
-import type { LoginRequest, TokenResponse } from "../../api/types";
-import { accountFromRequest, db, issueAccessToken } from "../db";
+import { nanoid } from "nanoid";
+import type { EmailVerifyRequest, LoginRequest, SignupRequest, TokenResponse } from "../../api/types";
+import { MOCK_EMAIL_CODE, accountFromRequest, db, issueAccessToken } from "../db";
 import { problem } from "./problem";
 
 const tokenBody = (accessToken: string, role: TokenResponse["role"]): TokenResponse => ({
@@ -12,10 +13,27 @@ const tokenBody = (accessToken: string, role: TokenResponse["role"]): TokenRespo
 });
 
 export const authHandlers = [
+  http.post("*/api/v1/auth/signup", async ({ request }) => {
+    const body = (await request.json()) as SignupRequest;
+    if (!body.privacyAgreed) return problem(400, "CONSENT_REQUIRED", "개인정보 수집에 동의해 주세요");
+    if (db.accounts.some((a) => a.email === body.email)) return problem(409, "EMAIL_ALREADY_EXISTS", "이미 가입된 이메일입니다");
+    const account = { accountId: nanoid(), email: body.email, password: body.password, role: "CUSTOMER" as const, pending: true };
+    db.accounts.push(account);
+    return HttpResponse.json({ accountId: account.accountId, status: "PENDING" }, { status: 201 });
+  }),
+  http.post("*/api/v1/auth/email/verify", async ({ request }) => {
+    const { email, code } = (await request.json()) as EmailVerifyRequest;
+    const account = db.accounts.find((a) => a.email === email && a.pending);
+    if (!account || code !== MOCK_EMAIL_CODE) return problem(400, "CODE_INVALID", "인증 코드가 맞지 않습니다");
+    account.pending = false;
+    return new HttpResponse(null, { status: 204 });
+  }),
+  http.post("*/api/v1/auth/email/resend", () => new HttpResponse(null, { status: 202 })),
   http.post("*/api/v1/auth/login", async ({ request }) => {
     const { email, password } = (await request.json()) as LoginRequest;
     const account = db.accounts.find((a) => a.email === email && a.password === password);
     if (!account) return problem(401, "INVALID_CREDENTIALS", "이메일 또는 비밀번호가 맞지 않습니다");
+    if (account.pending) return problem(403, "EMAIL_NOT_VERIFIED", "이메일 인증 전입니다");
     db.refreshAccount = account;
     return HttpResponse.json(tokenBody(issueAccessToken(account), account.role));
   }),
