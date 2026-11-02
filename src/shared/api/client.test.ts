@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import { api, refreshSession, refreshSessionOutcome, setSessionExpiredHandler, unwrap } from "./client";
+import { api, refreshSession, refreshSessionOutcome, setSessionExpiredHandler, unwrap, withRefreshExclusive } from "./client";
 import { ApiError } from "./problem";
 import { tokenStore } from "../auth/tokenStore";
 import { server } from "../mocks/node";
@@ -149,4 +149,25 @@ test("브라우저가 잠금(Web Locks)을 지원하면 리프레시를 탭 사�
   } finally {
     Reflect.deleteProperty(navigator, "locks");
   }
+});
+
+test("로그인 요청은 진행 중인 리프레시가 끝난 뒤에 보낸다(이전 계정의 늦은 쿠키가 새 쿠키를 덮어쓰지 않게)", async () => {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.post("*/api/v1/auth/refresh", async () => {
+      await gate;
+      return new HttpResponse(null, { status: 401 });
+    }),
+  );
+  const order: string[] = [];
+  const pending = refreshSession().then(() => order.push("refresh"));
+  const login = withRefreshExclusive(async () => {
+    order.push("login");
+  });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(order).toEqual([]);
+  release();
+  await Promise.all([pending, login]);
+  expect(order).toEqual(["refresh", "login"]);
 });

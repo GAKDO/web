@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { api, refreshSession, setSessionExpiredHandler, unwrap } from "../api/client";
+import { api, refreshSession, setSessionExpiredHandler, unwrap, waitForRefresh, withRefreshExclusive } from "../api/client";
 import type { TokenRole } from "../api/types";
 import { captureTokenStore } from "./captureTokenStore";
 import { tokenStore } from "./tokenStore";
@@ -70,13 +70,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [endSession]);
 
   const logout = useCallback(async () => {
+    await waitForRefresh();
     await unwrap(api.POST("/api/v1/auth/logout")).catch(() => undefined);
     endSession(null);
   }, [endSession]);
 
   const login = useCallback(
     async (email: string, password: string, expected: SessionRole = "ADMIN") => {
-      const token = await unwrap(api.POST("/api/v1/auth/login", { body: { email, password } }));
+      const token = await withRefreshExclusive(() => unwrap(api.POST("/api/v1/auth/login", { body: { email, password } })));
       captureTokenStore.clear();
       tokenStore.set(token);
       // 고객 화면에는 관리자도 들어올 수 있다(시연 확인용). 관리자 화면에는 관리자만
