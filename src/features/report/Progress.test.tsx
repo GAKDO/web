@@ -62,3 +62,11 @@ test("모든 시점이 봉인된 리포트는 진행률 연결을 열지 않는�
   server.events.removeAllListeners();
   expect(opened).toBe(0);
 });
+
+test("진행률 연결이 거절되면(403) 다시 붙지 않고 시점 카드에 안내를 보인다", async () => {
+  server.use(http.get("*/api/v1/reports/rentals/:rentalId/stream", () => new HttpResponse(null, { status: 403 })));
+  renderAsCustomer(`/my/rentals/${rentalIds()[0]}`);
+  await screen.findByRole("list", { name: "시점" });
+  expect(await within(step("반납")).findByText(/실시간 진행률을 받지 못했습니다/)).toBeInTheDocument();
+  expect(within(step("반납")).queryByText("다시 연결 중…")).not.toBeInTheDocument();
+});

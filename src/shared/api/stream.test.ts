@@ -4,7 +4,7 @@ import { openProgressStream, StreamFatal } from "./stream";
 import { tokenStore } from "../auth/tokenStore";
 import { server } from "../mocks/node";
 
-const handlers = () => ({ onProgress: vi.fn(), onDone: vi.fn(), onReconnecting: vi.fn() });
+const handlers = () => ({ onProgress: vi.fn(), onDone: vi.fn(), onReconnecting: vi.fn(), onReconnected: vi.fn(), onFatal: vi.fn() });
 
 function countStreamRequests(): { count: number } {
   const seen = { count: 0 };
@@ -26,6 +26,7 @@ test("403처럼 다시 붙어도 소용없는 응답이면 한 번만 요청하�
   await expect(openProgressStream("r1", h, new AbortController().signal)).rejects.toBeInstanceOf(StreamFatal);
   expect(seen.count).toBe(1);
   expect(h.onReconnecting).not.toHaveBeenCalledWith(true);
+  expect(h.onFatal).toHaveBeenCalledTimes(1);
 });
 
 test("401에서 토큰을 다시 받지 못하면 세션 만료로 처리하고 멈춘다", async () => {
@@ -54,4 +55,41 @@ test("토큰을 다시 받은 뒤에도 401이면 두 번째에서 멈춘다", a
   await expect(openProgressStream("r1", handlers(), new AbortController().signal)).rejects.toBeInstanceOf(StreamFatal);
   expect(seen.count).toBe(2);
   expect(expired).toHaveBeenCalledTimes(1);
+}, 10_000);
+
+test("화면을 떠난 뒤 토큰 다시 받기가 실패해도 세션을 만료시키지 않는다", async () => {
+  tokenStore.set({ accessToken: "old", tokenType: "Bearer", expiresIn: 60 } as never);
+  const controller = new AbortController();
+  server.use(
+    http.get("*/api/v1/reports/rentals/:rentalId/stream", () => new HttpResponse(null, { status: 401 })),
+    http.post("*/api/v1/auth/refresh", () => {
+      controller.abort();
+      return new HttpResponse(null, { status: 401 });
+    }),
+  );
+  const expired = vi.fn();
+  setSessionExpiredHandler(expired);
+  await openProgressStream("r1", handlers(), controller.signal).catch(() => undefined);
+  expect(expired).not.toHaveBeenCalled();
+  expect(tokenStore.get()?.accessToken).toBe("old");
+  tokenStore.clear();
+});
+
+test("끊겼다가 다시 붙으면 onReconnected를 부르고, 첫 연결에서는 부르지 않는다", async () => {
+  let calls = 0;
+  server.use(
+    http.get("*/api/v1/reports/rentals/:rentalId/stream", () => {
+      calls += 1;
+      // 첫 연결은 바로 끊고, 두 번째는 열어 둔다
+      const body = new ReadableStream<Uint8Array>({ start: (c) => (calls === 1 ? c.close() : undefined) });
+      return new HttpResponse(body, { headers: { "Content-Type": "text/event-stream" } });
+    }),
+  );
+  const h = handlers();
+  const controller = new AbortController();
+  void openProgressStream("r1", h, controller.signal).catch(() => undefined);
+  await vi.waitFor(() => expect(h.onReconnecting).toHaveBeenCalledWith(false));
+  expect(h.onReconnected).not.toHaveBeenCalled();
+  await vi.waitFor(() => expect(h.onReconnected).toHaveBeenCalledTimes(1), { timeout: 4000 });
+  controller.abort();
 }, 10_000);

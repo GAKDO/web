@@ -34,7 +34,7 @@ function CheckpointCard({ type, checkpoint, progress }: { type: TimelineCheckpoi
         {sealed && <span className={checkpoint.newDefectCount > 0 ? "warn" : undefined}>신규 흠집 {checkpoint.newDefectCount}개</span>}
         {checkpoint.sealedAt && <small>봉인 {formatDateTime(checkpoint.sealedAt)}</small>}
       </div>
-      {!sealed && <ProgressBadge event={progress.byCheckpoint[checkpoint.checkpointId]} reconnecting={progress.reconnecting} />}
+      {!sealed && <ProgressBadge event={progress.byCheckpoint[checkpoint.checkpointId]} reconnecting={progress.reconnecting} failed={progress.failed} />}
     </li>
   );
 }

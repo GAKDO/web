@@ -12,6 +12,10 @@ export interface ProgressHandlers {
   onDone(event: DoneEvent): void;
   /** true = 다시 붙는 중, false = 붙음 */
   onReconnecting(reconnecting: boolean): void;
+  /** 끊긴 뒤 다시 붙었을 때(첫 연결은 빼고). 끊긴 동안 놓친 봉인을 다시 읽는 데 쓴다 */
+  onReconnected(): void;
+  /** 다시 붙지 않고 멈췄을 때(403·404, 세션 만료 등) */
+  onFatal(error: StreamFatal): void;
 }
 
 class Retry extends Error {}
@@ -23,6 +27,7 @@ const RETRY_MS = 2_000;
 export function openProgressStream(rentalId: string, handlers: ProgressHandlers, signal: AbortSignal): Promise<void> {
   const url = `${BASE}/api/v1/reports/rentals/${encodeURIComponent(rentalId)}/stream`;
   let refreshed = false;
+  let opened = false;
   return fetchEventSource(url, {
     signal,
     openWhenHidden: true,
@@ -33,7 +38,11 @@ export function openProgressStream(rentalId: string, handlers: ProgressHandlers,
     },
     async onopen(response) {
       if (response.status === 401) {
-        if (refreshed || !(await refreshSession())) {
+        // 화면을 떠난 스트림은 전역 세션을 건드리지 않는다
+        if (signal.aborted) return;
+        const ok = !refreshed && (await refreshSession());
+        if (signal.aborted) return;
+        if (!ok) {
           expireSession();
           throw new StreamFatal("401");
         }
@@ -45,6 +54,8 @@ export function openProgressStream(rentalId: string, handlers: ProgressHandlers,
       if (!response.ok) throw new Retry(`HTTP ${status}`);
       refreshed = false;
       handlers.onReconnecting(false);
+      if (opened) handlers.onReconnected();
+      opened = true;
     },
     onmessage(message) {
       if (!message.data) return;
@@ -58,6 +69,7 @@ export function openProgressStream(rentalId: string, handlers: ProgressHandlers,
       if (signal.aborted) return null;
       if (error instanceof StreamFatal) {
         handlers.onReconnecting(false);
+        handlers.onFatal(error);
         // 던지면 fetchEventSource가 재시도를 멈추고 Promise를 reject한다
         throw error;
       }
