@@ -11,9 +11,18 @@ interface Props {
 export function PinList({ pins, selected, onSelect }: Props) {
   if (pins.length === 0) return <p>이 시점에 찾은 흠집이 없습니다.</p>;
   const ordered = [...pins].sort((a, b) => Number(b.isNew) - Number(a.isNew));
+  // 한 면에 흠집이 여럿이면 면마다 1, 2…로 이름을 구별한다
+  const perFace = new Map<string, number>();
+  for (const pin of ordered) perFace.set(pin.face, (perFace.get(pin.face) ?? 0) + 1);
+  const seen = new Map<string, number>();
+  const names = ordered.map((pin) => {
+    const n = (seen.get(pin.face) ?? 0) + 1;
+    seen.set(pin.face, n);
+    return `${CAPTURE_FACE_LABEL[pin.face]} 흠집${(perFace.get(pin.face) ?? 0) > 1 ? ` ${n}` : ""}`;
+  });
   return (
     <ul className="pin-list" aria-label="흠집">
-      {ordered.map((pin) => (
+      {ordered.map((pin, i) => (
         <li key={pin.defectId}>
           <button
             type="button"
@@ -22,7 +31,7 @@ export function PinList({ pins, selected, onSelect }: Props) {
             onClick={() => onSelect(pin)}
           >
             {pin.isNew && <strong className="pin-tag">신규</strong>}
-            {CAPTURE_FACE_LABEL[pin.face]} 흠집
+            {names[i]}
           </button>
         </li>
       ))}

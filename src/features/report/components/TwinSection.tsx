@@ -58,10 +58,27 @@ export function TwinSection({ checkpoints }: Props) {
       ))}
       {current && (
         <div className="twin-body">
-          <TwinFallback media={media.data} reason={fallbackReason} />
+          {media.isError && (
+            <div role="alert" className="notice">
+              <p>사진을 불러오지 못했습니다.</p>
+              <button type="button" onClick={() => void media.refetch()}>
+                사진 다시 불러오기
+              </button>
+            </div>
+          )}
+          {media.isPending ? <p role="status">사진을 불러오는 중…</p> : <TwinFallback media={media.data} reason={fallbackReason} />}
           <div className="twin-side">
             <PinList pins={pins} selected={selected?.defectId ?? null} onSelect={setSelected} />
-            {selected && <PinDetail pin={selected} inspection={inspection.data} media={media.data} onClose={() => setSelected(null)} />}
+            {selected && (
+              <PinDetail
+                pin={selected}
+                inspection={inspection.data}
+                inspectionError={inspection.isError}
+                onRetry={() => void inspection.refetch()}
+                media={media.data}
+                onClose={() => setSelected(null)}
+              />
+            )}
           </div>
         </div>
       )}

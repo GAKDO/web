@@ -11,10 +11,12 @@ export function TwinFallback({ media, reason }: { media: CheckpointMedia | undef
       <ul className="face-grid" aria-label="면별 사진">
         {FACES.map((face) => {
           const texture = media?.textures.find((t) => t.face === face) ?? (face === "SCR0" ? media?.textures.find((t) => t.face === "SCR1") : undefined);
+          // SCR0 칸에 SCR1 사진을 대신 쓰면 이름도 실제 사진의 면으로
+          const shown = CAPTURE_FACE_LABEL[texture?.face ?? face];
           return (
-            <li key={face} aria-label={CAPTURE_FACE_LABEL[face]}>
-              {texture ? <img src={texture.url} alt={`${CAPTURE_FACE_LABEL[face]} 사진`} /> : <span className="no-photo">사진 없음</span>}
-              <small>{CAPTURE_FACE_LABEL[face]}</small>
+            <li key={face} aria-label={shown}>
+              {texture ? <img src={texture.url} alt={`${shown} 사진`} /> : <span className="no-photo">사진 없음</span>}
+              <small>{shown}</small>
             </li>
           );
         })}

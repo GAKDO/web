@@ -72,7 +72,7 @@ button { min-height: 44px; padding: 0 16px; font-size: 16px; }
 .pin-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 .pin-button { width: 100%; text-align: left; border: 2px solid #2563eb; border-radius: 6px; background: #fff; display: flex; gap: 8px; align-items: center; }
 .pin-button.pin-new { border-color: #f97316; background: #fff4ec; }
-.pin-tag { background: #f97316; color: #fff; padding: 0 6px; border-radius: 999px; }
+.pin-tag { background: #c2410c; color: #fff; padding: 0 6px; border-radius: 999px; }
 .pin-detail { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 8px; display: grid; gap: 8px; }
 .pin-detail dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; }
 .pin-detail dd { margin: 0; }
