@@ -8,9 +8,12 @@ interface Panel {
   fieldConfig: { defaults: { custom: { showPoints: string } } };
 }
 interface Dashboard {
+  __inputs: { name: string; type: string; pluginId: string }[];
   uid: string;
-  panels: Panel[];
-  templating: { list: { name: string }[] };
+  time: { from: string; to: string };
+  timezone: string;
+  panels: (Panel & { datasource: { uid: string } })[];
+  templating: { list: { name: string; multi: boolean; datasource: { uid: string } }[] };
 }
 
 const dashboard = JSON.parse(
@@ -44,4 +47,24 @@ test("기기는 별칭(alias)으로만 고르고 실명·이메일 칸은 없다
 
 test("주소 링크와 맞도록 uid가 고정돼 있다", () => {
   expect(dashboard.uid).toBe("trace-pilot-trend");
+});
+
+test("별칭은 여러 개 고를 수 있다(FR-003)", () => {
+  expect(dashboard.templating.list.find((v) => v.name === "alias")?.multi).toBe(true);
+});
+
+test("기본 기간은 최근 30일, 시간대는 Asia/Seoul이다(FR-005)", () => {
+  expect(dashboard.time).toEqual({ from: "now-30d", to: "now" });
+  expect(dashboard.timezone).toBe("Asia/Seoul");
+});
+
+test("데이터 소스는 Import 입력으로만 받고 토큰을 담지 않는다(FR-006)", () => {
+  expect(dashboard.__inputs).toEqual([expect.objectContaining({ name: "DS_TRACE_PILOT", type: "datasource", pluginId: "influxdb" })]);
+  for (const p of dashboard.panels) expect(p.datasource.uid).toBe("${DS_TRACE_PILOT}");
+  for (const v of dashboard.templating.list) expect(v.datasource.uid).toBe("${DS_TRACE_PILOT}");
+  expect(JSON.stringify(dashboard)).not.toMatch(/token|password|secret/i);
+});
+
+test("모든 쿼리는 시간순으로 정렬한다", () => {
+  for (const q of queries) expect(q).toContain('sort(columns: ["_time"])');
 });
