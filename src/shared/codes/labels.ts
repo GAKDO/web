@@ -5,6 +5,7 @@ import type {
   CheckpointStatus,
   CheckpointType,
   DefectClass,
+  DeviceFormFactor,
   DeviceOs,
   DeviceStatus,
   DiagnosticsFlagKind,
@@ -18,6 +19,8 @@ export const DEVICE_STATUS_LABEL: Record<DeviceStatus, string> = {
   MAINTENANCE: "수리 중",
   RETIRED: "폐기",
 };
+
+export const DEVICE_FORM_FACTOR_LABEL: Record<DeviceFormFactor, string> = { CLAMSHELL: "클램셸(접는 노트북)" };
 
 export const DEVICE_OS_LABEL: Record<DeviceOs, string> = { MACOS: "macOS", WINDOWS: "Windows" };
 
