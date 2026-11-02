@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import { api, refreshSession, refreshSessionOutcome, setSessionExpiredHandler, unwrap } from "./client";
+import { api, refreshSession, refreshSessionOutcome, setSessionExpiredHandler, unwrap, withRefreshExclusive } from "./client";
 import { ApiError } from "./problem";
 import { tokenStore } from "../auth/tokenStore";
 import { server } from "../mocks/node";
@@ -115,4 +115,59 @@ test("입력한 비밀번호가 틀린 401(INVALID_CREDENTIALS)은 토큰이 만
   expect((error as ApiError).code).toBe("INVALID_CREDENTIALS");
   expect(expired).not.toHaveBeenCalled();
   expect(tokenStore.get()).not.toBeNull();
+});
+
+test("브라우저가 잠금(Web Locks)을 지원하면 리프레시를 탭 사이 잠금 안에서 한 번에 하나씩 보낸다", async () => {
+  await login();
+  const names: string[] = [];
+  let held = false;
+  let overlapped = false;
+  let queue: Promise<unknown> = Promise.resolve();
+  const locks = {
+    request: (name: string, callback: () => Promise<unknown>) => {
+      names.push(name);
+      const run = queue.then(async () => {
+        if (held) overlapped = true;
+        held = true;
+        try {
+          return await callback();
+        } finally {
+          held = false;
+        }
+      });
+      queue = run.catch(() => undefined);
+      return run;
+    },
+  };
+  Object.defineProperty(navigator, "locks", { value: locks, configurable: true });
+  try {
+    // 같은 탭 안의 동시 호출은 요청 하나로 합쳐지고, 그 요청이 잠금을 거친다
+    const results = await Promise.all([refreshSession(), refreshSession()]);
+    expect(results).toEqual([true, true]);
+    expect(names).toEqual(["trace-auth-refresh"]);
+    expect(overlapped).toBe(false);
+  } finally {
+    Reflect.deleteProperty(navigator, "locks");
+  }
+});
+
+test("로그인 요청은 진행 중인 리프레시가 끝난 뒤에 보낸다(이전 계정의 늦은 쿠키가 새 쿠키를 덮어쓰지 않게)", async () => {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.post("*/api/v1/auth/refresh", async () => {
+      await gate;
+      return new HttpResponse(null, { status: 401 });
+    }),
+  );
+  const order: string[] = [];
+  const pending = refreshSession().then(() => order.push("refresh"));
+  const login = withRefreshExclusive(async () => {
+    order.push("login");
+  });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(order).toEqual([]);
+  release();
+  await Promise.all([pending, login]);
+  expect(order).toEqual(["refresh", "login"]);
 });

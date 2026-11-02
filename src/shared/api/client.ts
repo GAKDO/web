@@ -19,17 +19,43 @@ export function setSessionExpiredHandler(handler: () => void): void {
   onSessionExpired = handler;
 }
 
+const REFRESH_LOCK = "trace-auth-refresh";
+
+/** 리프레시 쿠키를 읽거나 바꾸는 요청을 브라우저 잠금(Web Locks)으로 탭 사이에서도 한 번에 하나씩 보낸다.
+ * 서버는 리프레시 토큰을 쓸 때마다 새것으로 바꾸고 쓴 것은 지우므로(토큰 회전), 두 탭이 같은 쿠키로 동시에 보내면 늦은 쪽이 401을 받는다.
+ * 잠금을 지원하지 않는 환경이면 그냥 보낸다 */
+async function withCookieLock<T>(send: () => Promise<T>): Promise<T> {
+  if (!("locks" in navigator) || !navigator.locks) return send();
+  return await navigator.locks.request(REFRESH_LOCK, send);
+}
+
+function postRefresh(): Promise<Response> {
+  return withCookieLock(() => fetch(`${BASE}${REFRESH_PATH}`, { method: "POST", credentials: "include" }));
+}
+
+/** 이 탭에서 진행 중인 리프레시가 있으면 끝날 때까지 기다린다. 늦게 온 리프레시 응답의 쿠키가 로그아웃 뒤에 다시 붙지 않게 한다 */
+export async function waitForRefresh(): Promise<void> {
+  await refreshing;
+}
+
+/** 로그인처럼 새 리프레시 쿠키를 받는 요청. 진행 중인 리프레시(이 탭·다른 탭)가 끝난 뒤에 보내, 이전 계정의 늦은 응답이 새 쿠키를 덮어쓰지 않게 한다.
+ * 이 안에서 리프레시를 부르면 잠금을 기다리다 멈추므로, 401에 다시 받기를 하지 않는 요청(NO_RETRY_PATHS)에만 쓴다 */
+export async function withRefreshExclusive<T>(send: () => Promise<T>): Promise<T> {
+  await waitForRefresh();
+  return withCookieLock(send);
+}
+
 /** ok = 새 토큰, rejected = 서버가 리프레시를 거절(세션 끝), transient = 네트워크 오류·5xx(세션은 그대로) */
 export type RefreshOutcome = "ok" | "rejected" | "transient";
 
-/** 리프레시 쿠키로 액세스 토큰을 다시 받고 결과를 나눠 알려 준다. 동시에 불려도 요청은 한 번만 간다 */
+/** 리프레시 쿠키로 액세스 토큰을 다시 받고 결과를 나눠 알려 준다. 한 탭 안에서는 동시에 불려도 요청은 한 번만 간다 */
 export function refreshSessionOutcome(): Promise<RefreshOutcome> {
   refreshing ??= (async (): Promise<RefreshOutcome> => {
     const startedAt = tokenStore.epoch();
     // 기다리는 동안 로그인·로그아웃이 있었다면 그 결과를 지키고, 이 응답은 버린다
     const changed = (): RefreshOutcome => (tokenStore.get() !== null ? "ok" : "rejected");
     try {
-      const response = await fetch(`${BASE}${REFRESH_PATH}`, { method: "POST", credentials: "include" });
+      const response = await postRefresh();
       if (tokenStore.epoch() !== startedAt) return changed();
       if (!response.ok) return response.status >= 500 ? "transient" : "rejected";
       const token = (await response.json()) as TokenResponse;
