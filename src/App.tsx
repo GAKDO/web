@@ -1,6 +1,7 @@
 // 화면 라우트. 관리자 화면(WE1)은 /admin 아래, 고객 폰 촬영·3D 리포트·검증 페이지는 이 아래에 더한다
 import { Navigate, type RouteObject } from "react-router-dom";
 import { LoginPage } from "./features/auth/components/LoginPage";
+import { DeviceCreatePage } from "./features/devices/components/DeviceCreatePage";
 import { DeviceListPage } from "./features/devices/components/DeviceListPage";
 import { RequireAdmin } from "./shared/auth/RequireAdmin";
 
@@ -26,6 +27,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <Navigate to="devices" replace /> },
       { path: "devices", element: <DeviceListPage /> },
+      { path: "devices/new", element: <DeviceCreatePage /> },
       { path: "rentals", element: <Placeholder title="렌탈 목록" /> },
     ],
   },

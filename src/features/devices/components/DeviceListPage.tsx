@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import type { Device, DeviceStatus } from "../../../shared/api/types";
 import { ApiError } from "../../../shared/api/problem";
 import { messageFor } from "../../../shared/api/errorMessages";
@@ -7,6 +8,7 @@ import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { Field, SelectField } from "../../../shared/ui/Field";
 import { useDeviceModels, useDevices } from "../api/devices";
+import { DeviceEditor } from "./DeviceEditor";
 import { StatusMenu } from "./StatusMenu";
 
 /** 입력이 멈춘 뒤에만 검색한다 */
@@ -20,6 +22,7 @@ function useDebounced(value: string, ms = 250): string {
 }
 
 function DeviceCard({ device }: { device: Device }) {
+  const [editing, setEditing] = useState(false);
   return (
     <li className="card" aria-label={device.serial}>
       <div className="card-main">
@@ -29,7 +32,14 @@ function DeviceCard({ device }: { device: Device }) {
         <span>자산번호 {device.assetNo ?? "없음"}</span>
         <span className={`badge badge-${device.status.toLowerCase()}`}>{DEVICE_STATUS_LABEL[device.status]}</span>
       </div>
-      <StatusMenu device={device} />
+      {editing ? (
+        <DeviceEditor device={device} onDone={() => setEditing(false)} />
+      ) : (
+        <div className="row">
+          <StatusMenu device={device} />
+          <Button onClick={() => setEditing(true)}>고치기</Button>
+        </div>
+      )}
     </li>
   );
 }
@@ -45,7 +55,12 @@ export function DeviceListPage() {
 
   return (
     <section>
-      <h1>기기 목록</h1>
+      <div className="row heading-row">
+        <h1>기기 목록</h1>
+        <Link className="button-link" to="/admin/devices/new">
+          기기 등록
+        </Link>
+      </div>
       <div className="filters">
         <SelectField label="기종" value={modelCode} onChange={(e) => setModelCode(e.target.value)}>
           <option value="">전체</option>

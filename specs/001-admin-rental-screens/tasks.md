@@ -61,14 +61,14 @@
 - [x] T025 [US2] 쿼리·뮤테이션 훅 `useDevices`, `useUpdateDevice` (`src/features/devices/api/`)
 - [x] T026 [US2] 기기 목록 화면(거르기·검색·다음 쪽·빈 목록 안내) (`src/features/devices/components/DeviceListPage.tsx`)
 - [x] T027 [US2] 상태 메뉴(data-model의 바꿀 수 있는 길만) (`src/features/devices/components/StatusMenu.tsx`)
-- [ ] T028 [US2] 기기 정보 고치기(색상·자산번호·OS). 계약에 기기 하나 조회(GET /devices/{id})가 없어 상세 화면 대신 목록 카드 안에서 고친다 (`src/features/devices/components/DeviceEditor.tsx`) — PR ②-b
+- [x] T028 [US2] 기기 정보 고치기(색상·자산번호·OS). 계약에 기기 하나 조회(GET /devices/{id})가 없어 상세 화면 대신 목록 카드 안에서 고친다 (`src/features/devices/components/DeviceEditor.tsx`) — PR ②-b
 
 ## Phase 5: US3 기종·기기 등록 (P2) — PR ②
 
-- [ ] T029 [P] [US3] MSW 핸들러: 기기 등록(409 `DEVICE_SERIAL_EXISTS`), 기종 PUT (`src/shared/mocks/handlers/device.ts`)
-- [ ] T030 [P] [US3] 테스트: 시나리오 1~2(기종 선택 목록, 시리얼 중복 409). 시나리오 3~4(치수 검증, 같은 코드면 수정)는 T031과 함께 미룸 (`src/features/deviceModels/*.test.tsx`, `src/features/devices/DeviceCreatePage.test.tsx`)
+- [x] T029 [P] [US3] MSW 핸들러: 기기 등록(409 `DEVICE_SERIAL_EXISTS`), 기종 PUT (`src/shared/mocks/handlers/device.ts`)
+- [x] T030 [P] [US3] 테스트: 시나리오 1~2(기종 선택 목록, 시리얼 중복 409). 시나리오 3~4(치수 검증, 같은 코드면 수정)는 T031과 함께 미룸 (`src/features/deviceModels/*.test.tsx`, `src/features/devices/DeviceCreatePage.test.tsx`)
 - [ ] T031 [US3] (11/6 뒤로 미룸, 11/02 결정) 기종 목록·등록·수정 폼 (`src/features/deviceModels/`). 그때까지 기종은 A의 초기 데이터로 넣는다(c1-questions 10)
-- [ ] T032 [US3] 기기 등록 화면 (`src/features/devices/components/DeviceCreatePage.tsx`)
+- [x] T032 [US3] 기기 등록 화면 (`src/features/devices/components/DeviceCreatePage.tsx`)
 
 **Checkpoint**: PR ② — 기기·기종 관리 끝
 
