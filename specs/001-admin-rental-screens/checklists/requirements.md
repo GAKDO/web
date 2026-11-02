@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,5 +31,5 @@
 
 ## Notes
 
-- 남은 표시 1개: QR 링크·페어링 코드 발급 화면을 WE1 범위에 넣을지(사용자 답 대기).
+- QR·페어링 발급 화면은 WE1에서 뺌(11/02 사용자 결정). WE2와 함께 후속 작업.
 - FR-002·FR-034는 토큰 보관 위치·API 모양을 한 곳에 모으는 요구라 구현 세부에 가깝지만, 백로그 수용 기준과 사용자 지시를 그대로 옮긴 것이라 남김.
