@@ -8,7 +8,7 @@ import { safeNext } from "../safeNext";
 export function CustomerLoginPage() {
   const { status, notice, login } = useAuth();
   const [params] = useSearchParams();
-  const next = safeNext(params.get("next"));
+  const next = safeNext(params.get("next"), "/my/rentals");
 
   if (status === "authenticated") return <Navigate to={next} replace />;
 

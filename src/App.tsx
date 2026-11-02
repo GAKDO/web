@@ -4,9 +4,12 @@ import { LoginPage } from "./features/auth/components/LoginPage";
 import { CustomerLoginPage } from "./features/customer-auth/components/CustomerLoginPage";
 import { DeviceCreatePage } from "./features/devices/components/DeviceCreatePage";
 import { DeviceListPage } from "./features/devices/components/DeviceListPage";
+import { MyRentalsPage } from "./features/report/components/MyRentalsPage";
+import { ReportPage } from "./features/report/components/ReportPage";
 import { RentalDetailPage } from "./features/rentals/components/RentalDetailPage";
 import { VerifyPage } from "./features/verify/components/VerifyPage";
 import { RequireAdmin } from "./shared/auth/RequireAdmin";
+import { RequireCustomer } from "./shared/auth/RequireCustomer";
 
 function Home() {
   return (
@@ -22,6 +25,14 @@ export const routes: RouteObject[] = [
   { path: "/admin/login", element: <LoginPage /> },
   { path: "/verify/:verifyToken", element: <VerifyPage /> },
   { path: "/login", element: <CustomerLoginPage /> },
+  {
+    // 고객 화면(WE3): 고객·관리자 모두 연다
+    element: <RequireCustomer />,
+    children: [
+      { path: "/my/rentals", element: <MyRentalsPage /> },
+      { path: "/my/rentals/:rentalId", element: <ReportPage /> },
+    ],
+  },
   {
     path: "/admin",
     element: <RequireAdmin />,
