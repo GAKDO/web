@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, unwrap } from "../../../shared/api/client";
 import { messageFor } from "../../../shared/api/errorMessages";
 import { ApiError } from "../../../shared/api/problem";
@@ -7,18 +7,19 @@ import { useAuth } from "../../../shared/auth/AuthProvider";
 import { Button } from "../../../shared/ui/Button";
 import { Field } from "../../../shared/ui/Field";
 import { safeNext } from "../../customer-auth/safeNext";
+import { looksLikeEmail, pendingSignup } from "../pendingSignup";
 
 const failText = (e: unknown, fallback: string) => (e instanceof ApiError && e.status !== 0 ? messageFor(e) : fallback);
 
-/** 메일 인증 `/signup/verify?email=&next=`. 가입 직후면 바로 로그인해 next로, 로그인 화면에서 왔으면 다시 로그인 화면으로 */
+/** 메일 인증 `/signup/verify?next=`. 가입 직후면 바로 로그인해 next로, 아니면 로그인 화면으로.
+ * 이메일은 주소에 넣지 않는다. 메모리에 없으면(새 탭·새로 고침) 직접 입력받는다 */
 export function VerifyEmailPage() {
   const { login } = useAuth();
   const [params] = useSearchParams();
-  const location = useLocation();
   const navigate = useNavigate();
-  const email = params.get("email") ?? "";
+  const [email, setEmail] = useState(() => pendingSignup.email() ?? "");
+  const [knownEmail] = useState(() => pendingSignup.email() !== null);
   const next = safeNext(params.get("next"), "/my/rentals");
-  const password = (location.state as { password?: string } | null)?.password;
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -36,10 +37,13 @@ export function VerifyEmailPage() {
       setBusy(false);
       return;
     }
-    const toLogin = `/login?${new URLSearchParams({ next, email, verified: "1" }).toString()}`;
+    const password = pendingSignup.takePassword();
+    pendingSignup.set(email, null);
+    const toLogin = `/login?${new URLSearchParams({ next, verified: "1" }).toString()}`;
     if (!password) return navigate(toLogin, { replace: true });
     try {
       await login(email, password, "CUSTOMER");
+      pendingSignup.clear();
       navigate(next, { replace: true });
     } catch {
       navigate(toLogin, { replace: true });
@@ -60,22 +64,15 @@ export function VerifyEmailPage() {
     }
   }
 
-  if (!email) {
-    return (
-      <main className="page login">
-        <h1>메일 인증</h1>
-        <p>
-          인증할 이메일을 알 수 없습니다. <Link to="/signup">회원가입</Link>부터 다시 해 주세요.
-        </p>
-      </main>
-    );
-  }
   return (
     <main className="page login">
       <h1>메일 인증</h1>
-      <p>{email}로 보낸 6자리 코드를 입력해 주세요.</p>
+      <p>{knownEmail ? `${email}로 보낸 6자리 코드를 입력해 주세요.` : "가입한 이메일과 메일로 받은 6자리 코드를 입력해 주세요."}</p>
       {notice && <p role="status">{notice}</p>}
       <form onSubmit={verify} noValidate>
+        {!knownEmail && (
+          <Field label="이메일" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        )}
         <Field
           label="인증 코드"
           inputMode="numeric"
@@ -86,11 +83,11 @@ export function VerifyEmailPage() {
           error={error}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
         />
-        <Button type="submit" busy={busy} disabled={code.length !== 6 || resending}>
+        <Button type="submit" busy={busy} disabled={code.length !== 6 || !looksLikeEmail(email) || resending}>
           인증하기
         </Button>
       </form>
-      <Button busy={resending} disabled={busy} onClick={() => void resend()}>
+      <Button busy={resending} disabled={busy || !looksLikeEmail(email)} onClick={() => void resend()}>
         코드 다시 받기
       </Button>
     </main>

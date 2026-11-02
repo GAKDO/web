@@ -7,6 +7,9 @@ import { CustomerLoginPage } from "../customer-auth/components/CustomerLoginPage
 import { RequireCustomer } from "../../shared/auth/RequireCustomer";
 import { demoCustomerEmails } from "../../shared/config/demoAccounts";
 import { MOCK_CUSTOMER, MOCK_EMAIL_CODE, db } from "../../shared/mocks/db";
+import { pendingSignup } from "./pendingSignup";
+
+beforeEach(() => pendingSignup.clear());
 
 const NEW = { name: "홍길동", email: "new-renter@example.com", password: "example-pass-5678" };
 
@@ -41,6 +44,14 @@ test("QR로 들어온 새 고객은 로그인 화면에서 가입하고 메일 �
   await user.click(screen.getByRole("button", { name: "인증하기" }));
   expect(await screen.findByText("촬영 화면")).toBeInTheDocument();
   expect(router.state.location.search).toBe("?t=abc");
+  // 비밀번호는 자동 로그인 뒤 메모리에서도 지운다
+  expect(pendingSignup.takePassword()).toBeNull();
+});
+
+test("새로 연 인증 화면은 이메일을 주소에서 읽지 않고 직접 입력받는다", async () => {
+  renderAt("/signup/verify?next=/qr");
+  expect(await screen.findByLabelText("이메일")).toHaveValue("");
+  expect(screen.getByText("가입한 이메일과 메일로 받은 6자리 코드를 입력해 주세요.")).toBeInTheDocument();
 });
 
 test("개인정보 동의 전에는 가입 버튼이 눌리지 않는다", async () => {
@@ -59,7 +70,10 @@ test("이미 가입된 이메일이면 알려 주고 로그인 링크를 보인�
   await user.click(screen.getByRole("checkbox"));
   await user.click(screen.getByRole("button", { name: "가입하고 인증 코드 받기" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("이미 가입된 이메일입니다.");
-  expect(screen.getByRole("link", { name: "로그인하기" })).toHaveAttribute("href", expect.stringContaining("email=renter%40example.com"));
+  const link = screen.getByRole("link", { name: "로그인하기" });
+  expect(link.getAttribute("href")).not.toContain("renter");
+  await user.click(link);
+  expect(await screen.findByLabelText("이메일")).toHaveValue(MOCK_CUSTOMER.email);
 });
 
 test("코드가 틀리면 오류를 보이고, 코드는 다시 받을 수 있다", async () => {
@@ -100,6 +114,6 @@ test("시연용 계정 이메일을 누르면 로그인 이메일 칸이 채워�
 });
 
 test("시연용 계정 환경 변수는 쉼표로 나누고 이메일 모양만 남긴다", () => {
-  expect(demoCustomerEmails(undefined)).toEqual([]);
+  expect(demoCustomerEmails("")).toEqual([]);
   expect(demoCustomerEmails(" a@example.com, ,not-email,a@example.com,b@example.com ")).toEqual(["a@example.com", "b@example.com"]);
 });

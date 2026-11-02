@@ -7,8 +7,9 @@ import { useAuth } from "../../../shared/auth/AuthProvider";
 import { Button } from "../../../shared/ui/Button";
 import { Field } from "../../../shared/ui/Field";
 import { safeNext } from "../../customer-auth/safeNext";
+import { looksLikeEmail, pendingSignup } from "../pendingSignup";
 
-/** 고객 가입 `/signup?next=`. 수령 QR → 가입 → 메일 인증 → 촬영(WE2 FR-002a). 비밀번호는 다음 화면의 자동 로그인에만 쓰고 저장하지 않는다 */
+/** 고객 가입 `/signup?next=`. 수령 QR → 가입 → 메일 인증 → 촬영(WE2 FR-004a). 이메일·비밀번호는 모듈 메모리로만 넘긴다 */
 export function SignupPage() {
   const { status } = useAuth();
   const [params] = useSearchParams();
@@ -29,8 +30,8 @@ export function SignupPage() {
     setError(null);
     try {
       await unwrap(api.POST("/api/v1/auth/signup", { body: { name, email, password, privacyAgreed: agreed } }));
-      const query = new URLSearchParams({ email, next });
-      navigate(`/signup/verify?${query.toString()}`, { state: { password } });
+      pendingSignup.set(email, password);
+      navigate(`/signup/verify?${new URLSearchParams({ next }).toString()}`);
     } catch (e) {
       setError(e instanceof ApiError ? e : new ApiError(0, null, null));
     } finally {
@@ -62,10 +63,14 @@ export function SignupPage() {
         {error && (
           <p className="field-error" role="alert">
             {error.status === 0 ? "가입하지 못했습니다. 잠시 뒤 다시 시도해 주세요." : messageFor(error)}{" "}
-            {exists && <Link to={`/login?${new URLSearchParams({ next, email }).toString()}`}>로그인하기</Link>}
+            {exists && (
+              <Link to={`/login?${new URLSearchParams({ next }).toString()}`} onClick={() => pendingSignup.set(email, null)}>
+                로그인하기
+              </Link>
+            )}
           </p>
         )}
-        <Button type="submit" busy={busy} disabled={!name || !email || password.length < 8 || !agreed}>
+        <Button type="submit" busy={busy} disabled={!name || !looksLikeEmail(email) || password.length < 8 || !agreed}>
           가입하고 인증 코드 받기
         </Button>
       </form>

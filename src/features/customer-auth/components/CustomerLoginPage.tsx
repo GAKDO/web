@@ -5,6 +5,7 @@ import { useAuth } from "../../../shared/auth/AuthProvider";
 import { LoginForm } from "../../../shared/auth/LoginForm";
 import { LOGIN_NOTICE } from "../../../shared/auth/loginNotice";
 import { demoCustomerEmails } from "../../../shared/config/demoAccounts";
+import { pendingSignup } from "../../signup/pendingSignup";
 import { safeNext } from "../safeNext";
 
 /** 고객 로그인 `/login?next=<돌아올 경로>`. 수령 QR(WE2)·내 렌탈(WE3)이 로그인 뒤 돌아오는 입구 */
@@ -12,7 +13,8 @@ export function CustomerLoginPage({ demoEmails = demoCustomerEmails() }: { demoE
   const { status, notice, login } = useAuth();
   const [params] = useSearchParams();
   const next = safeNext(params.get("next"), "/my/rentals");
-  const [email, setEmail] = useState(params.get("email") ?? "");
+  // 가입·인증 화면에서 넘어온 이메일(주소에는 넣지 않음)
+  const [email, setEmail] = useState(() => pendingSignup.email() ?? "");
   // 이메일 칸을 새로 채우려면 폼을 다시 만든다(데모 계정 고르기)
   const [formKey, setFormKey] = useState(0);
   const [unverified, setUnverified] = useState<string | null>(null);
@@ -54,7 +56,9 @@ export function CustomerLoginPage({ demoEmails = demoCustomerEmails() }: { demoE
       <LoginForm key={formKey} initialEmail={email} onLogin={onLogin} />
       {unverified && (
         <p>
-          <Link to={`/signup/verify?${new URLSearchParams({ email: unverified, next }).toString()}`}>메일 인증하러 가기</Link>
+          <Link to={`/signup/verify?${new URLSearchParams({ next }).toString()}`} onClick={() => pendingSignup.set(unverified, null)}>
+            메일 인증하러 가기
+          </Link>
         </p>
       )}
       <p>
