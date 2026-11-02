@@ -4,7 +4,7 @@
 
 **Tests**: 헌법 IV에 따라 수용 시나리오마다 테스트를 먼저 쓴다. 테스트 이름은 명세 문장 그대로.
 
-**PR**: ① Phase 1·2·3(US1) → ② Phase 4·5(US2·US3) → ③ Phase 6(US4)·7. ②도 400줄을 넘어 ②-a(T023~T027 목록·상태)와 ②-b(T028~T032 고치기·등록)로 나눈다. ①의 코드가 400줄을 넘으면 ①-a(Phase 1·2 기반)와 ①-b(US1 로그인)로 나눈다. 모두 `develop`으로, 앞 PR이 머지된 뒤 다음 PR.
+**PR**: ① Phase 1·2·3(US1) → ② Phase 4·5(US2·US3) → ③ Phase 6(US4)·7. ②도 400줄을 넘어 ②-a(T023~T027 목록·상태)와 ②-b(T028~T032 고치기·등록)로, ③은 ③-a(T033~T035·T040 시점·상세)와 ③-b(T036~T039·T041a 목록·만들기)로 나눈다. ①의 코드가 400줄을 넘으면 ①-a(Phase 1·2 기반)와 ①-b(US1 로그인)로 나눈다. 모두 `develop`으로, 앞 PR이 머지된 뒤 다음 PR.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -78,14 +78,14 @@
 
 **Independent Test**: 렌탈 하나를 만들어 출고 → 수령 → 반납 → (봉인 뒤) 종료
 
-- [ ] T033 [P] [US4] 테스트: `nextAction(rental)` 표(data-model) 그대로 (`src/features/rentals/nextAction.test.ts`)
-- [ ] T034 [P] [US4] `nextAction` 순수 함수 (`src/features/rentals/nextAction.ts`)
-- [ ] T035 [P] [US4] MSW 렌탈 핸들러(생성 409 `DEVICE_NOT_ACTIVE`·`RENTAL_OPEN_EXISTS`, 시점 순서 409, 종료는 RET SEALED만, 반납 시작 뒤 몇 초 뒤 봉인, `?mock=slow-seal`이면 GRADED에서 멈춤) (`src/shared/mocks/handlers/rental.ts`)
+- [x] T033 [P] [US4] 테스트: `nextAction(rental)` 표(data-model) 그대로 (`src/features/rentals/nextAction.test.ts`)
+- [x] T034 [P] [US4] `nextAction` 순수 함수 (`src/features/rentals/nextAction.ts`)
+- [x] T035 [P] [US4] MSW 렌탈 핸들러(생성 409 `DEVICE_NOT_ACTIVE`·`RENTAL_OPEN_EXISTS`, 시점 순서 409, 종료는 RET SEALED만, 반납 시작 뒤 몇 초 뒤 봉인, `?mock=slow-seal`이면 GRADED에서 멈춤) (`src/shared/mocks/handlers/rental.ts`)
 - [ ] T036 [P] [US4] 테스트: 시나리오 1~10(+1-1 스위치) (`src/features/rentals/*.test.tsx`)
 - [ ] T037 [US4] 훅 `useRentals`, `useRental`, `useCreateRental`, `useStartCheckpoint`, `useCloseRental` (409면 렌탈 다시 읽기) (`src/features/rentals/api/`)
 - [ ] T038 [US4] 렌탈 목록 화면(계약 필드만) (`src/features/rentals/components/RentalListPage.tsx`)
 - [ ] T039 [US4] 렌탈 만들기(기기 고르기 + "다른 상태 기기도 보기" 스위치, 대여자 참조 번호) (`src/features/rentals/components/RentalCreatePage.tsx`)
-- [ ] T040 [US4] 렌탈 상세와 시점 단계 표시·버튼·봉인 대기 안내 (`src/features/rentals/components/{RentalDetailPage,CheckpointSteps}.tsx`)
+- [x] T040 [US4] 렌탈 상세와 시점 단계 표시·버튼·봉인 대기 안내 (`src/features/rentals/components/{RentalDetailPage,CheckpointSteps}.tsx`)
 
 ## Phase 7: 마무리 — PR ③
 

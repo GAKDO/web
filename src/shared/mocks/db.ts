@@ -1,5 +1,5 @@
 import { nanoid } from "nanoid";
-import type { Device, DeviceModel, DeviceStatus, Rental, TokenRole } from "../api/types";
+import type { CheckpointStatus, CheckpointType, Device, DeviceModel, DeviceStatus, Rental, TokenRole } from "../api/types";
 
 // MSW 목 서버의 메모리 데이터. ID는 계약대로 NanoID 21자(헌법 1.1.0). 테스트마다 resetDb()로 처음 상태로 돌린다.
 // 계정·비밀번호는 계약 예시 값이고 실제 비밀이 아니다.
@@ -100,4 +100,20 @@ export function expireAccessTokens(): void {
 export function accountFromRequest(request: Request): Account | null {
   const header = request.headers.get("Authorization") ?? "";
   return db.accessTokens.get(header.replace(/^Bearer /, "")) ?? null;
+}
+
+const NEXT_STATUS: Record<CheckpointStatus, CheckpointStatus> = { OPEN: "CAPTURED", CAPTURED: "GRADED", GRADED: "SEALED", SEALED: "SEALED" };
+
+/** 촬영·검사·봉인을 흉내 낸다: 한 시점을 한 단계 올린다. 테스트는 직접 부르고, 브라우저 목은 시간이 지나면 부른다 */
+export function advanceCheckpoint(rentalId: string, type: CheckpointType, until: CheckpointStatus = "SEALED"): void {
+  const checkpoint = db.rentals.find((r) => r.rentalId === rentalId)?.checkpoints.find((c) => c.type === type);
+  if (!checkpoint || checkpoint.status === until) return;
+  checkpoint.status = NEXT_STATUS[checkpoint.status];
+  if (checkpoint.status === "CAPTURED") checkpoint.occurredAt = new Date().toISOString();
+}
+
+/** 테스트용: 마지막 시점을 봉인까지 올린다 */
+export function sealLastCheckpoint(rentalId: string): void {
+  const last = db.rentals.find((r) => r.rentalId === rentalId)?.checkpoints.at(-1);
+  for (let i = 0; i < 3 && last; i += 1) advanceCheckpoint(rentalId, last.type);
 }
