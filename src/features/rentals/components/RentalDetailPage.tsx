@@ -12,6 +12,13 @@ import { nextAction } from "../nextAction";
 
 const STEPS: CheckpointType[] = ["OUT", "RCV", "RET"];
 const BEFORE: Record<CheckpointType, string> = { OUT: "출고를", RCV: "수령을", RET: "반납을" };
+
+/** 꺼진 시작 버튼 옆에 붙일 이유 */
+function reason(type: CheckpointType, action: ReturnType<typeof nextAction>): string {
+  const prev = STEPS[STEPS.indexOf(type) - 1];
+  if (action.kind === "waitSeal" && action.type === prev) return `${CHECKPOINT_TYPE_LABEL[prev]} 기록이 봉인되면 시작할 수 있습니다`;
+  return `${BEFORE[prev]} 먼저 시작하세요`;
+}
 export const formatDate = (iso: string) => new Date(iso).toLocaleDateString("ko-KR");
 const toMessage = (e: unknown) => (e instanceof ApiError ? messageFor(e) : "요청을 처리하지 못했습니다.");
 
@@ -21,7 +28,7 @@ function CheckpointSteps({ rental, onError }: { rental: Rental; onError: (messag
   const action = nextAction(rental);
   return (
     <ol className="steps" aria-label="시점">
-      {STEPS.map((type, i) => {
+      {STEPS.map((type) => {
         const checkpoint = rental.checkpoints.find((c) => c.type === type);
         const isNext = action.kind === "start" && action.type === type;
         return (
@@ -41,7 +48,7 @@ function CheckpointSteps({ rental, onError }: { rental: Rental; onError: (messag
                 >
                   {CHECKPOINT_TYPE_LABEL[type]} 시작
                 </Button>
-                {!isNext && rental.status !== "CLOSED" && <small>{BEFORE[STEPS[i - 1]]} 먼저 시작하세요</small>}
+                {!isNext && rental.status !== "CLOSED" && <small>{reason(type, action)}</small>}
               </>
             )}
           </li>
@@ -72,7 +79,7 @@ export function RentalDetailPage() {
       </p>
       {error && <ErrorBanner message={error} />}
       <CheckpointSteps rental={data} onError={setError} />
-      {action.kind === "waitSeal" && (
+      {action.kind === "waitSeal" && action.type === "RET" && (
         <p role="status">반납 기록이 봉인되면 종료할 수 있습니다. 지금 반납 시점: {CHECKPOINT_STATUS_LABEL[action.status]}</p>
       )}
       {action.kind === "closed" ? (

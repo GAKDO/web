@@ -43,26 +43,41 @@ test("순서가 어긋난 요청에 서버가 409(순서 위반)를 주면 문�
   await u.click(screen.getByRole("button", { name: "출고 시작" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("시점은 출고 → 수령 → 반납 순서로만 시작할 수 있습니다");
   await waitFor(() => expect(within(step("출고")).getByText("촬영 대기")).toBeInTheDocument());
-  expect(within(step("수령")).getByRole("button", { name: "수령 시작" })).toBeEnabled();
+  expect(within(step("수령")).getByRole("button", { name: "수령 시작" })).toBeDisabled();
 });
 
-async function goThroughReturn(u: ReturnType<typeof user>) {
+test("출고 기록이 봉인되기 전에는 수령 시작을 누를 수 없고, 봉인되면 누를 수 있다", async () => {
+  const { u, rentalId } = await openNewRental();
+  await u.click(screen.getByRole("button", { name: "출고 시작" }));
+  expect(await within(step("수령")).findByText("출고 기록이 봉인되면 시작할 수 있습니다")).toBeInTheDocument();
+  expect(within(step("수령")).getByRole("button", { name: "수령 시작" })).toBeDisabled();
+  sealLastCheckpoint(rentalId);
+  await u.click(screen.getByRole("button", { name: "새로 고침" }));
+  await waitFor(() => expect(within(step("수령")).getByRole("button", { name: "수령 시작" })).toBeEnabled());
+});
+
+/** 출고·수령은 시작 뒤 봉인까지 시키고, 반납은 시작만 한다 */
+async function goThroughReturn(u: ReturnType<typeof user>, rentalId: string) {
   for (const name of ["출고 시작", "수령 시작", "반납 시작"]) {
-    await u.click(await screen.findByRole("button", { name }));
+    await waitFor(() => expect(screen.getByRole("button", { name })).toBeEnabled());
+    await u.click(screen.getByRole("button", { name }));
     await waitFor(() => expect(screen.queryByRole("button", { name })).not.toBeInTheDocument());
+    if (name === "반납 시작") return;
+    sealLastCheckpoint(rentalId);
+    await u.click(screen.getByRole("button", { name: "새로 고침" }));
   }
 }
 
 test("반납 시점이 열렸지만 아직 봉인되지 않은 렌탈은 종료 버튼이 꺼져 있고 봉인 안내와 지금 시점 상태가 보인다", async () => {
-  const { u } = await openNewRental();
-  await goThroughReturn(u);
+  const { u, rentalId } = await openNewRental();
+  await goThroughReturn(u, rentalId);
   expect(screen.getByRole("button", { name: "렌탈 종료" })).toBeDisabled();
   expect(screen.getByRole("status")).toHaveTextContent("반납 기록이 봉인되면 종료할 수 있습니다. 지금 반납 시점: 촬영 대기");
 });
 
 test("반납 시점이 봉인된 렌탈에서 렌탈 종료를 누르면 확인 창 뒤 렌탈이 종료 상태로 보인다", async () => {
   const { u, rentalId } = await openNewRental();
-  await goThroughReturn(u);
+  await goThroughReturn(u, rentalId);
   sealLastCheckpoint(rentalId);
   await u.click(screen.getByRole("button", { name: "새로 고침" }));
   await waitFor(() => expect(screen.getByRole("button", { name: "렌탈 종료" })).toBeEnabled());
@@ -74,7 +89,7 @@ test("반납 시점이 봉인된 렌탈에서 렌탈 종료를 누르면 확인 
 
 test("화면은 종료할 수 있다고 봤지만 서버가 종료를 409로 거절하면 서버 문장이 보이고 상세를 다시 읽는다", async () => {
   const { u, rentalId } = await openNewRental();
-  await goThroughReturn(u);
+  await goThroughReturn(u, rentalId);
   sealLastCheckpoint(rentalId);
   await u.click(screen.getByRole("button", { name: "새로 고침" }));
   await waitFor(() => expect(screen.getByRole("button", { name: "렌탈 종료" })).toBeEnabled());

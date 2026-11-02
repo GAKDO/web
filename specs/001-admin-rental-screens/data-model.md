@@ -40,11 +40,15 @@ RETIRED → ACTIVE             (화면에 없음)
 
 화면이 계산하는 다음 동작 `nextAction(rental)`:
 
+앞 시점이 봉인(SEALED)된 뒤에만 다음 시점·종료를 연다(11/02 C 결정. 서버 동작은 c1-questions 11로 A 확인 중이고, 서버가 409를 주면 문장 + 다시 읽기로 처리한다).
+
 | checkpoints | 다음 동작 |
 | --- | --- |
 | 없음 | 출고 시작 |
-| OUT | 수령 시작 |
-| OUT, RCV | 반납 시작 |
+| OUT(SEALED 아님) | 없음 — 수령 버튼 옆 "출고 기록이 봉인되면 시작할 수 있습니다" |
+| OUT(SEALED) | 수령 시작 |
+| OUT, RCV(SEALED 아님) | 없음 — 반납 버튼 옆 "수령 기록이 봉인되면 시작할 수 있습니다" |
+| OUT, RCV(SEALED) | 반납 시작 |
 | …, RET(SEALED 아님) | 없음 — "반납 기록이 봉인되면 종료할 수 있습니다" |
 | …, RET(SEALED) | 렌탈 종료 |
 | rental.status = CLOSED | 없음 — "종료된 렌탈" |

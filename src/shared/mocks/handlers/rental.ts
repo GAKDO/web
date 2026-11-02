@@ -67,7 +67,9 @@ export const rentalHandlers = [
     const rental = db.rentals.find((r) => r.rentalId === params.rentalId);
     if (!rental) return problem(404, "NOT_FOUND", "렌탈이 없습니다");
     const { type } = (await request.json()) as { type: CheckpointType };
-    if (rental.status === "CLOSED" || ORDER[rental.checkpoints.length] !== type) {
+    const last = rental.checkpoints.at(-1);
+    // 앞 시점이 봉인된 뒤에만 다음 시점(계약 409 예시 문장, c1-questions 11)
+    if (rental.status === "CLOSED" || ORDER[rental.checkpoints.length] !== type || (last && last.status !== "SEALED")) {
       return problem(409, "CHECKPOINT_ORDER_VIOLATION", "시점 순서가 맞지 않습니다");
     }
     const checkpoint = { checkpointId: nanoid(), type, status: "OPEN" as const, occurredAt: null };
