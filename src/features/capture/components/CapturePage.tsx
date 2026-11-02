@@ -52,7 +52,7 @@ export function CapturePage({ grant }: { grant: CaptureGrant }) {
   useLeaveWarning(hasShots);
   useInAppLeaveConfirm(hasShots);
   const minutesLeft = useMinutesLeft(grant.expiresAt);
-  const faces = useFaceGuides(grant.rentalId);
+  const { faces, loading: facesLoading } = useFaceGuides(grant.rentalId);
   const remaining = faces.filter((f) => f.required && !shots[f.face]).map((f) => f.face);
   const guide = faces.find((f) => f.face === active);
   const expired = minutesLeft <= 0;
@@ -100,10 +100,11 @@ export function CapturePage({ grant }: { grant: CaptureGrant }) {
         <FaceShooter key={guide.face} guide={guide} onAccept={(a) => accept(guide.face, a)} onCancel={() => setActive(null)} />
       ) : (
         <>
+          {facesLoading && <p role="status">기종 치수를 불러오는 중입니다. 잠시만 기다려 주세요.</p>}
           <ol className="faces">
             {faces.map((f) => (
               <li key={f.face}>
-                <button type="button" className="face" disabled={submitting} onClick={() => setActive(f.face)}>
+                <button type="button" className="face" disabled={submitting || facesLoading} onClick={() => setActive(f.face)}>
                   <span>
                     {CAPTURE_FACE_LABEL[f.face]}
                     {!f.required && " (선택)"}

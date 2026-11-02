@@ -42,6 +42,17 @@ test("다시 받기도 실패하면 세션을 비우고 로그인 화면으로 �
   expect(expired).toHaveBeenCalledOnce();
 });
 
+test("다시 받기가 네트워크 오류·5xx면 세션을 끝내지 않고 그 요청만 실패시킨다", async () => {
+  await login();
+  expireAccessTokens();
+  server.use(http.post("*/api/v1/auth/refresh", () => new HttpResponse(null, { status: 503 })));
+  const expired = vi.fn();
+  setSessionExpiredHandler(expired);
+  await expect(unwrap(api.GET("/api/v1/auth/me"))).rejects.toMatchObject({ status: 401 });
+  expect(tokenStore.get()).not.toBeNull();
+  expect(expired).not.toHaveBeenCalled();
+});
+
 test("리프레시 쿠키가 없으면 refreshSession은 false다", async () => {
   expect(await refreshSession()).toBe(false);
 });

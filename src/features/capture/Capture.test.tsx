@@ -1,5 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { vi } from "vitest";
 import { renderApp } from "../../test/renderApp";
 import { api, unwrap } from "../../shared/api/client";
@@ -8,6 +9,7 @@ import { exchangeOnce } from "./api/exchange";
 import { captureTokenStore } from "../../shared/auth/captureTokenStore";
 import { captureDb, mockCaptureLink } from "../../shared/mocks/captureDb";
 import { db, MOCK_CUSTOMER } from "../../shared/mocks/db";
+import { server } from "../../shared/mocks/node";
 import * as camera from "./camera";
 import { blurredGray, fakeShot, glareGray, sharpGray } from "./testing";
 
@@ -245,4 +247,22 @@ test("렌탈의 기종 치수를 읽으면 윤곽선 비율을 그 치수로 그
   await screen.findByRole("heading", { name: "수령 사진 찍기" });
   await openTop();
   expect(other.container.querySelector(".outline rect")?.getAttribute("width")).toBe("80");
+});
+
+test("기종 치수를 받는 동안에는 면을 고를 수 없고, 응답이 오면(실패해도) 찍을 수 있다", async () => {
+  asCustomer();
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.get("*/api/v1/reports/rentals/:rentalId", async () => {
+      await gate;
+      return new HttpResponse(null, { status: 503 });
+    }),
+  );
+  renderApp(`/capture?t=${mockCaptureLink().token}`);
+  expect(await screen.findByText(/기종 치수를 불러오는 중/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /^윗면/ })).toBeDisabled();
+  release();
+  await vi.waitFor(() => expect(screen.getByRole("button", { name: /^윗면/ })).toBeEnabled());
+  expect(screen.queryByText(/기종 치수를 불러오는 중/)).not.toBeInTheDocument();
 });

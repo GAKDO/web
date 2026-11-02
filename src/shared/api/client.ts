@@ -106,8 +106,10 @@ async function authFetch(request: Request): Promise<Response> {
   const response = await fetch(withToken(request));
   if (response.status !== 401 || NO_RETRY_PATHS.some((p) => new URL(request.url).pathname.endsWith(p)) || !tokenStore.get()) return response;
   if (await isCredentialRejection(response)) return response;
-  if (!(await refreshSession())) {
-    expireSession();
+  const outcome = await refreshSessionOutcome();
+  if (outcome !== "ok") {
+    // 서버가 리프레시를 거절했을 때만 세션을 끝낸다. 네트워크 오류·5xx는 세션(과 촬영 권한)을 그대로 두고 이 요청만 실패시킨다
+    if (outcome === "rejected") expireSession();
     return response;
   }
   const second = await fetch(withToken(retry));
