@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { vi } from "vitest";
@@ -15,6 +15,7 @@ vi.mock("./camera", async (importOriginal) => {
 });
 
 let counter = 0;
+let app: ReturnType<typeof renderApp>;
 beforeEach(() => {
   counter = 0;
   vi.mocked(camera.captureShot).mockImplementation(() => hashedShot(++counter));
@@ -24,7 +25,7 @@ beforeEach(() => {
 /** 윗면부터 필수 7면을 차례로 찍어 통과시킨다(통과하면 다음 면이 자동으로 열림) */
 async function shootRequired(): Promise<UserEvent> {
   const user = userEvent.setup();
-  renderApp(`/capture?t=${mockCaptureLink().token}`);
+  app = renderApp(`/capture?t=${mockCaptureLink().token}`);
   await user.click(await screen.findByRole("button", { name: /^윗면/ }));
   for (let i = 0; i < 7; i++) {
     await user.click(await screen.findByRole("button", { name: "찍기" }));
@@ -110,4 +111,34 @@ test("찍은 사진이 있으면 페이지를 떠날 때 브라우저가 묻고,
   expect(event.defaultPrevented).toBe(true);
   expect(localStorage.length).toBe(0);
   expect(sessionStorage.length).toBe(0);
+});
+
+test("제출을 두 번 눌러도 세트는 하나만 만들고, 제출 중에는 면 버튼과 이유 칸이 잠긴다", async () => {
+  const user = await shootRequired();
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((r) => (release = r));
+  server.use(
+    http.post("*/api/v1/captures/sets", async () => {
+      await gate;
+      return undefined;
+    }),
+  );
+  await user.dblClick(submitButton());
+  expect(screen.getByRole("button", { name: /^윗면/ })).toBeDisabled();
+  expect(screen.getByLabelText("화면(흰색)을 찍지 않은 이유")).toBeDisabled();
+  release();
+  expect(await screen.findByText(/수령 사진이 접수되었습니다/)).toBeInTheDocument();
+  expect(captureDb.sets).toHaveLength(1);
+});
+
+test("찍은 사진이 있으면 앱 안에서 다른 화면으로 갈 때도 묻고, 취소하면 사진이 남는다", async () => {
+  await shootRequired();
+  const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+  await act(() => app.router.navigate("/my/rentals"));
+  expect(confirm).toHaveBeenCalledTimes(1);
+  expect(screen.getByText("필수 면을 모두 찍었습니다.")).toBeInTheDocument();
+  await act(() => app.router.navigate("/my/rentals"));
+  expect(confirm).toHaveBeenCalledTimes(2);
+  expect(app.router.state.location.pathname).toBe("/my/rentals");
+  confirm.mockRestore();
 });

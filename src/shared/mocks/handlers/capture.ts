@@ -92,11 +92,12 @@ export const captureHandlers = [
     if (set.checkpointId !== grant.checkpointId) return problem(403, "OUT_OF_SCOPE", "이 시점의 촬영 권한이 없습니다");
     const key = request.headers.get("Idempotency-Key");
     if (!key) return problem(400, "VALIDATION_FAILED", "Idempotency-Key가 필요합니다");
-    if (set.completed) {
-      if (set.idempotencyKey === key) return HttpResponse.json(toCaptureSet(set), { status: 202 });
-      return problem(409, "CAPTURE_SET_CLOSED", "이미 완료된 세트입니다");
-    }
     const text = await request.text();
+    if (set.completed) {
+      if (set.idempotencyKey !== key) return problem(409, "CAPTURE_SET_CLOSED", "이미 완료된 세트입니다");
+      if ((set.completeBody ?? "") !== text) return problem(422, "IDEMPOTENCY_KEY_CONFLICT", "같은 키로 다른 요청을 보냈습니다");
+      return HttpResponse.json(toCaptureSet(set), { status: 202 });
+    }
     const skipped = (text ? (JSON.parse(text) as CaptureSetCompleteRequest).skippedFaces : undefined) ?? {};
     if (Object.keys(skipped).some((f) => PHONE_REQUIRED.includes(f as CaptureFace))) {
       return problem(400, "VALIDATION_FAILED", "필수 면은 건너뛸 수 없습니다");
@@ -114,6 +115,7 @@ export const captureHandlers = [
     }
     set.completed = true;
     set.idempotencyKey = key;
+    set.completeBody = text;
     return HttpResponse.json(toCaptureSet(set), { status: 202 });
   }),
 

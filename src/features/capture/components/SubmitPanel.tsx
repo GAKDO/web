@@ -21,11 +21,16 @@ interface Props {
   /** 서버가 빠졌다고 한 면(그 면 사진을 지우고 다시 찍게 함) */
   onMissing(faces: CaptureFace[]): void;
   onDone(): void;
+  /** 제출 중이면 true. CapturePage가 그동안 면 버튼을 잠근다 */
+  onBusyChange(busy: boolean): void;
 }
 
 /** 제출: 건너뛴 이유 → 세트 생성 → 업로드 진행률 → 완료(US4) */
-export function SubmitPanel({ grant, shots, remaining, onMissing, onDone }: Props) {
+export function SubmitPanel({ grant, shots, remaining, onMissing, onDone, onBusyChange }: Props) {
   const session = useRef<UploadSession | null>(null);
+  // 세트 생성 응답 전에 두 번 눌러도 요청은 하나만 보낸다
+  const running = useRef(false);
+  const [busy, setBusy] = useState(false);
   const [reason, setReason] = useState(SKIP_REASONS[0]);
   const [otherReason, setOtherReason] = useState("");
   const [progress, setProgress] = useState<number | null>(null);
@@ -52,6 +57,10 @@ export function SubmitPanel({ grant, shots, remaining, onMissing, onDone }: Prop
   }
 
   async function submit() {
+    if (running.current) return;
+    running.current = true;
+    setBusy(true);
+    onBusyChange(true);
     setError(null);
     try {
       if (!(await upload(true)) || !session.current) return;
@@ -69,6 +78,9 @@ export function SubmitPanel({ grant, shots, remaining, onMissing, onDone }: Prop
       if (e.code === "CAPTURE_HASH_MISMATCH") session.current = null;
       setError(e.code === "CAPTURE_HASH_MISMATCH" ? "사진이 올바르게 올라가지 않았습니다. 다시 제출해 주세요." : "제출하지 못했습니다. 다시 시도해 주세요.");
     } finally {
+      running.current = false;
+      setBusy(false);
+      onBusyChange(false);
       setProgress(null);
     }
   }
@@ -77,17 +89,17 @@ export function SubmitPanel({ grant, shots, remaining, onMissing, onDone }: Prop
     <section className="card" aria-label="제출">
       {skipScr1 && (
         <>
-          <SelectField label="화면(흰색)을 찍지 않은 이유" value={reason} onChange={(e) => setReason(e.target.value)}>
+          <SelectField label="화면(흰색)을 찍지 않은 이유" value={reason} disabled={busy} onChange={(e) => setReason(e.target.value)}>
             {[...SKIP_REASONS, OTHER].map((r) => (
               <option key={r}>{r}</option>
             ))}
           </SelectField>
-          {reason === OTHER && <Field label="이유" maxLength={200} value={otherReason} onChange={(e) => setOtherReason(e.target.value)} />}
+          {reason === OTHER && <Field label="이유" maxLength={200} value={otherReason} disabled={busy} onChange={(e) => setOtherReason(e.target.value)} />}
         </>
       )}
       {error && <ErrorBanner message={error} />}
       {progress !== null && <p role="status">{`${progress} / ${photos.length} 올리는 중`}</p>}
-      <Button busy={progress !== null} disabled={!ready} onClick={() => void submit()}>
+      <Button busy={busy} disabled={!ready} onClick={() => void submit()}>
         {error ? "다시 시도" : "제출"}
       </Button>
     </section>

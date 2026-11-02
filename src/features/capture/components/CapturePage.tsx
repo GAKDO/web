@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useBlocker } from "react-router-dom";
 import type { CaptureFace } from "../../../shared/api/types";
 import { captureTokenStore, type CaptureGrant } from "../../../shared/auth/captureTokenStore";
 import { CAPTURE_FACE_LABEL } from "../../../shared/codes/labels";
@@ -31,12 +32,25 @@ function useLeaveWarning(active: boolean): void {
   }, [active]);
 }
 
+/** 찍은 사진이 있는 동안 앱 안에서 다른 화면으로 가려 하면(뒤로 가기 등) 한 번 묻는다 */
+function useInAppLeaveConfirm(active: boolean): void {
+  const blocker = useBlocker(active);
+  useEffect(() => {
+    if (blocker.state !== "blocked") return;
+    if (window.confirm("찍은 사진이 사라집니다. 이 화면을 떠날까요?")) blocker.proceed();
+    else blocker.reset();
+  }, [blocker]);
+}
+
 /** 면 목록 → 면 하나 찍기 → 다음 면(US3·US4-1) */
 export function CapturePage({ grant }: { grant: CaptureGrant }) {
   const [shots, setShots] = useState<Shots>({});
   const [active, setActive] = useState<CaptureFace | null>(null);
   const [done, setDone] = useState(false);
-  useLeaveWarning(!done && Object.keys(shots).length > 0);
+  const [submitting, setSubmitting] = useState(false);
+  const hasShots = !done && Object.keys(shots).length > 0;
+  useLeaveWarning(hasShots);
+  useInAppLeaveConfirm(hasShots);
   const minutesLeft = useMinutesLeft(grant.expiresAt);
   const remaining = PHONE_FACES.filter((f) => f.required && !shots[f.face]).map((f) => f.face);
   const guide = PHONE_FACES.find((f) => f.face === active);
@@ -88,7 +102,7 @@ export function CapturePage({ grant }: { grant: CaptureGrant }) {
           <ol className="faces">
             {PHONE_FACES.map((f) => (
               <li key={f.face}>
-                <button type="button" className="face" onClick={() => setActive(f.face)}>
+                <button type="button" className="face" disabled={submitting} onClick={() => setActive(f.face)}>
                   <span>
                     {CAPTURE_FACE_LABEL[f.face]}
                     {!f.required && " (선택)"}
@@ -108,6 +122,7 @@ export function CapturePage({ grant }: { grant: CaptureGrant }) {
             shots={shots}
             remaining={remaining}
             onMissing={forget}
+            onBusyChange={setSubmitting}
             onDone={() => {
               captureTokenStore.clear();
               setDone(true);
