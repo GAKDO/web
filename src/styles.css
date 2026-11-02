@@ -1,0 +1,19 @@
+/* 375px(폰)과 1280px 둘 다 가로 스크롤 없이 쓰는 기본 화면 */
+:root {
+  --gap: 12px;
+  --border: #d0d4da;
+  --danger: #b42318;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+.page { max-width: 1200px; margin: 0 auto; padding: 16px; }
+.login { max-width: 420px; }
+.admin-header { display: flex; flex-wrap: wrap; gap: var(--gap); align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--border); }
+.admin-header nav { display: flex; gap: var(--gap); flex: 1; }
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: var(--gap); }
+.field input, .field select { padding: 10px; font-size: 16px; border: 1px solid var(--border); border-radius: 6px; width: 100%; }
+.field-error, .error-banner { color: var(--danger); }
+.error-banner { display: flex; gap: var(--gap); align-items: center; padding: 8px; border: 1px solid var(--danger); border-radius: 6px; margin-bottom: var(--gap); }
+button { min-height: 44px; padding: 0 16px; font-size: 16px; }
