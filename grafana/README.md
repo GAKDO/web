@@ -23,6 +23,8 @@ docker compose up -d
 - 관리: http://localhost:3000/login 에서 `admin` + `.env`의 비밀번호
 - 끄기: `docker compose down` (설정 볼륨은 남는다. 지우려면 `down -v`)
 - `.env`를 바꿨다면 `docker compose up -d --force-recreate`
+- 3000번 포트를 이미 다른 프로그램이 쓰면 `.env`에 `GRAFANA_PORT=3001`을 넣고 주소의 포트도 바꾼다
+- Connections → Data sources에 trace-pilot이 없으면 `docker compose restart grafana` 뒤 다시 본다
 
 먼저 이 컴퓨터에서 http://influx.java21.net 이 열리는지 확인합니다. 열리지 않으면 패널에 오류가 납니다.
 

@@ -20,6 +20,8 @@ services:
       GF_AUTH_ANONYMOUS_HIDE_VERSION: "true"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      # 처음 켤 때 데이터 소스 저장과 다른 초기화가 겹쳐 sqlite가 잠기는 일을 막는다(WAL 모드)
+      GF_DATABASE_WAL: "true"
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/trace/pilot-trend.dashboard.json
       # provisioning/datasources/trace-pilot.yaml이 읽는다
       INFLUX_URL: ${INFLUX_URL:-http://influx.java21.net}
@@ -27,7 +29,8 @@ services:
       INFLUX_BUCKET: ${INFLUX_BUCKET:-trace-pilot}
       INFLUX_READ_TOKEN: ${INFLUX_READ_TOKEN:?.env에 INFLUX_READ_TOKEN(trace-pilot 읽기 토큰)을 넣으세요}
     volumes:
-      - ./provisioning:/etc/grafana/provisioning:ro
+      - ./provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./pilot-trend.dashboard.json:/etc/grafana/dashboards/trace/pilot-trend.dashboard.json:ro
       - grafana-data:/var/lib/grafana
 volumes:
