@@ -54,3 +54,13 @@ button { min-height: 44px; padding: 0 16px; font-size: 16px; }
 .muted { color: #555; }
 .warn { color: #b54708; font-weight: 600; }
 .notice { display: grid; gap: 8px; justify-items: start; padding: 12px; border: 1px solid var(--border); border-radius: 8px; }
+.compare { display: grid; gap: var(--gap); grid-template-columns: 1fr; }
+.compare-col { border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.compare-col h3 { margin: 0 0 8px; }
+.compare-col dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; }
+.compare-col dt { color: #555; }
+.compare-col dd { margin: 0; }
+.crops { display: flex; gap: 4px; margin-top: 4px; }
+.crops img { border-radius: 4px; border: 1px solid var(--border); }
+.flags { margin: 0; padding-left: 16px; }
+@media (min-width: 768px) { .compare { grid-template-columns: repeat(3, 1fr); } }

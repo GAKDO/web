@@ -6,6 +6,7 @@ import { CHAIN_STATUS_LABEL, CHECKPOINT_TYPE_LABEL } from "../../../shared/codes
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { useDeviceModel, useTimeline } from "../api/report";
 import { CHECKPOINT_ORDER } from "../model/timeline";
+import { CompareTable } from "./CompareTable";
 
 function formatDateTime(iso: string | null): string {
   return iso ? new Date(iso).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" }) : "";
@@ -93,6 +94,7 @@ export function ReportPage() {
           <CheckpointCard key={type} type={type} checkpoint={data.checkpoints.find((c) => c.type === type)} />
         ))}
       </ol>
+      <CompareTable checkpoints={data.checkpoints} />
     </main>
   );
 }

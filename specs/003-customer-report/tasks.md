@@ -32,9 +32,9 @@
 
 ## Phase 4: US4 비교표 (P1) — PR ②
 
-- [ ] T012 [P] [US4] 단위 테스트 + `model/compare.ts`(등급·신규 흠집·배터리 %·차이 %p·사이클·SSD 사유·플래그 문장)
-- [ ] T013 [US4] 테스트: 두 시점 비교, 플래그 문장, 읽지 못함 + 사유, 크롭 썸네일 (`Compare.test.tsx`)
-- [ ] T014 [US4] `CompareTable`(1280 표, 375 카드)
+- [x] T012 [P] [US4] 단위 테스트 + `model/compare.ts`(등급·신규 흠집·배터리 %·차이 %p·사이클·SSD 사유·플래그 문장)
+- [x] T013 [US4] 테스트: 두 시점 비교, 플래그 문장, 읽지 못함 + 사유, 크롭 썸네일 (`Compare.test.tsx`)
+- [x] T014 [US4] `CompareTable`(1280 표, 375 카드)
 
 ## Phase 5: US2·US3 3D 트윈·핀·슬라이더 (P1) — PR ③
 
