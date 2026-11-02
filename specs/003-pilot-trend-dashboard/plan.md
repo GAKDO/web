@@ -23,5 +23,5 @@ src/shared/auth/RequireAdmin.tsx        # 관리 메뉴에 링크
 
 ## 배포 메모
 
-- Grafana: Dashboards → New → Import → JSON 붙여 넣기 → 데이터 소스로 `trace-pilot` Flux 소스 선택. uid가 `trace-pilot-trend`로 고정되어 주소는 `<grafana>/d/trace-pilot-trend`.
+- Grafana: `trace` 폴더에서 Dashboards → New → Import → JSON 붙여 넣기 → 데이터 소스로 `trace-pilot` Flux 소스 선택. 그다음 "기기 별칭표" 패널 → deviceId 열 → Value mappings에 deviceId → 별칭을 넣는다. uid가 `trace-pilot-trend`로 고정되어 주소는 `<grafana>/d/trace-pilot-trend`.
 - 웹 이미지 빌드(deploy.yml)는 레포 변수 `PILOT_DASHBOARD_URL`을 `VITE_PILOT_DASHBOARD_URL` build-arg로 넘긴다. 변수가 비면 메뉴가 숨겨질 뿐 다른 화면은 그대로다.
