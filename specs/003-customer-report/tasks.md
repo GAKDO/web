@@ -32,19 +32,19 @@
 
 ## Phase 4: US4 비교표 (P1) — PR ②
 
-- [ ] T012 [P] [US4] 단위 테스트 + `model/compare.ts`(등급·신규 흠집·배터리 %·차이 %p·사이클·SSD 사유·플래그 문장)
-- [ ] T013 [US4] 테스트: 두 시점 비교, 플래그 문장, 읽지 못함 + 사유, 크롭 썸네일 (`Compare.test.tsx`)
-- [ ] T014 [US4] `CompareTable`(1280 표, 375 카드)
+- [x] T012 [P] [US4] 단위 테스트 + `model/compare.ts`(등급·신규 흠집·배터리 %·차이 %p·사이클·SSD 사유·플래그 문장)
+- [x] T013 [US4] 테스트: 두 시점 비교, 플래그 문장, 읽지 못함 + 사유, 크롭 썸네일 (`Compare.test.tsx`)
+- [x] T014 [US4] `CompareTable`(1280 표, 375 카드)
 
 ## Phase 5: US2·US3 3D 트윈·핀·슬라이더 (P1) — PR ③
 
-- [ ] T015 [P] [US3] 단위 테스트 + `model/timeline.ts`(슬라이더에 올릴 시점 = 봉인된 시점, 고른 시점의 핀·신규 구분)
+- [x] T015 [P] [US3] 단위 테스트 + `model/timeline.ts`(슬라이더에 올릴 시점 = 봉인된 시점, 고른 시점의 핀·신규 구분)
 - [ ] T016 [P] [US2] 단위 테스트 + `model/pins.ts`(면 → 상자 면 대응, 핀 px → 3D 위치, 범위 밖 핀 버림)
-- [ ] T017 [US3] 테스트(대체 화면 기준): 슬라이더 출고 → 수령에 신규 핀 1개 "신규" 표시, 되돌리면 사라짐, 핀 누르면 크롭·종류·면·크기, 검사 중 시점은 "검사 중", 화살표 키 (`Twin.test.tsx`)
+- [x] T017 [US3] 테스트(대체 화면 기준): 슬라이더 출고 → 수령에 신규 핀 1개 "신규" 표시, 되돌리면 사라짐, 핀 누르면 크롭·종류·면·크기, 검사 중 시점은 "검사 중", 화살표 키 (`Twin.test.tsx`)
 - [ ] T018 [US2] 테스트: 사진 없는 면 "사진 없음", WebGL 없으면 대체 화면, 사진 주소 만료 전 다시 받기
-- [ ] T019 [US3] `CheckpointSlider`, `PinDetail`, `TwinFallback`
+- [x] T019 [US3] `CheckpointSlider`, `PinDetail`, `TwinFallback`
 - [ ] T020 [US2] `TwinViewer`(lazy, R3F 캔버스, 상자 두 개 110°, 텍스처, OrbitControls, 처음 보기, 핀 메시 + 누르기)
-- [ ] T021 [US2] `useCheckpointMedia` 만료 1분 전 새로 받기
+- [x] T021 [US2] `useCheckpointMedia` 만료 1분 전 새로 받기
 
 ## Phase 6: US5 검사 진행률 (P2) — PR ④
 

@@ -54,6 +54,36 @@ button { min-height: 44px; padding: 0 16px; font-size: 16px; }
 .muted { color: #555; }
 .warn { color: #b54708; font-weight: 600; }
 .notice { display: grid; gap: 8px; justify-items: start; padding: 12px; border: 1px solid var(--border); border-radius: 8px; }
+.compare { display: grid; gap: var(--gap); grid-template-columns: 1fr; }
+.compare-col { border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.compare-col h3 { margin: 0 0 8px; }
+.compare-col dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; }
+.compare-col dt { color: #555; }
+.compare-col dd { margin: 0; }
+.compare-col dd.full { grid-column: 1 / -1; }
+.crops { display: flex; gap: 4px; margin-top: 4px; }
+.crops img { border-radius: 4px; border: 1px solid var(--border); }
+.flags { margin: 0; padding-left: 16px; }
+@media (min-width: 768px) { .compare { grid-template-columns: repeat(3, 1fr); } }
+.twin-body { display: grid; gap: var(--gap); }
+.slider input { width: 100%; }
+.slider-ticks { display: flex; justify-content: space-between; list-style: none; padding: 0; margin: 0; color: #555; }
+.slider-ticks .on { color: inherit; font-weight: 700; }
+.pin-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.pin-button { width: 100%; text-align: left; border: 2px solid #2563eb; border-radius: 6px; background: #fff; display: flex; gap: 8px; align-items: center; }
+.pin-button.pin-new { border-color: #f97316; background: #fff4ec; }
+.pin-tag { background: #c2410c; color: #fff; padding: 0 6px; border-radius: 999px; }
+.pin-detail { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 8px; display: grid; gap: 8px; }
+.pin-detail dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; }
+.pin-detail dd { margin: 0; }
+.face-grid { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.face-grid li { display: grid; gap: 4px; }
+.face-grid img { width: 100%; height: auto; border: 1px solid var(--border); border-radius: 4px; }
+.no-photo { display: grid; place-items: center; min-height: 60px; background: #e5e7eb; color: #555; border-radius: 4px; }
+@media (min-width: 768px) {
+  .twin-body { grid-template-columns: 2fr 1fr; }
+  .face-grid { grid-template-columns: repeat(4, 1fr); }
+}
 /* WE2 폰 수령 촬영 */
 .capture { max-width: 560px; }
 .capture .notice { background: #fff4d6; }

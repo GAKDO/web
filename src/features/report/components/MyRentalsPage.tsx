@@ -3,6 +3,7 @@ import type { RentalSummary } from "../../../shared/api/types";
 import { ApiError } from "../../../shared/api/client";
 import { messageFor } from "../../../shared/api/errorMessages";
 import { CHECKPOINT_TYPE_LABEL, RENTAL_STATUS_LABEL } from "../../../shared/codes/labels";
+import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { useDeviceModel, useMyRentals, useTimeline } from "../api/report";
 import { orderedCheckpoints } from "../model/timeline";
@@ -34,6 +35,7 @@ function RentalCard({ rental }: { rental: RentalSummary }) {
 /** 고객의 내 렌탈 목록(FR-USR-03). 서버가 고객에게는 자기 렌탈만 준다 */
 export function MyRentalsPage() {
   const rentals = useMyRentals();
+  const items = rentals.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <main className="page narrow">
       <h1>내 렌탈</h1>
@@ -41,13 +43,18 @@ export function MyRentalsPage() {
       {rentals.isError && (
         <ErrorBanner
           message={rentals.error instanceof ApiError ? messageFor(rentals.error) : "목록을 불러오지 못했습니다."}
-          onRetry={() => void rentals.refetch()}
+          onRetry={() => void (rentals.isFetchNextPageError ? rentals.fetchNextPage() : rentals.refetch())}
         />
       )}
-      {rentals.data?.items.length === 0 && <p>아직 렌탈 기록이 없습니다.</p>}
+      {rentals.isSuccess && items.length === 0 && <p>아직 렌탈 기록이 없습니다.</p>}
       <ul className="cards">
-        {rentals.data?.items.map((rental) => <RentalCard key={rental.rentalId} rental={rental} />)}
+        {items.map((rental) => <RentalCard key={rental.rentalId} rental={rental} />)}
       </ul>
+      {rentals.hasNextPage && (
+        <Button busy={rentals.isFetchingNextPage} disabled={rentals.isFetching} onClick={() => void rentals.fetchNextPage()}>
+          더 보기
+        </Button>
+      )}
     </main>
   );
 }
