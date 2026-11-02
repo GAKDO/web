@@ -4,13 +4,21 @@
 # deviceId는 publicId 형식(21자)을 흉내 낸 가짜 값이다. 실제 기기·사람 정보는 넣지 않는다.
 set -euo pipefail
 
+devices=(pilotDemoDevice00001A pilotDemoDevice00002B pilotDemoDevice00003C)
+
+# 다시 돌려도 점이 쌓이지 않게, 이 스크립트가 넣은 가짜 기기의 점만 먼저 지운다
+for dev in "${devices[@]}"; do
+  influx delete --host "$INFLUX_HOST" --org "$INFLUX_ORG" --token "$INFLUX_TOKEN" --bucket trace-pilot \
+    --start 1970-01-01T00:00:00Z --stop 2100-01-01T00:00:00Z --predicate "deviceId=\"$dev\""
+done
+
 now=${SEED_NOW:-$(date +%s)}
 day=86400
 lines=""
 add() { lines+="$1"$'\n'; }
 
 i=0
-for dev in pilotDemoDevice00001A pilotDemoDevice00002B pilotDemoDevice00003C; do
+for dev in "${devices[@]}"; do
   i=$((i + 1))
   k=0
   for cp in OUT RCV RET; do
