@@ -30,6 +30,21 @@ docker compose up -d
 학교 밖 망에서는 학교 방화벽 차단 안내 HTML이 돌아오고, Grafana는 "Client.Timeout exceeded"로 실패합니다(11/2 확인).
 학교망에서는 `.env`에 `INFLUX_URL=http://10.116.64.13:8086`(내부 주소)을 넣고 `docker compose up -d --force-recreate`로 다시 띄웁니다.
 
+## 학교 InfluxDB에 닿지 않을 때: 로컬 InfluxDB + 가짜 측정값
+
+학교 InfluxDB는 11/2 기준 노트북에서 닿지 않습니다(학교 밖·학교 와이파이 모두 차단). 그동안은 로컬 InfluxDB로 대시보드를 만들고 확인합니다.
+
+```bash
+# .env에 LOCAL_INFLUX_TOKEN=아무 긴 문자열 을 추가한 뒤
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+```
+
+- 버킷 `trace-pilot`, 조직 `trace-local`인 InfluxDB 2.7이 같이 뜨고, `influx-seed`가 가짜 기기 3대의 측정값(최근 30일, 출고·수령·반납)을 넣습니다.
+- 이름은 contracts `diagnostics/influx.md` 그대로라 대시보드 쿼리를 바꿀 필요가 없습니다.
+- 가짜 값을 다시 넣기: `docker compose -f docker-compose.yml -f docker-compose.local.yml run --rm influx-seed`
+- 로컬 InfluxDB 화면: http://localhost:8086 (아이디 `trace`, 비밀번호는 `.env`의 `GRAFANA_ADMIN_PASSWORD`)
+- 실제 서버로 돌아가기: `docker compose -f docker-compose.yml -f docker-compose.local.yml down` 뒤 `docker compose up -d --force-recreate`. 그때는 `.env`의 `INFLUX_URL`·`INFLUX_ORG`·`INFLUX_READ_TOKEN`을 씁니다.
+
 ## G1 로컬 Compose 폴백에 넣을 때
 
 gitops `compose/docker-compose.yml`에 같은 `grafana` 서비스를 붙여 넣고, 볼륨 경로를 이 폴더(`../web/grafana/...`)로 바꿉니다. 값은 그쪽 `.env`에 같은 이름으로 넣습니다.

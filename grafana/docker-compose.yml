@@ -23,11 +23,12 @@ services:
       # 처음 켤 때 데이터 소스 저장과 다른 초기화가 겹쳐 sqlite가 잠기는 일을 막는다(WAL 모드)
       GF_DATABASE_WAL: "true"
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/trace/pilot-trend.dashboard.json
-      # provisioning/datasources/trace-pilot.yaml이 읽는다
+      # provisioning/datasources/trace-pilot.yaml이 읽는다. 학교 서버로 붙을 땐 .env에 INFLUX_ORG·INFLUX_READ_TOKEN이 꼭 있어야 한다
+      # (비어 있으면 데이터 소스 Test가 실패한다). 로컬 InfluxDB(docker-compose.local.yml)를 쓸 땐 비워 둬도 된다
       INFLUX_URL: ${INFLUX_URL:-http://influx.java21.net}
-      INFLUX_ORG: ${INFLUX_ORG:?.env에 INFLUX_ORG(InfluxDB 조직 이름)를 넣으세요}
+      INFLUX_ORG: ${INFLUX_ORG:-}
       INFLUX_BUCKET: ${INFLUX_BUCKET:-trace-pilot}
-      INFLUX_READ_TOKEN: ${INFLUX_READ_TOKEN:?.env에 INFLUX_READ_TOKEN(trace-pilot 읽기 토큰)을 넣으세요}
+      INFLUX_READ_TOKEN: ${INFLUX_READ_TOKEN:-}
     volumes:
       - ./provisioning/datasources:/etc/grafana/provisioning/datasources:ro
       - ./provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
