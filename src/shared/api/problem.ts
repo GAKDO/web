@@ -1,4 +1,4 @@
-import type { ErrorCode } from "./types";
+import type { CaptureFace, ErrorCode } from "./types";
 
 /** 화면이 다루는 오류 하나. status 0은 서버에 닿지 못한 경우 */
 export class ApiError extends Error {
@@ -6,6 +6,8 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: ErrorCode | null,
     readonly detail: string | null,
+    /** 409 CAPTURE_FACES_MISSING일 때 빠진 면 */
+    readonly missingFaces: CaptureFace[] = [],
   ) {
     super(code ?? `HTTP ${status}`);
     this.name = "ApiError";
@@ -21,7 +23,8 @@ export function toApiError(status: number, body: unknown): ApiError {
   if (!isRecord(body)) return new ApiError(status, null, null);
   const code = typeof body.code === "string" ? (body.code as ErrorCode) : null;
   const detail = typeof body.detail === "string" ? body.detail : null;
-  return new ApiError(status, code, detail);
+  const missingFaces = Array.isArray(body.missingFaces) ? (body.missingFaces as CaptureFace[]) : [];
+  return new ApiError(status, code, detail, missingFaces);
 }
 
 export function networkError(): ApiError {
