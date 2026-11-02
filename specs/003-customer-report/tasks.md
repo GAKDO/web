@@ -12,23 +12,23 @@
 
 ## Phase 1: Setup — PR ①
 
-- [ ] T001 `scripts/sync-contracts.sh`·`gen:api`에 `report-server.yaml`·`diagnostics-server.yaml`(+ `diagnostics/result.schema.json` 참조) 더하기, contracts `fd35e33` 사본, `src/shared/api/generated/{report,diagnostics}.ts` 생성
-- [ ] T002 `src/shared/api/types.ts`에 별칭 덧붙임: `RentalTimeline`, `TimelineCheckpoint`, `Pin`, `ProgressEvent`, `DoneEvent`, `CheckpointDiagnostics`, `InspectionFlag`, `Inspection`, `Defect`, `CheckpointMedia`, `MeResponse`, 코드 enum(`InspectionGrade`, `InspectionDefectClass`, `DiagnosticsFlagKind`, `ReportProgressStage`, `ReportChainStatus`, `CaptureFace`)
+- [x] T001 `scripts/sync-contracts.sh`·`gen:api`에 `report-server.yaml`·`diagnostics-server.yaml`(+ `diagnostics/result.schema.json` 참조) 더하기, contracts `fd35e33` 사본, `src/shared/api/generated/{report,diagnostics}.ts` 생성
+- [x] T002 `src/shared/api/types.ts`에 별칭 덧붙임: `RentalTimeline`, `TimelineCheckpoint`, `Pin`, `ProgressEvent`, `DoneEvent`, `CheckpointDiagnostics`, `InspectionFlag`, `Inspection`, `Defect`, `CheckpointMedia`, `MeResponse`, 코드 enum(`InspectionGrade`, `InspectionDefectClass`, `DiagnosticsFlagKind`, `ReportProgressStage`, `ReportChainStatus`, `CaptureFace`)
 - [ ] T003 [P] `src/shared/codes/labels.ts`에 이름표 덧붙임(흠집 종류, 플래그 문장, 진행 단계, 체인 상태, 면)
 - [ ] T004 [P] 의존성: `three`, `@react-three/fiber@8`, `@react-three/drei@9`, `@microsoft/fetch-event-source@2`
 
 ## Phase 2: Foundational — PR ①
 
-- [ ] T005 목 데이터 `src/shared/mocks/report.ts`: 고객 렌탈 2개(시점·핀·검사·진단·텍스처 SVG data URL), `resetDb`에 묶기
-- [ ] T006 [P] 목 핸들러 `handlers/report.ts`(타임라인, 본인 아니면 403 OUT_OF_SCOPE), `handlers/capture-report.ts`(inspection·media), `handlers/diagnostics.ts`(checkpoints), `handlers/rental.ts`의 GET 두 개를 고객 본인 것으로 열기, `GET /device-models/{modelCode}` 고객 허용
-- [ ] T007 `src/features/report/api/report.ts` 쿼리 훅(useMyRentals, useTimeline, useInspection, useCheckpointMedia, useDiagnostics, useDeviceModel)
-- [ ] T008 `renderAsCustomer(path)` 테스트 도우미 (`src/test/renderApp.tsx`)
+- [x] T005 목 데이터 `src/shared/mocks/report.ts`: 고객 렌탈 2개(시점·핀·검사·진단·텍스처 SVG data URL), `resetDb`에 묶기
+- [x] T006 [P] 목 핸들러 `handlers/report.ts`(타임라인, 본인 아니면 403 OUT_OF_SCOPE), `handlers/capture-report.ts`(inspection·media), `handlers/diagnostics.ts`(checkpoints), `handlers/rental.ts`의 GET 두 개를 고객 본인 것으로 열기, `GET /device-models/{modelCode}` 고객 허용
+- [x] T007 `src/features/report/api/report.ts` 쿼리 훅(useMyRentals, useTimeline, useInspection, useCheckpointMedia, useDiagnostics, useDeviceModel)
+- [x] T008 `renderAsCustomer(path)` 테스트 도우미 (`src/test/renderApp.tsx`)
 
 ## Phase 3: US1 내 렌탈 목록·리포트 틀 (P1) — PR ①
 
-- [ ] T009 [US1] 테스트: 목록 2개/없음, 리포트 세 시점 카드·"아직 진행 전", 403 문장 + 목록 버튼, 404 문장, 체인 경고 (`src/features/report/MyRentals.test.tsx`, `Report.test.tsx`)
-- [ ] T010 [US1] `MyRentalsPage`, `ReportPage`(시점 카드·체인 경고·검증 링크·오류), 라우트 `/my/rentals`, `/my/rentals/:rentalId`
-- [ ] T011 [US1] 관리자 렌탈 상세에 "리포트 보기" 링크 (`RentalDetailPage.tsx`)
+- [x] T009 [US1] 테스트: 목록 2개/없음, 리포트 세 시점 카드·"아직 진행 전", 403 문장 + 목록 버튼, 404 문장, 체인 경고 (`src/features/report/MyRentals.test.tsx`, `Report.test.tsx`)
+- [x] T010 [US1] `MyRentalsPage`, `ReportPage`(시점 카드·체인 경고·검증 링크·오류), 라우트 `/my/rentals`, `/my/rentals/:rentalId`
+- [x] T011 [US1] 관리자 렌탈 상세에 "리포트 보기" 링크 (`RentalDetailPage.tsx`)
 
 ## Phase 4: US4 비교표 (P1) — PR ②
 
