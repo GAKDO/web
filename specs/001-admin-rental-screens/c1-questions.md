@@ -6,7 +6,7 @@ C1(contracts PR #1)이 머지됐습니다. 아래는 WE1 화면이 정했거나 
 
 1. **렌탈 종료 조건** — C1 `closeRental`: 반납(RET) 시점이 봉인(SEALED)된 렌탈만, 아니면 409 `RENTAL_NOT_CLOSABLE`. 화면은 처음에 GRADED 이후로 정했다가 계약대로 SEALED로 바꿨습니다.
 
-## 아직 열린 것 (A에게)
+## 아직 열린 것 (A에게, 2·4·5·6번은 11/2 A에게 전달함)
 
 2. **폐기 되돌리기:** 화면은 RETIRED → MAINTENANCE만 허용합니다(RETIRED → ACTIVE 없음). `PATCH /devices/{deviceId}`가 RETIRED → ACTIVE를 거절하나요? 거절한다면 오류 `code`가 필요합니다(지금 `error_code`에 없음). 되돌릴 때 `retiredAt`은 비워지는데, 폐기했던 이력은 어디에 남나요?
 3. **ID 형식:** OpenAPI의 `Uuid`(rental-server 12곳 등)를 헌법 1.1.0의 publicId(NanoID 21자)로 언제 바꾸나요? 바뀐 뒤에 화면의 API 타입을 다시 만듭니다.
