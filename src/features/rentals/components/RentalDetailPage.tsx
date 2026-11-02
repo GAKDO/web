@@ -10,6 +10,7 @@ import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { useCloseRental, useRental, useStartCheckpoint } from "../api/rentals";
 import { nextAction } from "../nextAction";
 import { CaptureLinkPanel } from "./CaptureLinkPanel";
+import { PairingCodePanel } from "./PairingCodePanel";
 import { formatDate } from "./RentalListPage";
 
 const STEPS: CheckpointType[] = ["OUT", "RCV", "RET"];
@@ -42,6 +43,8 @@ function CheckpointSteps({ rental, onError }: { rental: Rental; onError: (messag
                 {type === "RCV" && checkpoint.status === "OPEN" && (
                   <CaptureLinkPanel rentalId={rental.rentalId} checkpointId={checkpoint.checkpointId} />
                 )}
+                {/* 진단 에이전트는 시점마다 붙는다. 봉인 전(OPEN)에만 코드를 만든다 */}
+                {checkpoint.status === "OPEN" && <PairingCodePanel rentalId={rental.rentalId} checkpointId={checkpoint.checkpointId} />}
               </>
             ) : (
               <>

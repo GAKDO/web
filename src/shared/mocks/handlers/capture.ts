@@ -51,6 +51,16 @@ export const captureHandlers = [
     };
     return HttpResponse.json(body, { status: 201 });
   }),
+  // auth-server: 진단 에이전트 페어링 코드(관리자). 목은 발급만 흉내 낸다
+  http.post("*/api/v1/auth/pairing-codes", async ({ request }) => {
+    const account = accountFromRequest(request);
+    if (!account) return problem(401, "UNAUTHENTICATED", "로그인이 필요합니다");
+    if (account.role !== "ADMIN") return problem(403, "FORBIDDEN", "권한이 없습니다");
+    const { rentalId, checkpointId } = (await request.json()) as { rentalId: string; checkpointId: string };
+    const code = String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
+    captureDb.pairings.push({ code, rentalId, checkpointId });
+    return HttpResponse.json({ code, expiresAt: new Date(Date.now() + 5 * 60_000).toISOString() }, { status: 201 });
+  }),
   http.post("*/api/v1/auth/capture-links/exchange", async ({ request }) => {
     const account = accountFromRequest(request);
     if (!account) return problem(401, "UNAUTHENTICATED", "로그인이 필요합니다");
