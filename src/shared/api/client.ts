@@ -12,34 +12,44 @@ const REFRESH_PATH = "/api/v1/auth/refresh";
 const NO_RETRY_PATHS = [REFRESH_PATH, "/api/v1/auth/login"];
 
 let onSessionExpired: () => void = () => {};
-let refreshing: Promise<boolean> | null = null;
+let refreshing: Promise<RefreshOutcome> | null = null;
 
 /** 다시 받기까지 실패해 세션이 끝났을 때 부를 함수(AuthProvider가 정함) */
 export function setSessionExpiredHandler(handler: () => void): void {
   onSessionExpired = handler;
 }
 
-/** 리프레시 쿠키로 액세스 토큰을 다시 받는다. 동시에 불려도 요청은 한 번만 간다 */
-export function refreshSession(): Promise<boolean> {
-  refreshing ??= (async () => {
+/** ok = 새 토큰, rejected = 서버가 리프레시를 거절(세션 끝), transient = 네트워크 오류·5xx(세션은 그대로) */
+export type RefreshOutcome = "ok" | "rejected" | "transient";
+
+/** 리프레시 쿠키로 액세스 토큰을 다시 받고 결과를 나눠 알려 준다. 동시에 불려도 요청은 한 번만 간다 */
+export function refreshSessionOutcome(): Promise<RefreshOutcome> {
+  refreshing ??= (async (): Promise<RefreshOutcome> => {
     const startedAt = tokenStore.epoch();
+    // 기다리는 동안 로그인·로그아웃이 있었다면 그 결과를 지키고, 이 응답은 버린다
+    const changed = (): RefreshOutcome => (tokenStore.get() !== null ? "ok" : "rejected");
     try {
       const response = await fetch(`${BASE}${REFRESH_PATH}`, { method: "POST", credentials: "include" });
-      // 기다리는 동안 로그인·로그아웃이 있었다면 그 결과를 지키고, 이 응답은 버린다
-      if (tokenStore.epoch() !== startedAt) return tokenStore.get() !== null;
-      if (!response.ok) return false;
+      if (tokenStore.epoch() !== startedAt) return changed();
+      if (!response.ok) return response.status >= 500 ? "transient" : "rejected";
       const token = (await response.json()) as TokenResponse;
-      if (tokenStore.epoch() !== startedAt) return tokenStore.get() !== null;
+      if (tokenStore.epoch() !== startedAt) return changed();
       tokenStore.set(token);
-      return true;
+      return "ok";
     } catch {
       // 기다리는 동안 새로 로그인했다면 이전 요청의 실패를 새 세션에 옮기지 않는다
-      return tokenStore.epoch() !== startedAt && tokenStore.get() !== null;
+      if (tokenStore.epoch() !== startedAt) return changed();
+      return "transient";
     } finally {
       refreshing = null;
     }
   })();
   return refreshing;
+}
+
+/** 리프레시 쿠키로 액세스 토큰을 다시 받는다. 새 토큰을 받았을 때만 true */
+export async function refreshSession(): Promise<boolean> {
+  return (await refreshSessionOutcome()) === "ok";
 }
 
 function withToken(request: Request): Request {

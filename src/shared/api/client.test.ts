@@ -1,5 +1,5 @@
-import { http } from "msw";
-import { api, refreshSession, setSessionExpiredHandler, unwrap } from "./client";
+import { http, HttpResponse } from "msw";
+import { api, refreshSession, refreshSessionOutcome, setSessionExpiredHandler, unwrap } from "./client";
 import { ApiError } from "./problem";
 import { tokenStore } from "../auth/tokenStore";
 import { server } from "../mocks/node";
@@ -81,4 +81,13 @@ test("토큰 다시 받기가 네트워크 오류로 끝나도, 그사이 새로
   release();
   expect(await pending).toBe(true);
   expect(tokenStore.get()?.accessToken).toBe("new-account");
+});
+
+test("리프레시가 네트워크 오류·5xx면 transient, 거절이면 rejected로 나눈다", async () => {
+  server.use(http.post("*/api/v1/auth/refresh", () => HttpResponse.error()));
+  expect(await refreshSessionOutcome()).toBe("transient");
+  server.use(http.post("*/api/v1/auth/refresh", () => new HttpResponse(null, { status: 503 })));
+  expect(await refreshSessionOutcome()).toBe("transient");
+  server.use(http.post("*/api/v1/auth/refresh", () => new HttpResponse(null, { status: 401 })));
+  expect(await refreshSessionOutcome()).toBe("rejected");
 });

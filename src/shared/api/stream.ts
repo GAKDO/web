@@ -1,11 +1,11 @@
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { tokenStore } from "../auth/tokenStore";
-import { BASE, expireSession, refreshSession } from "./client";
+import { BASE, expireSession, refreshSessionOutcome } from "./client";
 import type { DoneEvent, ProgressEvent } from "./types";
 
 // 검사 진행률 SSE(FR-RPT-04). 계약대로 Authorization 헤더가 필요해 fetch 기반으로 붙는다.
 // 끊기거나 5xx·408·429면 스스로 다시 붙고, 401이면 토큰을 한 번 다시 받은 뒤 붙는다.
-// 다시 받지 못했거나 연달아 401이면 세션 만료로 처리하고, 그 밖의 4xx(403·404 등)는 다시 붙지 않는다.
+// 리프레시가 거절됐거나 연달아 401이면 세션 만료로 처리하고(네트워크 오류면 세션을 두고 다시 붙음), 그 밖의 4xx(403·404 등)는 다시 붙지 않는다.
 
 export interface ProgressHandlers {
   onProgress(event: ProgressEvent): void;
@@ -39,9 +39,11 @@ export function openProgressStream(rentalId: string, handlers: ProgressHandlers,
       if (response.status === 401) {
         // 화면을 떠난 스트림은 전역 세션을 건드리지 않는다
         if (signal.aborted) return;
-        const ok = !refreshed && (await refreshSession());
+        const outcome = refreshed ? "rejected" : await refreshSessionOutcome();
         if (signal.aborted) return;
-        if (!ok) {
+        // 네트워크 오류·5xx로 다시 받지 못했으면 세션을 지키고 잠시 뒤 다시 붙는다
+        if (outcome === "transient") throw new Retry("refresh unavailable");
+        if (outcome === "rejected") {
           expireSession();
           throw new StreamFatal("401");
         }

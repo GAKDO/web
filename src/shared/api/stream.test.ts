@@ -92,3 +92,24 @@ test("붙을 때마다(첫 연결과 끊긴 뒤 다시 붙을 때) onConnected�
   await vi.waitFor(() => expect(h.onConnected).toHaveBeenCalledTimes(2), { timeout: 4000 });
   controller.abort();
 }, 10_000);
+
+test("토큰 다시 받기가 네트워크 오류로 실패하면 세션을 두고 잠시 뒤 다시 붙는다", async () => {
+  tokenStore.set({ accessToken: "old", tokenType: "Bearer", expiresIn: 60 } as never);
+  server.use(
+    http.get("*/api/v1/reports/rentals/:rentalId/stream", () => new HttpResponse(null, { status: 401 })),
+    http.post("*/api/v1/auth/refresh", () => HttpResponse.error()),
+  );
+  const expired = vi.fn();
+  setSessionExpiredHandler(expired);
+  const seen = countStreamRequests();
+  const h = handlers();
+  const controller = new AbortController();
+  void openProgressStream("r1", h, controller.signal);
+  await vi.waitFor(() => expect(seen.count).toBeGreaterThanOrEqual(2), { timeout: 5_000 });
+  controller.abort();
+  expect(expired).not.toHaveBeenCalled();
+  expect(h.onFatal).not.toHaveBeenCalled();
+  expect(h.onReconnecting).toHaveBeenCalledWith(true);
+  expect(tokenStore.get()?.accessToken).toBe("old");
+  tokenStore.clear();
+}, 10_000);
