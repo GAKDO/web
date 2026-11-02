@@ -23,6 +23,7 @@ export type DeviceModel = RentalSchemas["DeviceModel"];
 export type DeviceModelSummary = RentalSchemas["DeviceModelSummary"];
 export type Rental = RentalSchemas["Rental"];
 export type RentalSummary = RentalSchemas["RentalSummary"];
+export type RentalCreateRequest = RentalSchemas["RentalCreateRequest"];
 export type RentalPage = RentalSchemas["RentalPage"];
 export type Checkpoint = RentalSchemas["Checkpoint"];
 

@@ -3,6 +3,7 @@ import { Navigate, type RouteObject } from "react-router-dom";
 import { LoginPage } from "./features/auth/components/LoginPage";
 import { DeviceCreatePage } from "./features/devices/components/DeviceCreatePage";
 import { DeviceListPage } from "./features/devices/components/DeviceListPage";
+import { RentalDetailPage } from "./features/rentals/components/RentalDetailPage";
 import { RequireAdmin } from "./shared/auth/RequireAdmin";
 
 function Home() {
@@ -12,10 +13,6 @@ function Home() {
       <p>노트북 렌탈 상태 기록</p>
     </main>
   );
-}
-
-function Placeholder({ title }: { title: string }) {
-  return <h1>{title}</h1>;
 }
 
 export const routes: RouteObject[] = [
@@ -28,7 +25,8 @@ export const routes: RouteObject[] = [
       { index: true, element: <Navigate to="devices" replace /> },
       { path: "devices", element: <DeviceListPage /> },
       { path: "devices/new", element: <DeviceCreatePage /> },
-      { path: "rentals", element: <Placeholder title="렌탈 목록" /> },
+      { path: "rentals", element: <h1>렌탈 목록</h1> },
+      { path: "rentals/:rentalId", element: <RentalDetailPage /> },
     ],
   },
 ];
