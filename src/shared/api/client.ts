@@ -33,7 +33,8 @@ export function refreshSession(): Promise<boolean> {
       tokenStore.set(token);
       return true;
     } catch {
-      return false;
+      // 기다리는 동안 새로 로그인했다면 이전 요청의 실패를 새 세션에 옮기지 않는다
+      return tokenStore.epoch() !== startedAt && tokenStore.get() !== null;
     } finally {
       refreshing = null;
     }

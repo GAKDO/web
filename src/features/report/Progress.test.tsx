@@ -70,3 +70,23 @@ test("진행률 연결이 거절되면(403) 다시 붙지 않고 시점 카드�
   expect(await within(step("반납")).findByText(/실시간 진행률을 받지 못했습니다/)).toBeInTheDocument();
   expect(within(step("반납")).queryByText("다시 연결 중…")).not.toBeInTheDocument();
 });
+
+test("리포트를 읽은 뒤 스트림이 붙기 전에 봉인된 시점도, done 없이 연결될 때 타임라인을 다시 읽어 봉인으로 바뀐다", async () => {
+  const rentalId = rentalIds()[0];
+  const pending = db.report.timelines.get(rentalId)?.checkpoints.find((c) => c.status !== "SEALED");
+  server.use(
+    http.get("*/api/v1/reports/rentals/:rentalId/stream", () => {
+      // 연결 직전에 봉인됐고, 서버는 이미 끝난 봉인의 done을 다시 보내지 않는다
+      if (pending) {
+        pending.status = "SEALED";
+        pending.grade = "B";
+        pending.sealedAt = new Date().toISOString();
+      }
+      return new HttpResponse(new ReadableStream<Uint8Array>(), { headers: { "Content-Type": "text/event-stream" } });
+    }),
+  );
+  renderAsCustomer(`/my/rentals/${rentalId}`);
+  await screen.findByRole("list", { name: "시점" });
+  expect(await within(step("반납")).findByText("봉인됨")).toBeInTheDocument();
+  expect(within(step("반납")).getByText("등급 B")).toBeInTheDocument();
+});

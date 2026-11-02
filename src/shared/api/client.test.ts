@@ -66,3 +66,19 @@ test("토큰 다시 받기를 기다리는 동안 다른 계정으로 로그인�
   expect(await pending).toBe(true);
   expect(tokenStore.get()?.accessToken).toBe("new-account");
 });
+
+test("토큰 다시 받기가 네트워크 오류로 끝나도, 그사이 새로 로그인했으면 새 세션을 유지한다", async () => {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.post("*/api/v1/auth/refresh", async () => {
+      await gate;
+      return Response.error();
+    }),
+  );
+  const pending = refreshSession();
+  tokenStore.set({ accessToken: "new-account", tokenType: "Bearer", expiresIn: 60, role: "ADMIN" } as never);
+  release();
+  expect(await pending).toBe(true);
+  expect(tokenStore.get()?.accessToken).toBe("new-account");
+});

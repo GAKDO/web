@@ -12,8 +12,8 @@ export interface ProgressHandlers {
   onDone(event: DoneEvent): void;
   /** true = 다시 붙는 중, false = 붙음 */
   onReconnecting(reconnecting: boolean): void;
-  /** 끊긴 뒤 다시 붙었을 때(첫 연결은 빼고). 끊긴 동안 놓친 봉인을 다시 읽는 데 쓴다 */
-  onReconnected(): void;
+  /** 붙을 때마다(첫 연결 포함). 타임라인을 읽은 뒤·끊긴 동안 놓친 봉인을 다시 읽는 데 쓴다 */
+  onConnected(): void;
   /** 다시 붙지 않고 멈췄을 때(403·404, 세션 만료 등) */
   onFatal(error: StreamFatal): void;
 }
@@ -27,7 +27,6 @@ const RETRY_MS = 2_000;
 export function openProgressStream(rentalId: string, handlers: ProgressHandlers, signal: AbortSignal): Promise<void> {
   const url = `${BASE}/api/v1/reports/rentals/${encodeURIComponent(rentalId)}/stream`;
   let refreshed = false;
-  let opened = false;
   return fetchEventSource(url, {
     signal,
     openWhenHidden: true,
@@ -54,8 +53,7 @@ export function openProgressStream(rentalId: string, handlers: ProgressHandlers,
       if (!response.ok) throw new Retry(`HTTP ${status}`);
       refreshed = false;
       handlers.onReconnecting(false);
-      if (opened) handlers.onReconnected();
-      opened = true;
+      handlers.onConnected();
     },
     onmessage(message) {
       if (!message.data) return;

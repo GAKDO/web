@@ -17,6 +17,8 @@ export function useProgress(rentalId: string, enabled: boolean): ProgressState {
   const client = useQueryClient();
   const [state, setState] = useState<ProgressState>({ byCheckpoint: {}, reconnecting: false, failed: false });
   useEffect(() => {
+    // 다른 렌탈로 바뀌거나 다시 열 때 이전 진행·실패 상태를 넘기지 않는다
+    setState({ byCheckpoint: {}, reconnecting: false, failed: false });
     if (!enabled) return;
     const controller = new AbortController();
     void openProgressStream(
@@ -25,7 +27,7 @@ export function useProgress(rentalId: string, enabled: boolean): ProgressState {
         onProgress: (event) => setState((s) => ({ ...s, byCheckpoint: { ...s.byCheckpoint, [event.checkpointId]: event } })),
         onDone: () => void client.invalidateQueries({ queryKey: REPORT }),
         onReconnecting: (reconnecting) => setState((s) => (s.reconnecting === reconnecting ? s : { ...s, reconnecting })),
-        onReconnected: () => void client.invalidateQueries({ queryKey: [...REPORT, "timeline", rentalId] }),
+        onConnected: () => void client.invalidateQueries({ queryKey: [...REPORT, "timeline", rentalId] }),
         onFatal: () => setState((s) => ({ ...s, reconnecting: false, failed: true })),
       },
       controller.signal,
