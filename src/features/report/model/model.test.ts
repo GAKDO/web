@@ -1,5 +1,6 @@
-import type { CheckpointDiagnostics, TimelineCheckpoint } from "../../../shared/api/types";
+import type { CheckpointDiagnostics, Defect, TimelineCheckpoint } from "../../../shared/api/types";
 import { compareColumn, deltaText } from "./compare";
+import { matchText } from "./match";
 import { lidInnerFace, pinPlacement, pinRatio, sideBaseShare } from "./pins";
 import { hasPendingCheckpoint, sliderCheckpoints, splitPins } from "./timeline";
 
@@ -125,5 +126,33 @@ describe("핀 위치", () => {
     expect(lidInnerFace(["SCR1", "SCR0"])).toBe("SCR0");
     expect(lidInnerFace(["SCR1"])).toBe("SCR1");
     expect(lidInnerFace(["TOP"])).toBeNull();
+  });
+});
+
+describe("matchText: 직전 시점과 비교(CA2 defect_match)", () => {
+  const pin = { defectId: "d", face: "TOP" as const, x: 1, y: 1, isNew: false };
+  const defect = (match: Defect["match"]): Defect => ({
+    defectId: "d",
+    face: "TOP",
+    class: "scratch",
+    polygon: [],
+    lengthMm: null,
+    areaMm2: null,
+    confidence: 0.9,
+    modelVersion: "m",
+    source: "AUTO",
+    match,
+  });
+  test("출고는 짝이 없어 비교하지 않는다고 보인다", () => {
+    expect(matchText("OUT", defect(null), pin)).toBe("출고는 기준 시점이라 비교하지 않음");
+  });
+  test("기존 흠집은 위치 차이(mm)를 함께 보인다", () => {
+    expect(matchText("RCV", defect({ status: "EXISTING", prevDefectId: "p", distanceMm: 0.84 }), pin)).toBe("직전 시점부터 있던 흠집 (위치 차이 0.8mm)");
+  });
+  test("신규 흠집은 핀 값과 상관없이 match를 따른다", () => {
+    expect(matchText("RET", defect({ status: "NEW", prevDefectId: null, distanceMm: null }), pin)).toBe("직전 시점에 없던 흠집");
+  });
+  test("검사 결과가 아직 없으면 핀의 isNew로 보인다", () => {
+    expect(matchText("RCV", undefined, { ...pin, isNew: true })).toBe("직전 시점에 없던 흠집");
   });
 });

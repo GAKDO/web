@@ -1,8 +1,11 @@
-import type { CheckpointMedia, Inspection, Pin } from "../../../shared/api/types";
+import type { CheckpointMedia, CheckpointType, Inspection, Pin } from "../../../shared/api/types";
 import { CAPTURE_FACE_LABEL, DEFECT_CLASS_LABEL } from "../../../shared/codes/labels";
+import { matchText } from "../model/match";
 
 interface Props {
   pin: Pin;
+  /** 지금 보고 있는 시점. 출고는 비교 대상이 없다 */
+  checkpointType: CheckpointType;
   inspection: Inspection | undefined;
   /** 검사 결과를 불러오지 못함(확인 중과 구분) */
   inspectionError?: boolean;
@@ -11,8 +14,8 @@ interface Props {
   onClose(): void;
 }
 
-/** 핀을 누르면 보이는 흠집 상세(FR-014): 크롭·종류·면·크기 */
-export function PinDetail({ pin, inspection, inspectionError = false, onRetry, media, onClose }: Props) {
+/** 핀을 누르면 보이는 흠집 상세(FR-014): 크롭·종류·면·크기, 직전 시점과 비교, 판정 규칙 버전 */
+export function PinDetail({ pin, checkpointType, inspection, inspectionError = false, onRetry, media, onClose }: Props) {
   const defect = inspection?.defects.find((d) => d.defectId === pin.defectId);
   const crop = media?.crops.find((c) => c.defectId === pin.defectId);
   return (
@@ -35,8 +38,14 @@ export function PinDetail({ pin, inspection, inspectionError = false, onRetry, m
             <dd>{defect.areaMm2}mm²</dd>
           </>
         )}
-        <dt>구분</dt>
-        <dd>{pin.isNew ? "이번 시점에 새로 생김" : "이전 시점부터 있음"}</dd>
+        <dt>직전 시점과 비교</dt>
+        <dd>{matchText(checkpointType, defect, pin)}</dd>
+        {inspection?.ruleVersion && (
+          <>
+            <dt>판정 규칙</dt>
+            <dd>{inspection.ruleVersion}</dd>
+          </>
+        )}
       </dl>
       {inspectionError && !defect && onRetry && (
         <button type="button" onClick={onRetry}>

@@ -100,6 +100,7 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
             {selected && (
               <PinDetail
                 pin={selected}
+                checkpointType={current.type}
                 inspection={inspection.data}
                 inspectionError={inspection.isError}
                 onRetry={() => void inspection.refetch()}

@@ -154,7 +154,8 @@ export function customerFixtures(customerId: string, devices: [Device, Device]):
   const ret = checkpoint("RET", "CAPTURED", "2026-11-19T10:00:00+09:00");
   add(devices[0], [out, rcv, ret], "RETURNED");
 
-  const scratch = (defectId: string, face: CaptureFace, x: number, y: number, status: "NEW" | "EXISTING") => ({
+  // match: 출고는 짝이 없어 null, 기존 흠집은 직전 시점 흠집을 가리킨다(실서버는 시점마다 defectId가 따로 생긴다)
+  const scratch = (defectId: string, face: CaptureFace, x: number, y: number, match: { status: "NEW" | "EXISTING"; prevDefectId: string | null; distanceMm: number | null } | null) => ({
     defectId,
     face,
     class: "scratch" as const,
@@ -164,15 +165,18 @@ export function customerFixtures(customerId: string, devices: [Device, Device]):
     confidence: 0.91,
     modelVersion: "yolo11s-seg-v001",
     source: "AUTO" as const,
-    match: { status, prevDefectId: null, distanceMm: null },
+    match,
   });
-  state.inspections.set(out.checkpointId, { checkpointId: out.checkpointId, grade: "A", ruleVersion: "grade-rules-v1", reasons: [], defects: [scratch(oldDefect, "BOT", 420, 300, "NEW")] });
+  state.inspections.set(out.checkpointId, { checkpointId: out.checkpointId, grade: "A", ruleVersion: "grade-rules-v1", reasons: [], defects: [scratch(oldDefect, "BOT", 420, 300, null)] });
   state.inspections.set(rcv.checkpointId, {
     checkpointId: rcv.checkpointId,
     grade: "B",
     ruleVersion: "grade-rules-v1",
     reasons: ["신규 긁힘 1개(12mm)"],
-    defects: [scratch(oldDefect, "BOT", 420, 300, "EXISTING"), scratch(newDefect, "TOP", 150.2, 85, "NEW")],
+    defects: [
+      scratch(oldDefect, "BOT", 420, 300, { status: "EXISTING", prevDefectId: oldDefect, distanceMm: 0.8 }),
+      scratch(newDefect, "TOP", 150.2, 85, { status: "NEW", prevDefectId: null, distanceMm: null }),
+    ],
   });
   state.media.set(out.checkpointId, media(out.checkpointId, BOOTH_FACES, [oldDefect], "#dfe7f2"));
   state.media.set(rcv.checkpointId, media(rcv.checkpointId, PHONE_FACES, [oldDefect, newDefect], "#e7efe1"));
