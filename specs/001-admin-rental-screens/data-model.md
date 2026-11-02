@@ -40,7 +40,7 @@ RETIRED → ACTIVE             (화면에 없음)
 
 화면이 계산하는 다음 동작 `nextAction(rental)`:
 
-앞 시점이 봉인(SEALED)된 뒤에만 다음 시점·종료를 연다(11/02 C 결정. 서버 동작은 c1-questions 11로 A 확인 중이고, 서버가 409를 주면 문장 + 다시 읽기로 처리한다).
+앞 시점이 봉인(SEALED)된 뒤에만 다음 시점·종료를 연다(11/02 C 결정, rental-server도 같은 규칙임을 A가 확인함 — c1-questions 11. 그래도 서버가 409를 주면 문장 + 다시 읽기로 처리한다).
 
 | checkpoints | 다음 동작 |
 | --- | --- |

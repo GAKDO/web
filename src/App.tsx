@@ -5,9 +5,11 @@ import { CaptureEntryPage } from "./features/capture/components/CaptureEntryPage
 import { CustomerLoginPage } from "./features/customer-auth/components/CustomerLoginPage";
 import { DeviceCreatePage } from "./features/devices/components/DeviceCreatePage";
 import { DeviceListPage } from "./features/devices/components/DeviceListPage";
+import { RentalCreatePage } from "./features/rentals/components/RentalCreatePage";
+import { RentalDetailPage } from "./features/rentals/components/RentalDetailPage";
+import { RentalListPage } from "./features/rentals/components/RentalListPage";
 import { MyRentalsPage } from "./features/report/components/MyRentalsPage";
 import { ReportPage } from "./features/report/components/ReportPage";
-import { RentalDetailPage } from "./features/rentals/components/RentalDetailPage";
 import { VerifyPage } from "./features/verify/components/VerifyPage";
 import { RequireAdmin } from "./shared/auth/RequireAdmin";
 import { RequireCustomer } from "./shared/auth/RequireCustomer";
@@ -42,7 +44,8 @@ export const routes: RouteObject[] = [
       { index: true, element: <Navigate to="devices" replace /> },
       { path: "devices", element: <DeviceListPage /> },
       { path: "devices/new", element: <DeviceCreatePage /> },
-      { path: "rentals", element: <h1>렌탈 목록</h1> },
+      { path: "rentals", element: <RentalListPage /> },
+      { path: "rentals/new", element: <RentalCreatePage /> },
       { path: "rentals/:rentalId", element: <RentalDetailPage /> },
     ],
   },

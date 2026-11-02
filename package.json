@@ -12,11 +12,14 @@
     "gen:api": "openapi-typescript contracts/openapi/auth-server.yaml -o src/shared/api/generated/auth.ts && openapi-typescript contracts/openapi/rental-server.yaml -o src/shared/api/generated/rental.ts && openapi-typescript contracts/openapi/capture-server.yaml -o src/shared/api/generated/capture.ts && openapi-typescript contracts/openapi/report-server.yaml -o src/shared/api/generated/report.ts && openapi-typescript contracts/openapi/diagnostics-server.yaml -o src/shared/api/generated/diagnostics.ts"
   },
   "dependencies": {
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
     "@tanstack/react-query": "^5.105.1",
     "openapi-fetch": "^0.17.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "6.30"
+    "react-router-dom": "6.30",
+    "three": "^0.170.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",
@@ -26,6 +29,7 @@
     "@types/node": "^22.20.5",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
+    "@types/three": "^0.170.0",
     "@vitejs/plugin-react": "^4.7.0",
     "jsdom": "^25.0.1",
     "msw": "2.15",
