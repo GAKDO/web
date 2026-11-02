@@ -67,8 +67,9 @@ export function RentalDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   if (rental.isPending) return <p>불러오는 중…</p>;
-  if (rental.isError) return <ErrorBanner message={toMessage(rental.error)} onRetry={() => void rental.refetch()} />;
+  // 이미 받은 상세가 있으면 다시 읽기(3초 폴링)가 실패해도 화면을 지우지 않는다
   const data = rental.data;
+  if (!data) return <ErrorBanner message={toMessage(rental.error)} onRetry={() => void rental.refetch()} />;
   const action = nextAction(data);
 
   return (
@@ -77,6 +78,7 @@ export function RentalDetailPage() {
       <p>
         대여자 참조 번호 {data.renterRef} · <span className="badge">{RENTAL_STATUS_LABEL[data.status]}</span> · 만든 날 {formatDate(data.createdAt)}
       </p>
+      {rental.isError && <ErrorBanner message={toMessage(rental.error)} onRetry={() => void rental.refetch()} />}
       {error && <ErrorBanner message={error} />}
       <CheckpointSteps rental={data} onError={setError} />
       {action.kind === "waitSeal" && action.type === "RET" && (

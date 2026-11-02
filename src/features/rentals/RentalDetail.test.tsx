@@ -101,3 +101,12 @@ test("화면은 종료할 수 있다고 봤지만 서버가 종료를 409로 거
   expect(await screen.findByRole("alert")).toHaveTextContent("반납 기록이 봉인되기 전에는 종료할 수 없습니다.");
   await waitFor(() => expect(screen.getByRole("button", { name: "렌탈 종료" })).toBeDisabled());
 });
+
+test("상세를 받은 뒤 다시 읽기가 실패해도 시점 단계는 그대로 보이고 오류 문장과 다시 시도가 보인다", async () => {
+  const { u } = await openNewRental();
+  server.use(http.get("*/api/v1/rentals/:rentalId", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
+  await u.click(screen.getByRole("button", { name: "새로 고침" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("잠시 뒤 다시 시도해 주세요.");
+  expect(step("출고")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
+});
