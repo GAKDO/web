@@ -26,7 +26,9 @@ docker compose up -d
 - 3000번 포트를 이미 다른 프로그램이 쓰면 `.env`에 `GRAFANA_PORT=3001`을 넣고 주소의 포트도 바꾼다
 - Connections → Data sources에 trace-pilot이 없으면 `docker compose restart grafana` 뒤 다시 본다
 
-먼저 이 컴퓨터에서 http://influx.java21.net 이 열리는지 확인합니다. 열리지 않으면 패널에 오류가 납니다.
+먼저 이 컴퓨터에서 `curl -sS -m 10 http://influx.java21.net/health` 가 InfluxDB 응답(JSON)을 주는지 확인합니다.
+학교 밖 망에서는 학교 방화벽 차단 안내 HTML이 돌아오고, Grafana는 "Client.Timeout exceeded"로 실패합니다(11/2 확인).
+학교망에서는 `.env`에 `INFLUX_URL=http://10.116.64.13:8086`(내부 주소)을 넣고 `docker compose up -d --force-recreate`로 다시 띄웁니다.
 
 ## G1 로컬 Compose 폴백에 넣을 때
 
