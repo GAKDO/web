@@ -1,0 +1,10 @@
+# pilot-trend.dashboard.json을 "trace" 폴더에 올린다. 화면에서 고쳐도 다시 띄우면 파일 내용으로 돌아간다
+apiVersion: 1
+providers:
+  - name: trace
+    folder: trace
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/dashboards/trace
