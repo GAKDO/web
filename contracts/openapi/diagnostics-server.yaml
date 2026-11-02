@@ -1,0 +1,392 @@
+openapi: 3.1.0
+info:
+  title: TRACE diagnostics-server
+  version: 0.2.0
+  description: |
+    진단 JSON 업로드와 시점별 진단 요약·이전 시점 비교·점검 플래그. 원본은 GAKDO/docs design/rest-api-v0.md "diagnostics-server" 표.
+
+    - 업로드 본문은 C2 진단 결과 JSON Schema(`diagnostics/result.schema.json`, `schemaVersion: diag.v1`)를 그대로 참조한다.
+    - 읽지 못한 값은 0이 아니라 null이고, 생략 사유를 함께 둔다(헌법 III).
+    - 오류는 모두 `application/problem+json`(Problem, `code`는 codes.yaml `error_code`).
+servers:
+  - url: https://{gateway}
+    description: gateway(8314) 뒤
+    variables:
+      gateway:
+        default: localhost:8314
+tags:
+  - name: 진단
+    description: 진단 업로드·결과
+  - name: 운영
+    description: ping
+paths:
+  /api/v1/diagnostics/ping:
+    get:
+      tags: [운영]
+      operationId: diagnosticsPing
+      summary: 배포 확인
+      description: 로그인 없이 연다.
+      security: []
+      responses:
+        '200':
+          description: 정상
+          content:
+            application/json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/PingResponse'
+              example:
+                service: diagnostics-server
+                version: 0.1.0
+                commit: fd69858
+  /api/v1/diagnostics/runs:
+    post:
+      tags: [진단]
+      operationId: uploadDiagnosticRun
+      summary: 진단 JSON 업로드
+      description: |
+        진단 에이전트가 사용자 동의 뒤 진단 JSON을 올린다. checkpointId는 본문이 아니라 AGENT 토큰의 scope에서, rentalId는 토큰의 rentalId 클레임에서 읽는다(이벤트 봉투용).
+        이전 시점과 비교해 점검 플래그를 만들어 돌려준다. (FR-DIA-05·06)
+        - 같은 시점에 이미 올렸으면 409 DIAGNOSTIC_ALREADY_UPLOADED.
+        - 형식이 진단 JSON Schema와 다르면 422 DIAGNOSTIC_SCHEMA_INVALID, 시리얼이 렌탈 기기와 다르면 422 DEVICE_SERIAL_MISMATCH.
+        - `Idempotency-Key`로 한 번만 처리하고, 같은 키로 다시 보내면 처음 응답을 돌려준다.
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-DIA-05, FR-DIA-06]
+      x-trace-access:
+        roles: [AGENT]
+        scope: CHECKPOINT
+        captureToken: false
+      parameters:
+        - $ref: './components/common.yaml#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticUpload'
+            example:
+              schemaVersion: diag.v1
+              agentVersion: 0.1.0
+              collectedAt: '2026-11-06T14:03:22+09:00'
+              consentedAt: '2026-11-06T14:04:10+09:00'
+              os: {type: MACOS, version: '15.1', arch: arm64}
+              device: {serial: C02TEST00001, manufacturer: Apple, model: 'Mac14,2', modelName: 'MacBook Air (M2, 2022)'}
+              conditions: {acPower: true, batteryPercent: 92, thermalState: NOMINAL, processCount: 312, uptimeSec: 5400}
+              components:
+                - kind: CPU
+                  identifier: Apple M2
+                  detail: {cores: 8}
+                - kind: RAM
+                  identifier: 8 GB
+                  detail: {totalBytes: 8589934592}
+                - kind: SSD
+                  identifier: APPLE SSD AP0256Z
+                  detail: {serial: SSDTEST01, capacityBytes: 251000193024}
+                - kind: BATTERY
+                  identifier: bq40z651
+                  detail: {serial: BATTEST01}
+                - kind: DISPLAY
+                  identifier: Built-in Liquid Retina
+                  detail: {resolution: 2560x1664}
+              battery:
+                status: OK
+                skippedReason: null
+                cycleCount: 214
+                designCapacity: {value: 4382, unit: mAh}
+                fullChargeCapacity: {value: 3901, unit: mAh}
+                osMaxCapacityPercent: 89
+                osCondition: NORMAL
+              storage:
+                status: OK
+                skippedReason: null
+                protocol: NVME
+                percentageUsed: 3
+                availableSpare: 100
+                criticalWarning: 0
+                mediaErrors: 0
+                powerOnHours: 812
+              benchmarks:
+                - metric: CPU_SINGLE
+                  unit: ops/s
+                  trials: [1021.3, 1018.9, 1025.0]
+                  median: 1021.3
+                - metric: CPU_MULTI
+                  unit: ops/s
+                  trials: [6120.4, 6088.1, 6131.7]
+                  median: 6120.4
+                - metric: MEM_COPY
+                  unit: MB/s
+                  trials: [41200, 40950, 41380]
+                  median: 41200
+                - metric: DISK_READ
+                  unit: MB/s
+                  trials: [2810, 2795, 2830]
+                  median: 2810
+                - metric: DISK_WRITE
+                  unit: MB/s
+                  trials: [2105, 2090, 2118]
+                  median: 2105
+              benchmarkSkippedReason: null
+              sources:
+                - system_profiler SPHardwareDataType -json
+                - system_profiler SPPowerDataType -json
+                - ioreg -r -c AppleSmartBattery
+                - smartctl -j -a disk0
+                - trace-bench 0.1.0
+      responses:
+        '201':
+          description: 저장됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticRunCreated'
+              example:
+                runId: rvOxWZUKqB0ADJXHI6dsr
+                flags:
+                  - kind: CAPACITY_DROP
+                    baseRunId: XesYrBEmTvUpyXxp1I1jj
+                    detail:
+                      metric: maxCapacityPct
+                      before: 91.2
+                      after: 84.0
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '409':
+          description: 이 시점에 이미 올림
+          x-trace-error-codes: [DIAGNOSTIC_ALREADY_UPLOADED]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 이 시점의 진단은 이미 올라갔습니다
+                status: 409
+                code: DIAGNOSTIC_ALREADY_UPLOADED
+        '422':
+          description: 형식 오류, 시리얼 불일치, 같은 키에 다른 본문
+          x-trace-error-codes: [DIAGNOSTIC_SCHEMA_INVALID, DEVICE_SERIAL_MISMATCH, IDEMPOTENCY_KEY_CONFLICT]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              examples:
+                schemaInvalid:
+                  summary: 진단 JSON 형식 오류
+                  value:
+                    title: 진단 결과 형식이 올바르지 않습니다
+                    status: 422
+                    code: DIAGNOSTIC_SCHEMA_INVALID
+                    errors:
+                      - field: battery.cycleCount
+                        message: 정수여야 합니다
+                serialMismatch:
+                  summary: 다른 기기의 진단
+                  value:
+                    title: 렌탈 기기와 시리얼이 다릅니다
+                    status: 422
+                    code: DEVICE_SERIAL_MISMATCH
+  /api/v1/diagnostics/checkpoints/{checkpointId}:
+    parameters:
+      - name: checkpointId
+        in: path
+        required: true
+        schema:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+    get:
+      tags: [진단]
+      operationId: getCheckpointDiagnostics
+      summary: 진단 요약·이전 시점 비교·플래그
+      description: 시점의 진단 요약, 같은 렌탈의 직전 시점 요약(없으면 null), 점검 플래그. (FR-DIA-06)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-DIA-06]
+      x-trace-access:
+        roles: [ADMIN, CUSTOMER]
+        scope: OWN_RENTAL
+        captureToken: false
+      responses:
+        '200':
+          description: 진단 요약
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckpointDiagnostics'
+              example:
+                checkpointId: h40b9AN9xMQhXRHrOyJWB
+                current:
+                  runId: rvOxWZUKqB0ADJXHI6dsr
+                  collectedAt: '2026-11-12T13:20:00+09:00'
+                  os: MACOS
+                  battery:
+                    cycleCount: 112
+                    designCapacity: 4382
+                    fullChargeCapacity: 3681
+                    capacityUnit: mAh
+                    maxCapacityPct: 84.0
+                    condition: NORMAL
+                  ssd:
+                    percentUsed: null
+                    availableSparePct: null
+                    criticalWarning: null
+                    powerOnHours: null
+                    mediaErrors: null
+                    skippedReason: smartctl 권한 없음
+                  components:
+                    - kind: CPU
+                      identifier: Apple M2
+                    - kind: SSD
+                      identifier: APPLE SSD AP0256Z
+                  benchmarks:
+                    - metric: CPU_SINGLE
+                      median: 2580.0
+                previous:
+                  runId: XesYrBEmTvUpyXxp1I1jj
+                  collectedAt: '2026-11-12T09:02:00+09:00'
+                  os: MACOS
+                  battery:
+                    cycleCount: 110
+                    designCapacity: 4382
+                    fullChargeCapacity: 3996
+                    capacityUnit: mAh
+                    maxCapacityPct: 91.2
+                    condition: NORMAL
+                  ssd: null
+                  components: []
+                  benchmarks: []
+                flags:
+                  - kind: CAPACITY_DROP
+                    baseRunId: XesYrBEmTvUpyXxp1I1jj
+                    detail:
+                      metric: maxCapacityPct
+                      before: 91.2
+                      after: 84.0
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+components:
+  securitySchemes:
+    bearerJwt:
+      $ref: './components/common.yaml#/components/securitySchemes/bearerJwt'
+  schemas:
+    DiagnosticUpload:
+      # 진단 결과 JSON v1(C2). 원본은 diagnostics/result.schema.json, 예시는 examples/diagnostics/
+      $ref: '../diagnostics/result.schema.json'
+    InspectionFlag:
+      type: object
+      required: [kind, baseRunId, detail]
+      properties:
+        kind:
+          $ref: './components/codes.gen.yaml#/components/schemas/DiagnosticsFlagKind'
+        baseRunId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        detail:
+          type: object
+          description: 플래그별 근거(비교한 값 before·after 등)
+    DiagnosticRunCreated:
+      type: object
+      required: [runId, flags]
+      properties:
+        runId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        flags:
+          type: array
+          items:
+            $ref: '#/components/schemas/InspectionFlag'
+    BatterySummary:
+      type: object
+      required: [cycleCount, designCapacity, fullChargeCapacity, capacityUnit, maxCapacityPct, condition]
+      properties:
+        cycleCount:
+          type: [integer, 'null']
+        designCapacity:
+          type: [integer, 'null']
+        fullChargeCapacity:
+          type: [integer, 'null']
+        capacityUnit:
+          oneOf:
+            - $ref: './components/codes.gen.yaml#/components/schemas/DiagnosticsCapacityUnit'
+            - type: 'null'
+        maxCapacityPct:
+          type: [number, 'null']
+          description: 서버 계산(완충 ÷ 설계 × 100)
+        condition:
+          type: [string, 'null']
+    SsdSummary:
+      type: object
+      required: [percentUsed, availableSparePct, criticalWarning, powerOnHours, mediaErrors, skippedReason]
+      properties:
+        percentUsed:
+          type: [integer, 'null']
+        availableSparePct:
+          type: [integer, 'null']
+        criticalWarning:
+          type: [integer, 'null']
+        powerOnHours:
+          type: [integer, 'null']
+        mediaErrors:
+          type: [integer, 'null']
+        skippedReason:
+          type: [string, 'null']
+          description: 읽지 못했을 때 이유
+    RunSummary:
+      type: object
+      required: [runId, collectedAt, os, battery, ssd, components, benchmarks]
+      properties:
+        runId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        collectedAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+        os:
+          $ref: './components/codes.gen.yaml#/components/schemas/DeviceOs'
+        battery:
+          oneOf:
+            - $ref: '#/components/schemas/BatterySummary'
+            - type: 'null'
+        ssd:
+          oneOf:
+            - $ref: '#/components/schemas/SsdSummary'
+            - type: 'null'
+        components:
+          type: array
+          items:
+            type: object
+            required: [kind, identifier]
+            properties:
+              kind:
+                $ref: './components/codes.gen.yaml#/components/schemas/DiagnosticsComponentKind'
+              identifier:
+                type: string
+        benchmarks:
+          type: array
+          items:
+            type: object
+            required: [metric, median]
+            properties:
+              metric:
+                $ref: './components/codes.gen.yaml#/components/schemas/DiagnosticsBenchmarkMetric'
+              median:
+                type: number
+    CheckpointDiagnostics:
+      type: object
+      required: [checkpointId, current, previous, flags]
+      properties:
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        current:
+          $ref: '#/components/schemas/RunSummary'
+        previous:
+          description: 같은 렌탈 직전 시점의 진단, 없으면 null
+          oneOf:
+            - $ref: '#/components/schemas/RunSummary'
+            - type: 'null'
+        flags:
+          type: array
+          items:
+            $ref: '#/components/schemas/InspectionFlag'
