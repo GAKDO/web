@@ -31,6 +31,7 @@
 | RENTAL_NOT_CLOSABLE | 종료 409 | 반납 기록이 봉인되기 전에는 종료할 수 없습니다. |
 | DEVICE_SERIAL_EXISTS | 기기 등록 409 | 이미 등록된 시리얼입니다. 시리얼을 다시 확인해 주세요. |
 | DEVICE_HAS_OPEN_RENTAL | 상태 바꾸기 409 | 진행 중인 렌탈이 있어 상태를 바꿀 수 없습니다. 렌탈을 먼저 종료하세요. |
+| DEVICE_STATUS_TRANSITION_INVALID | 상태 바꾸기 409(폐기 → 사용 가능, 계약 0.6.0) | 폐기한 기기는 바로 사용 가능으로 바꿀 수 없습니다. 먼저 수리 중으로 되돌리세요. |
 | VALIDATION_FAILED | 400 | 입력값을 확인해 주세요. (+ `detail`) |
 | NOT_FOUND | 404 | 찾는 항목이 없습니다. 목록에서 다시 골라 주세요. |
 | INTERNAL_ERROR · 네트워크 | 5xx·연결 실패 | 잠시 뒤 다시 시도해 주세요. |

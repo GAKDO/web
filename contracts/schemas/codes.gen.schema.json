@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/GAKDO/contracts/main/schemas/codes.gen.schema.json",
   "title": "TRACE 코드 값 (생성)",
-  "description": "생성 파일입니다. 손으로 고치지 말고 codes.yaml을 고친 뒤 python3 scripts/gen_schema_codes.py로 다시 만드세요. (codes.yaml version 0.5.0)",
+  "description": "생성 파일입니다. 손으로 고치지 말고 codes.yaml을 고친 뒤 python3 scripts/gen_schema_codes.py로 다시 만드세요. (codes.yaml version 0.6.0)",
   "$defs": {
     "RentalStatus": {
       "type": "string",
@@ -383,6 +383,7 @@
         "RENTAL_NOT_CLOSABLE",
         "DEVICE_SERIAL_EXISTS",
         "DEVICE_HAS_OPEN_RENTAL",
+        "DEVICE_STATUS_TRANSITION_INVALID",
         "PILOT_ALIAS_EXISTS",
         "CAPTURE_FACES_MISSING",
         "CAPTURE_HASH_MISMATCH",

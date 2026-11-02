@@ -52,6 +52,10 @@ export const deviceHandlers = [
     const device = db.devices.find((d) => d.deviceId === params.deviceId);
     if (!device) return problem(404, "NOT_FOUND", "기기가 없습니다");
     const body = (await request.json()) as DeviceUpdateRequest;
+    // 폐기 기기는 수리 중으로만 되돌린다(codes.yaml 0.6.0)
+    if (device.status === "RETIRED" && body.status === "ACTIVE") {
+      return problem(409, "DEVICE_STATUS_TRANSITION_INVALID", "폐기 기기는 수리 중을 거쳐야 합니다");
+    }
     if (body.status && body.status !== "ACTIVE" && hasOpenRental(device.deviceId)) {
       return problem(409, "DEVICE_HAS_OPEN_RENTAL", "진행 중인 렌탈이 있습니다");
     }
