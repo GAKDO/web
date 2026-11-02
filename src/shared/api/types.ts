@@ -17,6 +17,8 @@ export type PublicId = AuthSchemas["PublicId"];
 
 export type Device = RentalSchemas["Device"];
 export type DevicePage = RentalSchemas["DevicePage"];
+export type DeviceCreateRequest = RentalSchemas["DeviceCreateRequest"];
+export type DeviceUpdateRequest = RentalSchemas["DeviceUpdateRequest"];
 export type DeviceModel = RentalSchemas["DeviceModel"];
 export type DeviceModelSummary = RentalSchemas["DeviceModelSummary"];
 export type Rental = RentalSchemas["Rental"];
