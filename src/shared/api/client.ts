@@ -43,20 +43,22 @@ function withToken(request: Request): Request {
   return next;
 }
 
+/** 세션을 되살릴 수 없을 때: 토큰을 지우고 로그인 화면으로 보내는 처리를 부른다 */
+export function expireSession(): void {
+  tokenStore.clear();
+  onSessionExpired();
+}
+
 async function authFetch(request: Request): Promise<Response> {
   const retry = request.clone();
   const response = await fetch(withToken(request));
   if (response.status !== 401 || NO_RETRY_PATHS.some((p) => new URL(request.url).pathname.endsWith(p)) || !tokenStore.get()) return response;
   if (!(await refreshSession())) {
-    tokenStore.clear();
-    onSessionExpired();
+    expireSession();
     return response;
   }
   const second = await fetch(withToken(retry));
-  if (second.status === 401) {
-    tokenStore.clear();
-    onSessionExpired();
-  }
+  if (second.status === 401) expireSession();
   return second;
 }
 
