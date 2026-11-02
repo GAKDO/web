@@ -50,3 +50,19 @@ test("서버에 닿지 못하면 status 0 오류를 던진다", async () => {
   server.use(http.get("*/api/v1/auth/me", () => Response.error()));
   await expect(unwrap(api.GET("/api/v1/auth/me"))).rejects.toMatchObject({ status: 0 });
 });
+
+test("토큰 다시 받기를 기다리는 동안 다른 계정으로 로그인하면 늦게 온 이전 토큰으로 덮어쓰지 않는다", async () => {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.post("*/api/v1/auth/refresh", async () => {
+      await gate;
+      return Response.json({ accessToken: "old-account", tokenType: "Bearer", expiresIn: 60, role: "CUSTOMER" });
+    }),
+  );
+  const pending = refreshSession();
+  tokenStore.set({ accessToken: "new-account", tokenType: "Bearer", expiresIn: 60, role: "ADMIN" } as never);
+  release();
+  expect(await pending).toBe(true);
+  expect(tokenStore.get()?.accessToken).toBe("new-account");
+});

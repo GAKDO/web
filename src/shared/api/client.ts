@@ -22,10 +22,15 @@ export function setSessionExpiredHandler(handler: () => void): void {
 /** 리프레시 쿠키로 액세스 토큰을 다시 받는다. 동시에 불려도 요청은 한 번만 간다 */
 export function refreshSession(): Promise<boolean> {
   refreshing ??= (async () => {
+    const startedAt = tokenStore.epoch();
     try {
       const response = await fetch(`${BASE}${REFRESH_PATH}`, { method: "POST", credentials: "include" });
+      // 기다리는 동안 로그인·로그아웃이 있었다면 그 결과를 지키고, 이 응답은 버린다
+      if (tokenStore.epoch() !== startedAt) return tokenStore.get() !== null;
       if (!response.ok) return false;
-      tokenStore.set((await response.json()) as TokenResponse);
+      const token = (await response.json()) as TokenResponse;
+      if (tokenStore.epoch() !== startedAt) return tokenStore.get() !== null;
+      tokenStore.set(token);
       return true;
     } catch {
       return false;
