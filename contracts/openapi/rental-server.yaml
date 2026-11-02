@@ -1,0 +1,973 @@
+openapi: 3.1.0
+info:
+  title: TRACE rental-server
+  version: 0.1.0
+  description: |
+    렌탈·시점·기기·기종·파일럿. 원본은 GAKDO/docs design/rest-api-v0.md "rental-server" 표.
+
+    - 오류는 모두 `application/problem+json`(Problem, `code`는 codes.yaml `error_code`).
+    - `x-trace-access`: roles(codes.yaml `auth.token_role`), scope(NONE·OWN_RENTAL·CHECKPOINT·BOOTH), captureToken.
+    - `x-trace-error-codes`: 그 응답이 낼 수 있는 `code` 값.
+    - 목록은 커서 방식(`limit`, `cursor` → `items`, `nextCursor`). `GET /devices`도 같다(원본의 page에서 바꿈).
+servers:
+  - url: https://{gateway}
+    description: gateway(8314) 뒤
+    variables:
+      gateway:
+        default: localhost:8314
+tags:
+  - name: 렌탈
+    description: 렌탈과 세 시점(OUT·RCV·RET)
+  - name: 기기
+    description: 기기 등록·검색·상태
+  - name: 기종
+    description: 기종과 3D 트윈 치수
+  - name: 파일럿
+    description: 파일럿 참여자 별칭
+  - name: 운영
+    description: ping
+paths:
+  /api/v1/rentals/ping:
+    get:
+      tags: [운영]
+      operationId: rentalPing
+      summary: 배포 확인
+      description: 로그인 없이 연다.
+      security: []
+      responses:
+        '200':
+          description: 정상
+          content:
+            application/json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/PingResponse'
+              example:
+                service: rental-server
+                version: 0.1.0
+                commit: fd69858
+  /api/v1/rentals:
+    post:
+      tags: [렌탈]
+      operationId: createRental
+      summary: 렌탈 생성
+      description: |
+        ACTIVE 기기로만 만들 수 있고, 같은 기기에 진행 중(OPEN) 렌탈은 하나만. 생성되면 상태 OPEN. (FR-RNT-01)
+        수리 중(MAINTENANCE)·폐기(RETIRED) 기기면 409 DEVICE_NOT_ACTIVE.
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RNT-01]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RentalCreateRequest'
+            example:
+              deviceId: aAXQFO2Vz6ZTFbPctC2dq
+              renterRef: R-2026-0012
+      responses:
+        '201':
+          description: 생성됨
+          headers:
+            Location:
+              description: /api/v1/rentals/{rentalId}
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rental'
+              example:
+                rentalId: Ws0HLv6QRbDILPWOcz5I2
+                deviceId: aAXQFO2Vz6ZTFbPctC2dq
+                renterRef: R-2026-0012
+                status: OPEN
+                startedAt: null
+                endedAt: null
+                createdAt: '2026-11-12T08:50:00+09:00'
+                checkpoints: []
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '409':
+          description: 진행 중 렌탈이 있음 또는 기기가 ACTIVE 아님
+          x-trace-error-codes: [RENTAL_OPEN_EXISTS, DEVICE_NOT_ACTIVE]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              examples:
+                openExists:
+                  summary: 같은 기기로 진행 중인 렌탈 있음
+                  value:
+                    title: 진행 중인 렌탈이 있습니다
+                    status: 409
+                    code: RENTAL_OPEN_EXISTS
+                    detail: 같은 기기로 진행 중인 렌탈은 하나만 만들 수 있습니다.
+                    instance: /api/v1/rentals
+                deviceNotActive:
+                  summary: 수리 중·폐기 기기
+                  value:
+                    title: 렌탈할 수 없는 기기입니다
+                    status: 409
+                    code: DEVICE_NOT_ACTIVE
+                    detail: 수리 중이거나 폐기된 기기는 렌탈을 만들 수 없습니다.
+                    instance: /api/v1/rentals
+    get:
+      tags: [렌탈]
+      operationId: listRentals
+      summary: 렌탈 목록
+      description: ADMIN은 전체, CUSTOMER는 rentals 클레임에 있는 내 렌탈만 보인다. 최근 생성 순. (FR-USR-03)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-USR-03]
+      x-trace-access:
+        roles: [ADMIN, CUSTOMER]
+        scope: NONE
+        captureToken: false
+        note: CUSTOMER는 결과를 rentals 클레임으로 거른다
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: './components/codes.gen.yaml#/components/schemas/RentalStatus'
+        - $ref: './components/common.yaml#/components/parameters/Limit'
+        - $ref: './components/common.yaml#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: 목록
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RentalPage'
+              example:
+                items:
+                  - rentalId: Ws0HLv6QRbDILPWOcz5I2
+                    deviceId: aAXQFO2Vz6ZTFbPctC2dq
+                    serial: C02EXAMPLE01
+                    modelCode: MBA13-M2
+                    status: OPEN
+                    createdAt: '2026-11-12T08:50:00+09:00'
+                nextCursor: null
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+  /api/v1/rentals/{rentalId}:
+    parameters:
+      - $ref: '#/components/parameters/RentalId'
+    get:
+      tags: [렌탈]
+      operationId: getRental
+      summary: 렌탈과 세 시점 상태
+      description: CUSTOMER는 본인 렌탈만(아니면 403 OUT_OF_SCOPE). (FR-RNT-02)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RNT-02]
+      x-trace-access:
+        roles: [ADMIN, CUSTOMER]
+        scope: OWN_RENTAL
+        captureToken: false
+      responses:
+        '200':
+          description: 렌탈
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rental'
+              example:
+                rentalId: Ws0HLv6QRbDILPWOcz5I2
+                deviceId: aAXQFO2Vz6ZTFbPctC2dq
+                renterRef: R-2026-0012
+                status: OPEN
+                startedAt: '2026-11-12T09:00:00+09:00'
+                endedAt: null
+                createdAt: '2026-11-12T08:50:00+09:00'
+                checkpoints:
+                  - checkpointId: aJ3bYet82WYF8iVlHstT2
+                    type: OUT
+                    status: SEALED
+                    occurredAt: '2026-11-12T09:00:00+09:00'
+                  - checkpointId: h40b9AN9xMQhXRHrOyJWB
+                    type: RCV
+                    status: OPEN
+                    occurredAt: null
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+  /api/v1/rentals/{rentalId}/checkpoints:
+    parameters:
+      - $ref: '#/components/parameters/RentalId'
+    post:
+      tags: [렌탈]
+      operationId: startCheckpoint
+      summary: 시점 시작
+      description: |
+        OUT → RCV → RET 순서로 하나씩만. 순서를 어기거나 같은 시점이 이미 있으면 409 CHECKPOINT_ORDER_VIOLATION.
+        OUT을 시작하면 렌탈 startedAt이 채워진다. (FR-RNT-02)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RNT-02]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckpointCreateRequest'
+            example:
+              type: RCV
+      responses:
+        '201':
+          description: 시작됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Checkpoint'
+              example:
+                checkpointId: h40b9AN9xMQhXRHrOyJWB
+                type: RCV
+                status: OPEN
+                occurredAt: null
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '409':
+          description: 순서 위반
+          x-trace-error-codes: [CHECKPOINT_ORDER_VIOLATION]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 시점 순서가 맞지 않습니다
+                status: 409
+                code: CHECKPOINT_ORDER_VIOLATION
+                detail: 출고(OUT)가 봉인된 뒤에 수령(RCV)을 시작할 수 있습니다.
+  /api/v1/rentals/{rentalId}/close:
+    parameters:
+      - $ref: '#/components/parameters/RentalId'
+    post:
+      tags: [렌탈]
+      operationId: closeRental
+      summary: 반납 후 종료
+      description: 반납(RET) 시점이 봉인된 렌탈만 CLOSED로. 아니면 409 RENTAL_NOT_CLOSABLE. (FR-RNT-02)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RNT-02]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      responses:
+        '204':
+          description: 종료됨
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '409':
+          description: 종료할 수 없는 상태
+          x-trace-error-codes: [RENTAL_NOT_CLOSABLE]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 아직 종료할 수 없는 렌탈입니다
+                status: 409
+                code: RENTAL_NOT_CLOSABLE
+                detail: 반납 시점이 봉인된 뒤에 종료할 수 있습니다.
+  /api/v1/devices:
+    post:
+      tags: [기기]
+      operationId: createDevice
+      summary: 기기 등록
+      description: 시리얼과 기종으로 등록. 시리얼이 이미 있으면 409, 기종이 없으면 404. 상태는 ACTIVE로 시작. (FR-RNT-01)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RNT-01]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceCreateRequest'
+            example:
+              serial: C02EXAMPLE01
+              modelCode: MBA13-M2
+              os: MACOS
+              color: 미드나이트
+              assetNo: A-0001
+      responses:
+        '201':
+          description: 등록됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              example:
+                deviceId: aAXQFO2Vz6ZTFbPctC2dq
+                serial: C02EXAMPLE01
+                modelCode: MBA13-M2
+                modelName: MacBook Air (M2, 2022)
+                os: MACOS
+                color: 미드나이트
+                assetNo: A-0001
+                status: ACTIVE
+                retiredAt: null
+                createdAt: '2026-11-10T10:00:00+09:00'
+                updatedAt: '2026-11-10T10:00:00+09:00'
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '409':
+          description: 시리얼 중복
+          x-trace-error-codes: [DEVICE_SERIAL_EXISTS]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 이미 등록된 시리얼입니다
+                status: 409
+                code: DEVICE_SERIAL_EXISTS
+    get:
+      tags: [기기]
+      operationId: listDevices
+      summary: 기기 목록·검색
+      description: 기종·상태로 거르고 q로 시리얼·자산번호 일부를 찾는다. 최근 등록 순. (FR-RNT-05)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RNT-05]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      parameters:
+        - name: modelCode
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ModelCode'
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: './components/codes.gen.yaml#/components/schemas/DeviceStatus'
+        - name: q
+          in: query
+          required: false
+          description: 시리얼·자산번호 일부(대소문자 무시)
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+        - $ref: './components/common.yaml#/components/parameters/Limit'
+        - $ref: './components/common.yaml#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: 목록
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DevicePage'
+              example:
+                items:
+                  - deviceId: aAXQFO2Vz6ZTFbPctC2dq
+                    serial: C02EXAMPLE01
+                    modelCode: MBA13-M2
+                    modelName: MacBook Air (M2, 2022)
+                    os: MACOS
+                    color: 미드나이트
+                    assetNo: A-0001
+                    status: MAINTENANCE
+                    retiredAt: null
+                    createdAt: '2026-11-10T10:00:00+09:00'
+                    updatedAt: '2026-11-11T15:00:00+09:00'
+                nextCursor: eyJpZCI6IjAxOTNhMWMyIn0
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+  /api/v1/devices/{deviceId}:
+    parameters:
+      - name: deviceId
+        in: path
+        required: true
+        schema:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+    patch:
+      tags: [기기]
+      operationId: updateDevice
+      summary: 기기 수정
+      description: |
+        색상·자산번호·OS·상태만 바꾼다. 시리얼·기종은 못 바꿔서 보내면 400. RETIRED로 바꾸면 retiredAt이 채워진다.
+        진행 중 렌탈이 있는데 MAINTENANCE·RETIRED로 바꾸면 409 DEVICE_HAS_OPEN_RENTAL. (FR-RNT-05)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RNT-05]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceUpdateRequest'
+            example:
+              status: MAINTENANCE
+      responses:
+        '200':
+          description: 수정됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              example:
+                deviceId: aAXQFO2Vz6ZTFbPctC2dq
+                serial: C02EXAMPLE01
+                modelCode: MBA13-M2
+                modelName: MacBook Air (M2, 2022)
+                os: MACOS
+                color: 미드나이트
+                assetNo: A-0001
+                status: MAINTENANCE
+                retiredAt: null
+                createdAt: '2026-11-10T10:00:00+09:00'
+                updatedAt: '2026-11-11T15:00:00+09:00'
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '409':
+          description: 진행 중 렌탈이 있는데 수리 중·폐기로 바꿈
+          x-trace-error-codes: [DEVICE_HAS_OPEN_RENTAL]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 진행 중인 렌탈이 있는 기기입니다
+                status: 409
+                code: DEVICE_HAS_OPEN_RENTAL
+                detail: 렌탈을 종료한 뒤에 수리 중이나 폐기로 바꿀 수 있습니다.
+  /api/v1/device-models:
+    get:
+      tags: [기종]
+      operationId: listDeviceModels
+      summary: 기종 목록
+      description: 기기 등록 화면의 선택 목록. 기종 수가 적어 페이지 없이 전부 준다. (FR-RNT-03)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RNT-03]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      responses:
+        '200':
+          description: 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DeviceModelSummary'
+              example:
+                items:
+                  - modelCode: MBA13-M2
+                    name: MacBook Air (M2, 2022)
+                    manufacturer: Apple
+                    formFactor: CLAMSHELL
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+  /api/v1/device-models/{modelCode}:
+    parameters:
+      - name: modelCode
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/ModelCode'
+    get:
+      tags: [기종]
+      operationId: getDeviceModel
+      summary: 기종과 3D 트윈 치수
+      description: 고객 화면의 3D 트윈이 치수를 읽는다. (FR-RNT-03)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RNT-03]
+      x-trace-access:
+        roles: [ADMIN, CUSTOMER]
+        scope: NONE
+        captureToken: false
+      responses:
+        '200':
+          description: 기종
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceModel'
+              example:
+                modelCode: MBA13-M2
+                name: MacBook Air (M2, 2022)
+                manufacturer: Apple
+                formFactor: CLAMSHELL
+                spec:
+                  cpu: Apple M2
+                  ramGb: 8
+                  ssdGb: 256
+                dimensions:
+                  widthMm: 304.1
+                  depthMm: 215.0
+                  baseHMm: 7.0
+                  lidHMm: 4.3
+                updatedAt: '2026-11-05T12:00:00+09:00'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+    put:
+      tags: [기종]
+      operationId: upsertDeviceModel
+      summary: 기종 등록·수정
+      description: 없으면 만들고 있으면 바꾼다(치수·제조사·형태·기준 사양). (FR-RNT-03)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RNT-03]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceModelUpsertRequest'
+            example:
+              name: MacBook Air (M2, 2022)
+              manufacturer: Apple
+              formFactor: CLAMSHELL
+              spec:
+                cpu: Apple M2
+                ramGb: 8
+                ssdGb: 256
+              dimensions:
+                widthMm: 304.1
+                depthMm: 215.0
+                baseHMm: 7.0
+                lidHMm: 4.3
+      responses:
+        '200':
+          description: 저장됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceModel'
+              example:
+                modelCode: MBA13-M2
+                name: MacBook Air (M2, 2022)
+                manufacturer: Apple
+                formFactor: CLAMSHELL
+                spec:
+                  cpu: Apple M2
+                  ramGb: 8
+                  ssdGb: 256
+                dimensions:
+                  widthMm: 304.1
+                  depthMm: 215.0
+                  baseHMm: 7.0
+                  lidHMm: 4.3
+                updatedAt: '2026-11-05T12:00:00+09:00'
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+  /api/v1/pilot/participants:
+    post:
+      tags: [파일럿]
+      operationId: createPilotParticipant
+      summary: 파일럿 별칭 등록
+      description: 실명 대신 별칭(P01 …)과 기기, 동의 시각만 둔다. 실명은 이 API로 받지 않는다. (FR-PIL-01)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-PIL-01]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PilotParticipantCreateRequest'
+            example:
+              alias: P01
+              deviceId: aAXQFO2Vz6ZTFbPctC2dq
+              consentAt: '2026-11-11T14:00:00+09:00'
+      responses:
+        '201':
+          description: 등록됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PilotParticipant'
+              example:
+                participantId: fBSvifsp4FWaM07ql1SET
+                alias: P01
+                deviceId: aAXQFO2Vz6ZTFbPctC2dq
+                consentAt: '2026-11-11T14:00:00+09:00'
+                createdAt: '2026-11-11T14:01:00+09:00'
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '409':
+          description: 별칭 중복
+          x-trace-error-codes: [PILOT_ALIAS_EXISTS]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 이미 쓰는 별칭입니다
+                status: 409
+                code: PILOT_ALIAS_EXISTS
+components:
+  securitySchemes:
+    bearerJwt:
+      $ref: './components/common.yaml#/components/securitySchemes/bearerJwt'
+  parameters:
+    RentalId:
+      name: rentalId
+      in: path
+      required: true
+      schema:
+        $ref: './components/common.yaml#/components/schemas/PublicId'
+  schemas:
+    ModelCode:
+      type: string
+      pattern: '^[A-Z0-9][A-Z0-9-]{1,63}$'
+      examples: [MBA13-M2]
+    RentalCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [deviceId, renterRef]
+      properties:
+        deviceId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        renterRef:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 이름 대신 쓰는 내부 참조 번호
+    Checkpoint:
+      type: object
+      required: [checkpointId, type, status, occurredAt]
+      properties:
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        type:
+          $ref: './components/codes.gen.yaml#/components/schemas/RentalCheckpointType'
+        status:
+          $ref: './components/codes.gen.yaml#/components/schemas/RentalCheckpointStatus'
+        occurredAt:
+          description: 촬영이 끝난 시각, 아직이면 null
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+    CheckpointCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          $ref: './components/codes.gen.yaml#/components/schemas/RentalCheckpointType'
+    Rental:
+      type: object
+      required: [rentalId, deviceId, renterRef, status, startedAt, endedAt, createdAt, checkpoints]
+      properties:
+        rentalId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        deviceId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        renterRef:
+          type: string
+        status:
+          $ref: './components/codes.gen.yaml#/components/schemas/RentalStatus'
+        startedAt:
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+        endedAt:
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+        createdAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+        checkpoints:
+          type: array
+          description: 시작된 시점(OUT·RCV·RET 순)
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/Checkpoint'
+    RentalSummary:
+      type: object
+      required: [rentalId, deviceId, serial, modelCode, status, createdAt]
+      properties:
+        rentalId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        deviceId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        serial:
+          type: string
+        modelCode:
+          $ref: '#/components/schemas/ModelCode'
+        status:
+          $ref: './components/codes.gen.yaml#/components/schemas/RentalStatus'
+        createdAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+    RentalPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RentalSummary'
+        nextCursor:
+          type: [string, 'null']
+    DeviceCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [serial, modelCode, os]
+      properties:
+        serial:
+          type: string
+          minLength: 1
+          maxLength: 64
+        modelCode:
+          $ref: '#/components/schemas/ModelCode'
+        os:
+          $ref: './components/codes.gen.yaml#/components/schemas/DeviceOs'
+        color:
+          type: string
+          maxLength: 32
+        assetNo:
+          type: string
+          maxLength: 64
+    DeviceUpdateRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: serial·modelCode는 바꿀 수 없어 보내면 400.
+      properties:
+        color:
+          type: [string, 'null']
+          maxLength: 32
+        assetNo:
+          type: [string, 'null']
+          maxLength: 64
+        os:
+          $ref: './components/codes.gen.yaml#/components/schemas/DeviceOs'
+        status:
+          $ref: './components/codes.gen.yaml#/components/schemas/DeviceStatus'
+    Device:
+      type: object
+      required: [deviceId, serial, modelCode, modelName, os, color, assetNo, status, retiredAt, createdAt, updatedAt]
+      properties:
+        deviceId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        serial:
+          type: string
+        modelCode:
+          $ref: '#/components/schemas/ModelCode'
+        modelName:
+          type: string
+        os:
+          $ref: './components/codes.gen.yaml#/components/schemas/DeviceOs'
+        color:
+          type: [string, 'null']
+        assetNo:
+          type: [string, 'null']
+        status:
+          $ref: './components/codes.gen.yaml#/components/schemas/DeviceStatus'
+        retiredAt:
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+        createdAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+        updatedAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+    DevicePage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Device'
+        nextCursor:
+          type: [string, 'null']
+    DeviceModelSummary:
+      type: object
+      required: [modelCode, name, manufacturer, formFactor]
+      properties:
+        modelCode:
+          $ref: '#/components/schemas/ModelCode'
+        name:
+          type: string
+        manufacturer:
+          type: [string, 'null']
+        formFactor:
+          $ref: './components/codes.gen.yaml#/components/schemas/DeviceFormFactor'
+    ModelSpec:
+      type: object
+      description: 기준 사양(진단 비교용)
+      properties:
+        cpu:
+          type: string
+        ramGb:
+          type: integer
+          minimum: 1
+        ssdGb:
+          type: integer
+          minimum: 1
+    ModelDimensions:
+      type: object
+      description: 3D 트윈 치수(mm)
+      required: [widthMm, depthMm, baseHMm, lidHMm]
+      properties:
+        widthMm:
+          type: number
+          exclusiveMinimum: 0
+        depthMm:
+          type: number
+          exclusiveMinimum: 0
+        baseHMm:
+          type: number
+          exclusiveMinimum: 0
+        lidHMm:
+          type: number
+          exclusiveMinimum: 0
+    DeviceModel:
+      type: object
+      required: [modelCode, name, manufacturer, formFactor, spec, dimensions, updatedAt]
+      properties:
+        modelCode:
+          $ref: '#/components/schemas/ModelCode'
+        name:
+          type: string
+        manufacturer:
+          type: [string, 'null']
+        formFactor:
+          $ref: './components/codes.gen.yaml#/components/schemas/DeviceFormFactor'
+        spec:
+          oneOf:
+            - $ref: '#/components/schemas/ModelSpec'
+            - type: 'null'
+        dimensions:
+          $ref: '#/components/schemas/ModelDimensions'
+        updatedAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+    DeviceModelUpsertRequest:
+      type: object
+      additionalProperties: false
+      required: [name, formFactor, dimensions]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        manufacturer:
+          type: string
+          maxLength: 64
+        formFactor:
+          $ref: './components/codes.gen.yaml#/components/schemas/DeviceFormFactor'
+        spec:
+          $ref: '#/components/schemas/ModelSpec'
+        dimensions:
+          $ref: '#/components/schemas/ModelDimensions'
+    PilotParticipantCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [alias, deviceId, consentAt]
+      properties:
+        alias:
+          type: string
+          pattern: '^P\d{2,3}$'
+        deviceId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        consentAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+    PilotParticipant:
+      type: object
+      required: [participantId, alias, deviceId, consentAt, createdAt]
+      properties:
+        participantId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        alias:
+          type: string
+        deviceId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        consentAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+        createdAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'

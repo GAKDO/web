@@ -8,23 +8,36 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "gen:api": "openapi-typescript contracts/openapi/auth-server.yaml -o src/shared/api/generated/auth.ts && openapi-typescript contracts/openapi/rental-server.yaml -o src/shared/api/generated/rental.ts"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.105.1",
+    "openapi-fetch": "^0.17.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-router-dom": "6.30"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
     "@types/node": "^22.20.5",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.7.0",
     "jsdom": "^25.0.1",
+    "msw": "2.15",
+    "nanoid": "^5.1.16",
+    "openapi-typescript": "^7.13.0",
     "typescript": "^5.9.3",
     "vite": "^6.4.5",
     "vitest": "^3.2.7"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

@@ -1,0 +1,98 @@
+# TRACE 코드 값의 원본. 서버는 DB CHECK 제약으로, 화면·에이전트·부스는 이 파일로 같은 값을 쓴다.
+# 값을 더하면 각 서버의 마이그레이션(CHECK 제약)도 함께 고친다. (GAKDO/docs db/V1__init.sql 기준, 2026-10-31)
+# 0.3.0(2026-11-02): capture.face_required, auth.token_role, report.chain_status·progress_stage, error_code 추가 (C1).
+# 0.4.0(2026-11-02): diagnostics에 진단 JSON 값(battery_status·storage_status·skipped_reason·storage_protocol·battery_condition·thermal_state) 추가 (C2).
+# 0.5.0(2026-11-02): capture.face_required.PHONE 추가(7면, KB 제외·SCR1 선택).
+#   OpenAPI용 enum은 scripts/gen_openapi_codes.py로 만든다. 값은 문자열이어야 한다(OFF·ON·YES·NO는 따옴표).
+version: 0.5.0
+
+rental:
+  status: [OPEN, RETURNED, CLOSED]
+  checkpoint_type: [OUT, RCV, RET]          # 출고·수령·반납
+  checkpoint_status: [OPEN, CAPTURED, GRADED, SEALED]
+device:
+  os: [MACOS, WINDOWS]
+  status: [ACTIVE, MAINTENANCE, RETIRED]    # FR-RNT-05
+  form_factor: [CLAMSHELL]
+capture:
+  source: [BOOTH, PHONE]
+  set_status: [UPLOADING, UPLOADED, INSPECTED, GRADED]
+  quality: [OK, UNJUDGEABLE]
+  # 면: TOP 상판 · BOT 바닥 · SF·SB·SL·SR 옆면 앞·뒤·왼·오른 · KB 키보드·팜레스트 · SCR0 화면 꺼짐 · SCR1 화면을 켜 전체 흰색
+  face: [TOP, BOT, SF, SB, SL, SR, KB, SCR0, SCR1]   # 9면
+  face_required:                       # 세트 완료(/complete)에 꼭 있어야 하는 면, 출처별 (11/2)
+    BOOTH: [TOP, BOT, SF, SB, SL, SR, KB, SCR0]   # SCR1(화면 흰색)은 선택: 건너뛰면 skippedFaces에 사유
+    PHONE: [TOP, BOT, SF, SB, SL, SR, SCR0]       # 폰은 KB를 찍지 않음, SCR1은 선택 (11/2 민서·C 확정)
+  light: [L1, L2, L3, L4, ROOM, 'OFF']   # 부스: L1 확산, L2 왼쪽·L3 뒤·L4 앞 스침광 / 폰: ROOM
+  camera: [CAM1, CAM2, PHONE]          # 부스 위 카메라 앞 반·뒤 반, 수령 폰
+inspection:
+  alignment_method: [CONTOUR, LIGHTGLUE]
+  defect_class: [scratch, dent, crack, stain]       # 긁힘·찍힘·균열·오염
+  defect_source: [AUTO, HUMAN]
+  match_status: [NEW, EXISTING]
+  grade: [A, B, C, D]
+diagnostics:
+  component_kind: [CPU, RAM, SSD, BATTERY, DISPLAY, OTHER]
+  capacity_unit: [mAh, mWh]
+  benchmark_metric: [CPU_SINGLE, CPU_MULTI, MEM_COPY, DISK_READ, DISK_WRITE]
+  flag_kind: [COMPONENT_CHANGED, CAPACITY_DROP, BENCH_DROP]
+  # 아래는 진단 JSON(diagnostics/result.schema.json)이 쓰는 값 (C2)
+  battery_status: [OK, SKIPPED, NO_BATTERY]          # 배터리 읽기 결과. NO_BATTERY = 배터리 없는 기기
+  storage_status: [OK, SKIPPED]                      # SSD 읽기 결과
+  skipped_reason: [NO_PERMISSION, UNSUPPORTED, TOOL_ERROR, NO_AC_POWER]   # 생략 사유. NO_AC_POWER는 벤치마크만
+  storage_protocol: [NVME, ATA]
+  battery_condition: [NORMAL, SERVICE_RECOMMENDED]   # OS 판정. macOS "Good"(·"Normal") → NORMAL, 그 밖 → SERVICE_RECOMMENDED
+  thermal_state: [NOMINAL, FAIR, SERIOUS, CRITICAL]  # macOS ProcessInfo.thermalState, Windows는 null
+ml:
+  split: [TRAIN, VAL, TEST]
+report:
+  chain_status: [VALID, BROKEN, PENDING]                         # 타임라인의 해시 체인 상태
+  progress_stage: [UPLOADED, ALIGNED, INSPECTED, GRADED, SEALED]  # 진행률 SSE 단계
+auth:
+  role: [ADMIN, CUSTOMER]
+  account_status: [PENDING, ACTIVE, WITHDRAWN]
+  email_token_purpose: [VERIFY, RESET]
+  client_kind: [BOOTH]
+  token_role: [ADMIN, CUSTOMER, BOOTH, AGENT]   # JWT role 클레임. BOOTH·AGENT는 계정이 아니라 토큰에만 있다
+
+# REST 오류 Problem Details의 code 값 (C1). 화면은 이 값으로 사람이 읽는 문장을 고른다
+error_code:
+  # 공통
+  - VALIDATION_FAILED            # 400 형식 오류
+  - UNAUTHENTICATED              # 401 토큰 없음·만료
+  - FORBIDDEN                    # 403 역할 없음
+  - OUT_OF_SCOPE                 # 403 본인 렌탈·그 시점·자기 부스 밖
+  - NOT_FOUND                    # 404
+  - RATE_LIMITED                 # 429 요청 제한
+  - IDEMPOTENCY_KEY_CONFLICT     # 422 같은 Idempotency-Key에 다른 본문
+  - INTERNAL_ERROR               # 500
+  # auth
+  - CONSENT_REQUIRED             # 400 개인정보 동의 없음
+  - EMAIL_ALREADY_EXISTS         # 409
+  - CODE_INVALID                 # 400 인증·재설정 코드 틀림
+  - CODE_EXPIRED                 # 410 인증·재설정 코드 만료
+  - RESEND_TOO_SOON              # 429 60초 안 재발송
+  - INVALID_CREDENTIALS          # 401 이메일·비밀번호 틀림
+  - EMAIL_NOT_VERIFIED           # 403 인증 전 로그인
+  - REFRESH_INVALID              # 401
+  - CAPTURE_LINK_INVALID         # 410 QR 만료·사용됨
+  - RENTAL_LINKED_TO_OTHER       # 409 렌탈이 다른 계정에 연결됨
+  - CLIENT_CREDENTIALS_INVALID   # 401 부스 client_id·secret 틀림
+  - PAIRING_CODE_INVALID         # 400
+  - PAIRING_CODE_EXPIRED         # 410
+  # rental
+  - RENTAL_OPEN_EXISTS           # 409 같은 기기로 진행 중인 렌탈 있음
+  - DEVICE_NOT_ACTIVE            # 409 수리 중·폐기 기기로 렌탈 생성
+  - CHECKPOINT_ORDER_VIOLATION   # 409 시점 순서 위반
+  - RENTAL_NOT_CLOSABLE          # 409 반납 전 종료
+  - DEVICE_SERIAL_EXISTS         # 409
+  - DEVICE_HAS_OPEN_RENTAL       # 409 진행 중 렌탈이 있는데 수리 중·폐기로 바꿈
+  - PILOT_ALIAS_EXISTS           # 409
+  # capture
+  - CAPTURE_FACES_MISSING        # 409 빠진 면
+  - CAPTURE_HASH_MISMATCH        # 409 올린 사진의 해시가 다름
+  - CAPTURE_SET_CLOSED           # 409 이미 완료된 세트
+  # diagnostics
+  - DIAGNOSTIC_ALREADY_UPLOADED  # 409
+  - DIAGNOSTIC_SCHEMA_INVALID    # 422 진단 JSON 형식 오류
+  - DEVICE_SERIAL_MISMATCH       # 422 진단 시리얼이 렌탈 기기와 다름
