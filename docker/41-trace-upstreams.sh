@@ -4,7 +4,7 @@
 # nginx resolver는 resolv.conf의 search를 쓰지 않으므로, 쿠버네티스(search가 <ns>.svc.<도메인>)에서는 짧은 이름에 붙여 준다.
 #   GRAFANA_UPSTREAM  파일럿 추이 Grafana            (기본 grafana:3000)
 #   API_UPSTREAM      /api/ → gateway                 (기본 gateway:8080. 클러스터는 Cloudflare Tunnel이 /api/를 먼저 가져간다)
-#   MINIO_UPSTREAM    /trace-captures/·/trace-derived/ → MinIO S3 API (기본 minio:9000, 학교는 storage.java21.net:8000)
+#   MINIO_UPSTREAM    /trace-captures/·/trace-derived/ → MinIO S3 API (기본 minio:9000, 같은 Compose 안 MinIO)
 #                     사전 서명에 MinIO 주소(Host)가 들어 있어서 Host 헤더도 이 값으로 보낸다
 set -eu
 
