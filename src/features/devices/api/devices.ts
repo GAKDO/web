@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, unwrap } from "../../../shared/api/client";
-import type { DeviceStatus, DeviceUpdateRequest } from "../../../shared/api/types";
+import type { DeviceCreateRequest, DeviceStatus, DeviceUpdateRequest } from "../../../shared/api/types";
 
 export interface DeviceFilters {
   modelCode?: string;
@@ -29,12 +29,20 @@ export function useDeviceModels() {
   });
 }
 
-/** 기기 고치기(상태, ②-b부터 색상·자산번호·OS도). 성공이든 409든 목록을 다시 읽어 서버 상태를 보인다 */
+/** 상태·색상·자산번호·OS 고치기. 성공이든 409든 목록을 다시 읽어 서버 상태를 보인다 */
 export function useUpdateDevice() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({ deviceId, body }: { deviceId: string; body: DeviceUpdateRequest }) =>
       unwrap(api.PATCH("/api/v1/devices/{deviceId}", { params: { path: { deviceId } }, body })),
     onSettled: () => client.invalidateQueries({ queryKey: DEVICES }),
+  });
+}
+
+export function useCreateDevice() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: DeviceCreateRequest) => unwrap(api.POST("/api/v1/devices", { body })),
+    onSuccess: () => client.invalidateQueries({ queryKey: DEVICES }),
   });
 }

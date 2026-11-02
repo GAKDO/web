@@ -63,10 +63,23 @@ test("폐기로 바꾸기를 누르면 확인 창이 먼저 뜨고, 폐기 뒤�
 test("폐기 기기의 상태 메뉴는 수리 중으로 되돌리기만 고를 수 있고, 확인 창 뒤 수리 중으로 바뀐다", async () => {
   const user = await openList();
   const retired = card("C02PRO0002");
-  expect(within(retired).getAllByRole("button").map((b) => b.textContent)).toEqual(["수리 중으로 되돌리기"]);
+  expect(within(retired).getAllByRole("button").map((b) => b.textContent)).toEqual(["수리 중으로 되돌리기", "고치기"]);
   await user.click(within(retired).getByRole("button", { name: "수리 중으로 되돌리기" }));
   await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "수리 중으로 되돌리기" }));
   await waitFor(() => expect(within(card("C02PRO0002")).getByText("수리 중")).toBeInTheDocument());
+});
+
+test("기기 정보에서 색상·자산번호·OS를 고치면 저장되고, 시리얼·기종은 고칠 수 없게 보인다", async () => {
+  const user = await openList();
+  await user.click(within(card("LGGRAM0002")).getByRole("button", { name: "고치기" }));
+  const form = screen.getByRole("form", { name: "LGGRAM0002 고치기" });
+  expect(within(form).getByLabelText("시리얼")).toBeDisabled();
+  expect(within(form).getByLabelText("기종")).toBeDisabled();
+  await user.type(within(form).getByLabelText("색상"), "실버");
+  await user.type(within(form).getByLabelText("자산번호"), "TR-0202");
+  await user.click(within(form).getByRole("button", { name: "저장" }));
+  await waitFor(() => expect(within(card("LGGRAM0002")).getByText("자산번호 TR-0202")).toBeInTheDocument());
+  expect(db.devices.find((d) => d.serial === "LGGRAM0002")).toMatchObject({ color: "실버", assetNo: "TR-0202" });
 });
 
 test("결과가 많으면 더 보기로 다음 쪽을 불러온다", async () => {
