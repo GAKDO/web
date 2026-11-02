@@ -9,6 +9,7 @@ import type {
   DeviceStatus,
   DiagnosticsFlagKind,
   InspectionGrade,
+  ProgressStage,
   RentalStatus,
 } from "../api/types";
 
@@ -56,6 +57,14 @@ export const FLAG_LABEL: Record<DiagnosticsFlagKind, string> = {
   COMPONENT_CHANGED: "부품 구성이 바뀌었습니다",
   CAPACITY_DROP: "배터리 용량이 크게 줄었습니다",
   BENCH_DROP: "성능 측정값이 크게 떨어졌습니다",
+};
+
+export const PROGRESS_STAGE_LABEL: Record<ProgressStage, string> = {
+  UPLOADED: "사진 올림",
+  ALIGNED: "면 맞춤",
+  INSPECTED: "흠집 검사",
+  GRADED: "등급 매김",
+  SEALED: "봉인",
 };
 
 export const CHAIN_STATUS_LABEL: Record<ChainStatus, string> = {

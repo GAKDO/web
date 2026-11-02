@@ -5,7 +5,9 @@ import type { TimelineCheckpoint } from "../../../shared/api/types";
 import { CHAIN_STATUS_LABEL, CHECKPOINT_TYPE_LABEL } from "../../../shared/codes/labels";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { useDeviceModel, useTimeline } from "../api/report";
-import { CHECKPOINT_ORDER } from "../model/timeline";
+import { useProgress, type ProgressState } from "../api/progress";
+import { CHECKPOINT_ORDER, hasPendingCheckpoint } from "../model/timeline";
+import { ProgressBadge } from "./ProgressBadge";
 import { CompareTable } from "./CompareTable";
 import { TwinSection } from "./TwinSection";
 
@@ -13,7 +15,7 @@ function formatDateTime(iso: string | null): string {
   return iso ? new Date(iso).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" }) : "";
 }
 
-function CheckpointCard({ type, checkpoint }: { type: TimelineCheckpoint["type"]; checkpoint: TimelineCheckpoint | undefined }) {
+function CheckpointCard({ type, checkpoint, progress }: { type: TimelineCheckpoint["type"]; checkpoint: TimelineCheckpoint | undefined; progress: ProgressState }) {
   const label = CHECKPOINT_TYPE_LABEL[type];
   if (!checkpoint) {
     return (
@@ -32,6 +34,7 @@ function CheckpointCard({ type, checkpoint }: { type: TimelineCheckpoint["type"]
         {sealed && <span className={checkpoint.newDefectCount > 0 ? "warn" : undefined}>신규 흠집 {checkpoint.newDefectCount}개</span>}
         {checkpoint.sealedAt && <small>봉인 {formatDateTime(checkpoint.sealedAt)}</small>}
       </div>
+      {!sealed && <ProgressBadge event={progress.byCheckpoint[checkpoint.checkpointId]} reconnecting={progress.reconnecting} failed={progress.failed} />}
     </li>
   );
 }
@@ -66,6 +69,7 @@ export function ReportPage() {
   const { rentalId = "" } = useParams();
   const timeline = useTimeline(rentalId);
   const model = useDeviceModel(timeline.data?.modelCode);
+  const progress = useProgress(rentalId, !!timeline.data && hasPendingCheckpoint(timeline.data.checkpoints));
 
   if (timeline.isPending) return <main className="page">리포트를 불러오는 중…</main>;
   if (timeline.isError) {
@@ -92,7 +96,7 @@ export function ReportPage() {
       )}
       <ol className="steps" aria-label="시점">
         {CHECKPOINT_ORDER.map((type) => (
-          <CheckpointCard key={type} type={type} checkpoint={data.checkpoints.find((c) => c.type === type)} />
+          <CheckpointCard key={type} type={type} checkpoint={data.checkpoints.find((c) => c.type === type)} progress={progress} />
         ))}
       </ol>
       <TwinSection modelCode={data.modelCode} checkpoints={data.checkpoints} />

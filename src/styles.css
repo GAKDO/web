@@ -87,6 +87,8 @@ button { min-height: 44px; padding: 0 16px; font-size: 16px; }
 .twin-canvas { position: relative; height: 360px; border: 1px solid var(--border); border-radius: 8px; touch-action: none; background: #f4f6f8; }
 .twin-reset { position: absolute; right: 8px; bottom: 8px; }
 @media (min-width: 768px) { .twin-canvas { height: 480px; } }
+.progress { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.progress progress { flex: 1; min-width: 120px; }
 /* WE2 폰 수령 촬영 */
 .capture { max-width: 560px; }
 .capture .notice { background: #fff4d6; }

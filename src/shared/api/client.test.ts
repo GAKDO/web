@@ -1,5 +1,5 @@
-import { http } from "msw";
-import { api, refreshSession, setSessionExpiredHandler, unwrap } from "./client";
+import { http, HttpResponse } from "msw";
+import { api, refreshSession, refreshSessionOutcome, setSessionExpiredHandler, unwrap } from "./client";
 import { ApiError } from "./problem";
 import { tokenStore } from "../auth/tokenStore";
 import { server } from "../mocks/node";
@@ -49,6 +49,47 @@ test("리프레시 쿠키가 없으면 refreshSession은 false다", async () => 
 test("서버에 닿지 못하면 status 0 오류를 던진다", async () => {
   server.use(http.get("*/api/v1/auth/me", () => Response.error()));
   await expect(unwrap(api.GET("/api/v1/auth/me"))).rejects.toMatchObject({ status: 0 });
+});
+
+test("토큰 다시 받기를 기다리는 동안 다른 계정으로 로그인하면 늦게 온 이전 토큰으로 덮어쓰지 않는다", async () => {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.post("*/api/v1/auth/refresh", async () => {
+      await gate;
+      return Response.json({ accessToken: "old-account", tokenType: "Bearer", expiresIn: 60, role: "CUSTOMER" });
+    }),
+  );
+  const pending = refreshSession();
+  tokenStore.set({ accessToken: "new-account", tokenType: "Bearer", expiresIn: 60, role: "ADMIN" } as never);
+  release();
+  expect(await pending).toBe(true);
+  expect(tokenStore.get()?.accessToken).toBe("new-account");
+});
+
+test("토큰 다시 받기가 네트워크 오류로 끝나도, 그사이 새로 로그인했으면 새 세션을 유지한다", async () => {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.post("*/api/v1/auth/refresh", async () => {
+      await gate;
+      return Response.error();
+    }),
+  );
+  const pending = refreshSession();
+  tokenStore.set({ accessToken: "new-account", tokenType: "Bearer", expiresIn: 60, role: "ADMIN" } as never);
+  release();
+  expect(await pending).toBe(true);
+  expect(tokenStore.get()?.accessToken).toBe("new-account");
+});
+
+test("리프레시가 네트워크 오류·5xx면 transient, 거절이면 rejected로 나눈다", async () => {
+  server.use(http.post("*/api/v1/auth/refresh", () => HttpResponse.error()));
+  expect(await refreshSessionOutcome()).toBe("transient");
+  server.use(http.post("*/api/v1/auth/refresh", () => new HttpResponse(null, { status: 503 })));
+  expect(await refreshSessionOutcome()).toBe("transient");
+  server.use(http.post("*/api/v1/auth/refresh", () => new HttpResponse(null, { status: 401 })));
+  expect(await refreshSessionOutcome()).toBe("rejected");
 });
 
 test("토큰 다시 받기와 로그아웃 요청은 리프레시 쿠키를 보내도록 credentials: include로 나간다", async () => {

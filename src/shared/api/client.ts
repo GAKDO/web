@@ -6,34 +6,50 @@ import type { ApiPaths, CaptureApiPaths, TokenResponse } from "./types";
 
 // 화면의 모든 API 호출은 이 파일을 거친다. 토큰 붙이기, 401 때 한 번 다시 받기, 오류 변환을 여기서만 한다(FR-004·034).
 // 비우면 같은 출처. Request에는 절대 주소가 필요해 location.origin을 쓴다
-const BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+export const BASE = import.meta.env.VITE_API_BASE || window.location.origin;
 const REFRESH_PATH = "/api/v1/auth/refresh";
 /** 이 요청의 401은 세션 만료가 아니다(틀린 비밀번호·리프레시 실패). 다시 받기·세션 종료를 하지 않는다 */
 const NO_RETRY_PATHS = [REFRESH_PATH, "/api/v1/auth/login"];
 
 let onSessionExpired: () => void = () => {};
-let refreshing: Promise<boolean> | null = null;
+let refreshing: Promise<RefreshOutcome> | null = null;
 
 /** 다시 받기까지 실패해 세션이 끝났을 때 부를 함수(AuthProvider가 정함) */
 export function setSessionExpiredHandler(handler: () => void): void {
   onSessionExpired = handler;
 }
 
-/** 리프레시 쿠키로 액세스 토큰을 다시 받는다. 동시에 불려도 요청은 한 번만 간다 */
-export function refreshSession(): Promise<boolean> {
-  refreshing ??= (async () => {
+/** ok = 새 토큰, rejected = 서버가 리프레시를 거절(세션 끝), transient = 네트워크 오류·5xx(세션은 그대로) */
+export type RefreshOutcome = "ok" | "rejected" | "transient";
+
+/** 리프레시 쿠키로 액세스 토큰을 다시 받고 결과를 나눠 알려 준다. 동시에 불려도 요청은 한 번만 간다 */
+export function refreshSessionOutcome(): Promise<RefreshOutcome> {
+  refreshing ??= (async (): Promise<RefreshOutcome> => {
+    const startedAt = tokenStore.epoch();
+    // 기다리는 동안 로그인·로그아웃이 있었다면 그 결과를 지키고, 이 응답은 버린다
+    const changed = (): RefreshOutcome => (tokenStore.get() !== null ? "ok" : "rejected");
     try {
       const response = await fetch(`${BASE}${REFRESH_PATH}`, { method: "POST", credentials: "include" });
-      if (!response.ok) return false;
-      tokenStore.set((await response.json()) as TokenResponse);
-      return true;
+      if (tokenStore.epoch() !== startedAt) return changed();
+      if (!response.ok) return response.status >= 500 ? "transient" : "rejected";
+      const token = (await response.json()) as TokenResponse;
+      if (tokenStore.epoch() !== startedAt) return changed();
+      tokenStore.set(token);
+      return "ok";
     } catch {
-      return false;
+      // 기다리는 동안 새로 로그인했다면 이전 요청의 실패를 새 세션에 옮기지 않는다
+      if (tokenStore.epoch() !== startedAt) return changed();
+      return "transient";
     } finally {
       refreshing = null;
     }
   })();
   return refreshing;
+}
+
+/** 리프레시 쿠키로 액세스 토큰을 다시 받는다. 새 토큰을 받았을 때만 true */
+export async function refreshSession(): Promise<boolean> {
+  return (await refreshSessionOutcome()) === "ok";
 }
 
 function withToken(request: Request): Request {
@@ -43,20 +59,22 @@ function withToken(request: Request): Request {
   return next;
 }
 
+/** 세션을 되살릴 수 없을 때: 토큰을 지우고 로그인 화면으로 보내는 처리를 부른다 */
+export function expireSession(): void {
+  tokenStore.clear();
+  onSessionExpired();
+}
+
 async function authFetch(request: Request): Promise<Response> {
   const retry = request.clone();
   const response = await fetch(withToken(request));
   if (response.status !== 401 || NO_RETRY_PATHS.some((p) => new URL(request.url).pathname.endsWith(p)) || !tokenStore.get()) return response;
   if (!(await refreshSession())) {
-    tokenStore.clear();
-    onSessionExpired();
+    expireSession();
     return response;
   }
   const second = await fetch(withToken(retry));
-  if (second.status === 401) {
-    tokenStore.clear();
-    onSessionExpired();
-  }
+  if (second.status === 401) expireSession();
   return second;
 }
 
