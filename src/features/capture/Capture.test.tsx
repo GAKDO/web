@@ -1,5 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { vi } from "vitest";
 import { renderApp } from "../../test/renderApp";
 import { api, unwrap } from "../../shared/api/client";
@@ -8,6 +9,7 @@ import { exchangeOnce } from "./api/exchange";
 import { captureTokenStore } from "../../shared/auth/captureTokenStore";
 import { captureDb, mockCaptureLink } from "../../shared/mocks/captureDb";
 import { db, MOCK_CUSTOMER } from "../../shared/mocks/db";
+import { server } from "../../shared/mocks/node";
 import * as camera from "./camera";
 import { blurredGray, fakeShot, glareGray, sharpGray } from "./testing";
 
@@ -223,4 +225,44 @@ test("영상 크기를 알기 전에는 찍기 버튼을 보이지 않는다", a
   expect(screen.queryByRole("button", { name: "찍기" })).toBeNull();
   ready();
   expect(await screen.findByRole("button", { name: "찍기" })).toBeInTheDocument();
+});
+
+test("렌탈의 기종 치수를 읽으면 윤곽선 비율을 그 치수로 그리고, 못 읽으면 기본 치수로 그린다", async () => {
+  asCustomer();
+  const rental = db.rentals.find((r) => db.report.owners.has(r.rentalId));
+  const modelCode = rental && db.report.timelines.get(rental.rentalId)?.modelCode;
+  const model = db.models.find((m) => m.modelCode === modelCode);
+  if (!rental || !model) throw new Error("고객 렌탈 목 데이터가 없습니다");
+  model.dimensions = { widthMm: 200, depthMm: 200, baseHMm: 10, lidHMm: 5 };
+  const { container, unmount } = renderApp(`/capture?t=${mockCaptureLink(rental.rentalId).token}`);
+  await screen.findByRole("heading", { name: "수령 사진 찍기" });
+  await openTop();
+  // 200 × 200 윗면은 정사각형: viewBox 높이 한도 60에 맞춰 60 × 60
+  await vi.waitFor(() => expect(container.querySelector(".outline rect")?.getAttribute("width")).toBe("60"));
+  expect(container.querySelector(".outline rect")?.getAttribute("height")).toBe("60");
+  unmount();
+
+  // 내 렌탈이 아니라 리포트를 못 읽으면 기본 치수(304.1 × 215) 윤곽
+  const other = renderApp(`/capture?t=${mockCaptureLink().token}`);
+  await screen.findByRole("heading", { name: "수령 사진 찍기" });
+  await openTop();
+  expect(other.container.querySelector(".outline rect")?.getAttribute("width")).toBe("80");
+});
+
+test("기종 치수를 받는 동안에는 면을 고를 수 없고, 응답이 오면(실패해도) 찍을 수 있다", async () => {
+  asCustomer();
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.get("*/api/v1/reports/rentals/:rentalId", async () => {
+      await gate;
+      return new HttpResponse(null, { status: 503 });
+    }),
+  );
+  renderApp(`/capture?t=${mockCaptureLink().token}`);
+  expect(await screen.findByText(/기종 치수를 불러오는 중/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /^윗면/ })).toBeDisabled();
+  release();
+  await vi.waitFor(() => expect(screen.getByRole("button", { name: /^윗면/ })).toBeEnabled());
+  expect(screen.queryByText(/기종 치수를 불러오는 중/)).not.toBeInTheDocument();
 });
