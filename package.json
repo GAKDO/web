@@ -12,6 +12,7 @@
     "gen:api": "openapi-typescript contracts/openapi/auth-server.yaml -o src/shared/api/generated/auth.ts && openapi-typescript contracts/openapi/rental-server.yaml -o src/shared/api/generated/rental.ts && openapi-typescript contracts/openapi/capture-server.yaml -o src/shared/api/generated/capture.ts && openapi-typescript contracts/openapi/report-server.yaml -o src/shared/api/generated/report.ts && openapi-typescript contracts/openapi/diagnostics-server.yaml -o src/shared/api/generated/diagnostics.ts"
   },
   "dependencies": {
+    "@microsoft/fetch-event-source": "^2.0.1",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
     "@tanstack/react-query": "^5.105.1",

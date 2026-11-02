@@ -48,8 +48,8 @@
 
 ## Phase 6: US5 검사 진행률 (P2) — PR ④
 
-- [ ] T022 [US5] 테스트: progress 이벤트로 단계·퍼센트 바뀜, done이면 리포트 다시 읽기, 모두 봉인이면 연결 안 함, 끊기면 "다시 연결 중" (`Progress.test.tsx`, 스트림 목)
-- [ ] T023 [US5] `useProgress`(fetchEventSource, 401이면 refresh 뒤 다시), `ProgressBadge`, 목 스트림 핸들러
+- [x] T022 [US5] 테스트: progress 이벤트로 단계·퍼센트 바뀜, done이면 리포트 다시 읽기, 모두 봉인이면 연결 안 함, 끊기면 "다시 연결 중" (`Progress.test.tsx`, 스트림 목)
+- [x] T023 [US5] `useProgress`(fetchEventSource, 401이면 refresh 뒤 다시), `ProgressBadge`, 목 스트림 핸들러
 
 ## Phase 7: 마무리 — PR ④
 

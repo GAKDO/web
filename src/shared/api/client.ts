@@ -6,7 +6,7 @@ import type { ApiPaths, CaptureApiPaths, TokenResponse } from "./types";
 
 // 화면의 모든 API 호출은 이 파일을 거친다. 토큰 붙이기, 401 때 한 번 다시 받기, 오류 변환을 여기서만 한다(FR-004·034).
 // 비우면 같은 출처. Request에는 절대 주소가 필요해 location.origin을 쓴다
-const BASE = import.meta.env.VITE_API_BASE || window.location.origin;
+export const BASE = import.meta.env.VITE_API_BASE || window.location.origin;
 const REFRESH_PATH = "/api/v1/auth/refresh";
 /** 이 요청의 401은 세션 만료가 아니다(틀린 비밀번호·리프레시 실패). 다시 받기·세션 종료를 하지 않는다 */
 const NO_RETRY_PATHS = [REFRESH_PATH, "/api/v1/auth/login"];
