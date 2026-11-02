@@ -62,6 +62,9 @@ describe("비밀번호 재설정", () => {
     const user = await requestCode(MOCK_CUSTOMER.email);
     await enter(user, MOCK_RESET_CODE, NEW_PASSWORD, "different-pass");
     expect(await screen.findByText("새 비밀번호가 서로 다릅니다.")).toBeInTheDocument();
+    // 칸을 고치면 이전 오류 문장이 사라진다
+    await user.type(screen.getByLabelText("새 비밀번호 확인"), "x");
+    expect(screen.queryByText("새 비밀번호가 서로 다릅니다.")).toBeNull();
     expect(db.accounts.find((a) => a.email === MOCK_CUSTOMER.email)?.password).toBe(MOCK_CUSTOMER.password);
   });
 });

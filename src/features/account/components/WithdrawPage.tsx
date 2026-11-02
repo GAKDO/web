@@ -60,7 +60,10 @@ export function WithdrawPage() {
           required
           value={password}
           error={error}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setError(null);
+          }}
         />
         <Button type="submit" className="danger" disabled={!password || asking}>
           탈퇴하기

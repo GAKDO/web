@@ -31,6 +31,12 @@ export function PasswordResetPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  /** 입력을 고치면 이전 오류 문장을 지운다 */
+  function edit(set: (value: string) => void, value: string) {
+    set(value);
+    setError(null);
+  }
+
   async function sendCode(event?: FormEvent) {
     event?.preventDefault();
     setBusy(true);
@@ -72,7 +78,7 @@ export function PasswordResetPage() {
       {step === "email" && (
         <form onSubmit={sendCode} noValidate>
           <p>가입한 이메일로 6자리 재설정 코드를 보내 드립니다.</p>
-          <Field label="이메일" type="email" autoComplete="username" required value={email} error={error} onChange={(e) => setEmail(e.target.value)} />
+          <Field label="이메일" type="email" autoComplete="username" required value={email} error={error} onChange={(e) => edit(setEmail, e.target.value)} />
           <Button type="submit" busy={busy} disabled={!email.trim()}>
             코드 받기
           </Button>
@@ -89,9 +95,9 @@ export function PasswordResetPage() {
             maxLength={6}
             required
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+            onChange={(e) => edit(setCode, e.target.value.replace(/\D/g, ""))}
           />
-          <Field label="새 비밀번호" type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Field label="새 비밀번호" type="password" autoComplete="new-password" required value={password} onChange={(e) => edit(setPassword, e.target.value)} />
           <Field
             label="새 비밀번호 확인"
             type="password"
@@ -99,7 +105,7 @@ export function PasswordResetPage() {
             required
             value={confirm}
             error={error}
-            onChange={(e) => setConfirm(e.target.value)}
+            onChange={(e) => edit(setConfirm, e.target.value)}
           />
           <Button type="submit" busy={busy} disabled={code.length !== 6 || !password || !confirm}>
             비밀번호 바꾸기
