@@ -19,5 +19,7 @@ FROM nginxinc/nginx-unprivileged:1.29-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 # 시작할 때 인증서가 있으면 HTTPS로 listen을 만든다(이미지 entrypoint가 /docker-entrypoint.d/*.sh를 차례로 돌린다)
 COPY --chmod=0755 docker/40-trace-tls.sh /docker-entrypoint.d/40-trace-tls.sh
+# /grafana/ 프록시의 resolver·upstream을 만든다(grafana가 없어도 web은 뜬다)
+COPY --chmod=0755 docker/41-trace-grafana.sh /docker-entrypoint.d/41-trace-grafana.sh
 COPY --from=build /web/dist/ /usr/share/nginx/html/
 EXPOSE 8080
