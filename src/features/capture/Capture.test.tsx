@@ -173,3 +173,24 @@ test("다시 찍으면 버린 사진의 미리보기 URL을 해제한다", async
   await user.click(await screen.findByRole("button", { name: "다시 찍기" }));
   expect(revoke).toHaveBeenCalled();
 });
+
+test("QR 교환을 기다리는 사이 로그아웃하면 늦게 온 촬영 허가를 저장하지 않는다", async () => {
+  const link = mockCaptureLink();
+  tokenStore.set(await unwrap(api.POST("/api/v1/auth/login", { body: MOCK_CUSTOMER })));
+  const pending = exchangeOnce(link.token);
+  captureTokenStore.clear();
+  await expect(pending).rejects.toThrow();
+  expect(captureTokenStore.get()).toBeNull();
+});
+
+test("면 목록으로 돌아가면 쓰지 않은 사진의 미리보기 URL을 해제한다", async () => {
+  const revoke = vi.spyOn(URL, "revokeObjectURL");
+  asCustomer();
+  renderApp(`/capture?t=${mockCaptureLink().token}`);
+  const user = await openTop();
+  await user.click(await screen.findByRole("button", { name: "찍기" }));
+  await screen.findByRole("button", { name: "이 사진 쓰기" });
+  revoke.mockClear();
+  await user.click(screen.getByRole("button", { name: "면 목록으로" }));
+  expect(revoke).toHaveBeenCalledTimes(1);
+});

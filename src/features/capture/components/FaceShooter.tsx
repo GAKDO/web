@@ -43,6 +43,16 @@ export function FaceShooter({ guide, onAccept, onCancel }: Props) {
   const [busy, setBusy] = useState(false);
   const label = CAPTURE_FACE_LABEL[guide.face];
 
+  // 쓰지 않은 사진의 미리보기 URL은 이 화면을 떠날 때 해제한다(쓴 사진은 CapturePage가 맡는다)
+  const unaccepted = useRef<Accepted | null>(null);
+  unaccepted.current = review;
+  useEffect(
+    () => () => {
+      if (unaccepted.current) URL.revokeObjectURL(unaccepted.current.shot.previewUrl);
+    },
+    [],
+  );
+
   useEffect(() => {
     let stream: MediaStream | null = null;
     let alive = true;
@@ -93,7 +103,16 @@ export function FaceShooter({ guide, onAccept, onCancel }: Props) {
         </div>
       )}
       <div className="row">
-        {review?.check.ok && <Button onClick={() => onAccept(review)}>이 사진 쓰기</Button>}
+        {review?.check.ok && (
+          <Button
+            onClick={() => {
+              unaccepted.current = null;
+              onAccept(review);
+            }}
+          >
+            이 사진 쓰기
+          </Button>
+        )}
         {review && (
           <Button
             onClick={() => {
@@ -109,14 +128,7 @@ export function FaceShooter({ guide, onAccept, onCancel }: Props) {
             찍기
           </Button>
         )}
-        <Button
-          onClick={() => {
-            if (review) URL.revokeObjectURL(review.shot.previewUrl);
-            onCancel();
-          }}
-        >
-          면 목록으로
-        </Button>
+        <Button onClick={onCancel}>면 목록으로</Button>
       </div>
     </section>
   );

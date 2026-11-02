@@ -9,9 +9,12 @@ export interface CaptureGrant {
 }
 
 let grant: CaptureGrant | null = null;
+// clear()(로그인·로그아웃)마다 바뀐다. 그 전에 시작한 QR 교환 결과는 저장하지 않는다
+let generation = 0;
 
 export const captureTokenStore = {
   get: (): CaptureGrant | null => grant,
+  generation: (): number => generation,
   set(token: CaptureTokenResponse): CaptureGrant {
     grant = {
       accessToken: token.accessToken,
@@ -23,5 +26,6 @@ export const captureTokenStore = {
   },
   clear(): void {
     grant = null;
+    generation += 1;
   },
 };
