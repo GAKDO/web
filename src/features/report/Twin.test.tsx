@@ -1,0 +1,67 @@
+import { fireEvent, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { renderAsCustomer } from "../../test/renderApp";
+import { db } from "../../shared/mocks/db";
+
+const firstRentalId = () => [...db.report.owners.keys()][0];
+
+async function openTwin() {
+  const u = userEvent.setup();
+  renderAsCustomer(`/my/rentals/${firstRentalId()}`);
+  const twin = await screen.findByRole("region", { name: /3D로 보기/ });
+  return { u, twin };
+}
+
+const slider = () => screen.getByRole("slider", { name: "시점" });
+const newTags = (twin: HTMLElement) => within(twin).queryAllByText("신규");
+
+test("출고 흠집 0개·수령 신규 1개일 때 슬라이더를 출고에서 수령으로 옮기면 핀 1개가 '신규'로 구분돼 나타난다", async () => {
+  const { twin } = await openTwin();
+  fireEvent.change(slider(), { target: { value: "0" } });
+  expect(within(twin).getByRole("heading", { name: "3D로 보기 · 출고" })).toBeInTheDocument();
+  expect(newTags(twin)).toHaveLength(0);
+  fireEvent.change(slider(), { target: { value: "1" } });
+  expect(within(twin).getByRole("heading", { name: "3D로 보기 · 수령" })).toBeInTheDocument();
+  const list = within(twin).getByRole("list", { name: "흠집" });
+  expect(within(list).getByRole("button", { name: /신규 윗면\(덮개\) 흠집/ })).toHaveClass("pin-new");
+  expect(newTags(twin)).toHaveLength(1);
+});
+
+test("수령 시점에서 슬라이더를 다시 출고로 옮기면 신규 핀이 사라지고 출고 사진으로 돌아간다", async () => {
+  const { twin } = await openTwin();
+  expect(newTags(twin)).toHaveLength(1);
+  fireEvent.change(slider(), { target: { value: "0" } });
+  expect(newTags(twin)).toHaveLength(0);
+  expect(await within(twin).findByRole("img", { name: "키보드 사진" })).toBeInTheDocument();
+});
+
+test("핀을 누르면 그 흠집의 크롭 사진, 종류, 면, 크기가 보인다", async () => {
+  const { u, twin } = await openTwin();
+  await u.click(within(twin).getByRole("button", { name: /신규 윗면/ }));
+  const detail = await screen.findByRole("dialog", { name: "흠집 상세" });
+  expect(await within(detail).findByText("긁힘")).toBeInTheDocument();
+  expect(within(detail).getByText("윗면(덮개)")).toBeInTheDocument();
+  expect(within(detail).getByText("12mm")).toBeInTheDocument();
+  expect(within(detail).getByRole("img", { name: "흠집 확대 사진" })).toBeInTheDocument();
+});
+
+test("아직 봉인되지 않은 시점은 '검사 중'으로 보이고 슬라이더에 오르지 않는다", async () => {
+  const { twin } = await openTwin();
+  expect(within(twin).getByText("반납: 검사 중이라 아직 볼 수 없습니다.")).toBeInTheDocument();
+  expect(slider()).toHaveAttribute("max", "1");
+});
+
+test("슬라이더를 키보드(좌우 화살표)로 움직이면 마우스와 같은 결과가 나온다", async () => {
+  const { u, twin } = await openTwin();
+  slider().focus();
+  await u.keyboard("{ArrowLeft}");
+  expect(within(twin).getByRole("heading", { name: "3D로 보기 · 출고" })).toBeInTheDocument();
+});
+
+test("사진이 없는 면(폰 촬영의 키보드)은 '사진 없음'으로 보이고, 3D를 그릴 수 없으면 면별 사진으로 대신 보인다", async () => {
+  const { twin } = await openTwin();
+  expect(within(twin).getByText(/3D를 볼 수 없어 면별 사진으로/)).toBeInTheDocument();
+  const kb = within(twin).getByRole("listitem", { name: "키보드" });
+  expect(within(kb).getByText("사진 없음")).toBeInTheDocument();
+  expect(await within(twin).findByRole("img", { name: "윗면(덮개) 사진" })).toBeInTheDocument();
+});
