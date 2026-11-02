@@ -1,6 +1,8 @@
 import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { nanoid } from "nanoid";
+import { http, HttpResponse } from "msw";
+import { server } from "../../shared/mocks/node";
 import { renderAsAdmin } from "../../test/renderApp";
 import type { Checkpoint } from "../../shared/api/types";
 import { captureDb } from "../../shared/mocks/captureDb";
@@ -43,4 +45,15 @@ test("5분이 지나면 코드를 가리고 새로 만들라고 알린다", asyn
 test("봉인된 시점에는 페어링 코드 버튼이 없다", async () => {
   const { step } = await openRental("SEALED");
   expect(within(step).queryByRole("button", { name: "진단 페어링 코드 만들기" })).not.toBeInTheDocument();
+});
+
+test("다시 만들기가 실패해도 아직 유효한 코드는 그대로 보인다", async () => {
+  const { step } = await openRental("OPEN");
+  const user = userEvent.setup();
+  await user.click(within(step).getByRole("button", { name: "진단 페어링 코드 만들기" }));
+  const first = (await within(step).findByLabelText("페어링 코드")).textContent;
+  server.use(http.post("*/api/v1/auth/pairing-codes", () => HttpResponse.error()));
+  await user.click(within(step).getByRole("button", { name: "페어링 코드 다시 만들기" }));
+  expect(await within(step).findByRole("alert")).toBeInTheDocument();
+  expect(within(step).getByLabelText("페어링 코드")).toHaveTextContent(first ?? "");
 });

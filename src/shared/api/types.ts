@@ -14,6 +14,7 @@ type ReportSchemas = ReportComponents["schemas"];
 export type ApiPaths = AuthPaths & RentalPaths & ReportPaths & CapturePaths & DiagnosticsPaths;
 
 export type LoginRequest = AuthSchemas["LoginRequest"];
+export type PairingCodeResponse = AuthSchemas["PairingCodeResponse"];
 export type SignupRequest = AuthSchemas["SignupRequest"];
 export type EmailVerifyRequest = AuthSchemas["EmailVerifyRequest"];
 export type TokenResponse = AuthSchemas["TokenResponse"];
@@ -56,6 +57,7 @@ export type CaptureSetCreateRequest = CaptureSchemas["CaptureSetCreateRequest"];
 export type CaptureSetCreateResponse = CaptureSchemas["CaptureSetCreateResponse"];
 export type CaptureSetCompleteRequest = CaptureSchemas["CaptureSetCompleteRequest"];
 export type UploadTarget = CaptureSchemas["UploadTarget"];
+export type UploadReissueRequest = CaptureSchemas["UploadReissueRequest"];
 export type CaptureSet = CaptureSchemas["CaptureSet"];
 export type CaptureFace = CaptureSchemas["CaptureFace"];
 export type CaptureLight = CaptureSchemas["CaptureLight"];

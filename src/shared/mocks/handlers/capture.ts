@@ -8,6 +8,8 @@ import type {
   CaptureSetCreateRequest,
   CaptureSetCreateResponse,
   CaptureTokenResponse,
+  UploadReissueRequest,
+  UploadTarget,
 } from "../../api/types";
 import { accountFromRequest, advanceCheckpoint, db } from "../db";
 import { captureDb, grantFromRequest, hexToBase64, MOCK_STORAGE_ORIGIN, objectPath, sha256Hex, type MockSet } from "../captureDb";
@@ -109,19 +111,28 @@ export const captureHandlers = [
     const response: CaptureSetCreateResponse = { captureSetId, uploads };
     return HttpResponse.json(response, { status: 201 });
   }),
-  // 만료된 업로드 URL 다시 받기: 아직 안 올라간 사진만 새 URL(계약 c0dfcba)
-  http.post("*/api/v1/captures/sets/:setId/uploads", ({ request, params }) => {
+  // 만료된 업로드 URL 다시 받기: 지정한(없으면 전부) 아직 안 올라간 사진만 새 서명 URL(계약 c0dfcba)
+  http.post("*/api/v1/captures/sets/:setId/uploads", async ({ request, params }) => {
     const grant = grantFromRequest(request);
     if (!grant) return problem(401, "UNAUTHENTICATED", "촬영 권한이 없습니다");
     const set = captureDb.sets.find((s) => s.captureSetId === params.setId);
     if (!set) return problem(404, "NOT_FOUND", "세트가 없습니다");
     if (set.checkpointId !== grant.checkpointId) return problem(403, "OUT_OF_SCOPE", "이 시점의 촬영 권한이 없습니다");
     if (set.completed) return problem(409, "CAPTURE_SET_CLOSED", "이미 완료된 세트입니다");
+    const text = await request.text();
+    const wanted = (text ? (JSON.parse(text) as UploadReissueRequest).photos : undefined) ?? null;
+    const same = (u: UploadTarget, p: { face: string; light: string; camera: string }) => u.face === p.face && u.light === p.light && u.camera === p.camera;
+    if (wanted?.some((p) => !set.uploads.some((u) => same(u, p)))) return problem(400, "VALIDATION_FAILED", "세트에 없는 사진입니다");
     captureDb.reissued += 1;
     const expiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
-    set.uploads = set.uploads.map((u) => (captureDb.objects.has(new URL(u.url).pathname) ? u : { ...u, expiresAt }));
-    const uploads = set.uploads.filter((u) => !captureDb.objects.has(new URL(u.url).pathname));
-    return HttpResponse.json({ uploads });
+    const pending = (u: UploadTarget) => !captureDb.objects.has(new URL(u.url).pathname) && (!wanted || wanted.some((p) => same(u, p)));
+    set.uploads = set.uploads.map((u) => {
+      if (!pending(u)) return u;
+      const url = new URL(u.url);
+      url.searchParams.set("X-Amz-Signature", `mock-${nanoid(8)}`);
+      return { ...u, url: url.toString(), expiresAt };
+    });
+    return HttpResponse.json({ uploads: set.uploads.filter(pending) });
   }),
   http.post("*/api/v1/captures/sets/:setId/complete", async ({ request, params }) => {
     const grant = grantFromRequest(request);
@@ -169,7 +180,9 @@ export const captureHandlers = [
     const url = new URL(request.url);
     const set = captureDb.sets.find((s) => s.uploads.some((u) => new URL(u.url).pathname === url.pathname));
     const target = set?.uploads.find((u) => new URL(u.url).pathname === url.pathname);
-    if (!target || request.headers.get("x-amz-checksum-sha256") !== target.headers?.["x-amz-checksum-sha256"]) {
+    // 다시 받은 뒤에는 예전 서명 URL을 거절한다
+    const signed = target && new URL(target.url).searchParams.get("X-Amz-Signature") === url.searchParams.get("X-Amz-Signature");
+    if (!target || !signed || request.headers.get("x-amz-checksum-sha256") !== target.headers?.["x-amz-checksum-sha256"]) {
       return new HttpResponse(null, { status: 403 });
     }
     if (Date.parse(target.expiresAt) <= Date.now()) return new HttpResponse(null, { status: 403 });

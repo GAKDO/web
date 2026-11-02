@@ -44,7 +44,9 @@ function CheckpointSteps({ rental, onError }: { rental: Rental; onError: (messag
                   <CaptureLinkPanel rentalId={rental.rentalId} checkpointId={checkpoint.checkpointId} />
                 )}
                 {/* 진단 에이전트는 시점마다 붙는다. 봉인 전(OPEN)에만 코드를 만든다 */}
-                {checkpoint.status === "OPEN" && <PairingCodePanel rentalId={rental.rentalId} checkpointId={checkpoint.checkpointId} />}
+                {checkpoint.status === "OPEN" && (
+                  <PairingCodePanel key={`${rental.rentalId}:${checkpoint.checkpointId}`} rentalId={rental.rentalId} checkpointId={checkpoint.checkpointId} />
+                )}
               </>
             ) : (
               <>

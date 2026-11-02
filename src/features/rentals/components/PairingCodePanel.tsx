@@ -3,16 +3,19 @@ import { useEffect, useState } from "react";
 import { api, unwrap } from "../../../shared/api/client";
 import { messageFor } from "../../../shared/api/errorMessages";
 import { ApiError } from "../../../shared/api/problem";
+import type { PairingCodeResponse } from "../../../shared/api/types";
 import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 
 /** 진단 에이전트 페어링 코드(FR-AUTH-02, 5분). 코드는 화면 상태에만 두고 저장하거나 로그에 남기지 않는다 */
 export function PairingCodePanel({ rentalId, checkpointId }: { rentalId: string; checkpointId: string }) {
   const [now, setNow] = useState(() => Date.now());
+  // 다시 만들기가 진행 중이거나 실패해도 아직 유효한 코드는 그대로 보인다
+  const [issued, setIssued] = useState<PairingCodeResponse | undefined>(undefined);
   const create = useMutation({
     mutationFn: () => unwrap(api.POST("/api/v1/auth/pairing-codes", { body: { rentalId, checkpointId } })),
+    onSuccess: setIssued,
   });
-  const issued = create.data;
   const expiresAt = issued ? new Date(issued.expiresAt).getTime() : 0;
   const expired = issued !== undefined && now >= expiresAt;
 

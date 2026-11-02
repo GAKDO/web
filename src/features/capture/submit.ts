@@ -77,6 +77,8 @@ export async function reissueUploads(session: UploadSession): Promise<void> {
   const { uploads } = await unwrap(
     captureApi.POST("/api/v1/captures/sets/{setId}/uploads", { params: { path: { setId: session.setId } }, body: {} }),
   );
+  // 응답에 없는 사진은 서버에 이미 올라간 것(응답이 끊겨 실패로 남았던 경우 포함)이다
+  session.done = session.done.map((done, i) => done || !uploads.some((u) => sameTarget(u, session.uploads[i])));
   session.uploads = session.uploads.map((old) => uploads.find((u) => sameTarget(u, old)) ?? old);
 }
 
