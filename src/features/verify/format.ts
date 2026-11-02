@@ -15,5 +15,6 @@ const KST = new Intl.DateTimeFormat("ko-KR", {
 
 /** 서버 시각을 한국 시간으로 보인다 */
 export function formatKst(iso: string): string {
-  return KST.format(new Date(iso));
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? "시각을 알 수 없음" : KST.format(date);
 }
