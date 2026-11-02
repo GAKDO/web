@@ -7,6 +7,9 @@ COPY . .
 # 파일럿 추이 대시보드(학교 Grafana) 주소. 빌드 때 화면에 박히므로 비밀 값은 넣지 않는다
 ARG VITE_PILOT_DASHBOARD_URL=
 ENV VITE_PILOT_DASHBOARD_URL=$VITE_PILOT_DASHBOARD_URL
+# 시연용 고객 계정 이메일(쉼표 구분). 로그인 화면에 고르기 버튼으로만 보이고, 비밀번호는 넣지 않는다
+ARG VITE_DEMO_CUSTOMER_EMAILS=
+ENV VITE_DEMO_CUSTOMER_EMAILS=$VITE_DEMO_CUSTOMER_EMAILS
 RUN npm run build
 # 배포 워크플로의 연기 시험이 /version.txt로 새 화면이 떴는지 확인한다
 ARG APP_COMMIT=unknown

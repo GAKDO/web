@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly VITE_USE_MOCK?: string;
   /** 학교 Grafana의 파일럿 추이 대시보드 주소(FR-PIL-02). 비우면 메뉴를 숨긴다 */
   readonly VITE_PILOT_DASHBOARD_URL?: string;
+  /** 시연용 고객 계정 이메일, 쉼표로 구분(비밀번호는 넣지 않음) */
+  readonly VITE_DEMO_CUSTOMER_EMAILS?: string;
 }
 
 interface ImportMeta {
