@@ -18,6 +18,8 @@ import { simulateCapture } from "./rental";
 
 // codes.yaml capture.face_required.PHONE (목 서버 검사용)
 const PHONE_REQUIRED: CaptureFace[] = ["TOP", "BOT", "SF", "SB", "SL", "SR", "SCR0"];
+/** contracts CaptureSetCreateRequest.photos의 maxItems(e4a00ba에서 54 → 80) */
+export const MAX_SET_PHOTOS = 80;
 
 function toCaptureSet(set: MockSet): CaptureSet {
   return {
@@ -95,6 +97,9 @@ export const captureHandlers = [
     const body = (await request.json()) as CaptureSetCreateRequest;
     if (body.checkpointId !== grant.checkpointId || body.rentalId !== grant.rentalId || body.source !== "PHONE") {
       return problem(403, "OUT_OF_SCOPE", "이 시점의 촬영 권한이 없습니다");
+    }
+    if (body.photos.length < 1 || body.photos.length > MAX_SET_PHOTOS) {
+      return problem(400, "VALIDATION_FAILED", `사진은 1~${MAX_SET_PHOTOS}장이어야 합니다`);
     }
     const captureSetId = nanoid();
     const expiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
