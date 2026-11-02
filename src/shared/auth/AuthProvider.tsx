@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useQueryClient } from "@tanstack/react-query";
 import { api, refreshSession, setSessionExpiredHandler, unwrap } from "../api/client";
 import type { TokenRole } from "../api/types";
+import { captureTokenStore } from "./captureTokenStore";
 import { tokenStore } from "./tokenStore";
 
 export type AuthStatus = "unknown" | "authenticated" | "anonymous";
@@ -33,6 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const endSession = useCallback(
     (next: AuthNotice) => {
       tokenStore.clear();
+      // 다른 계정이 이전 계정의 촬영 권한을 쓰지 않게 함께 지운다
+      captureTokenStore.clear();
       queryClient.clear();
       setNotice(next);
       setRole(null);
@@ -72,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (email: string, password: string, expected: SessionRole = "ADMIN") => {
       const token = await unwrap(api.POST("/api/v1/auth/login", { body: { email, password } }));
+      captureTokenStore.clear();
       tokenStore.set(token);
       // 고객 화면에는 관리자도 들어올 수 있다(시연 확인용). 관리자 화면에는 관리자만
       const allowed = expected === "ADMIN" ? token.role === "ADMIN" : isSessionRole(token.role);

@@ -5,7 +5,7 @@ import { captureDb, grantFromRequest, mockCaptureLink, sha256Hex } from "../mock
 import type { UploadTarget } from "./types";
 
 async function grantFor(link = mockCaptureLink()) {
-  captureDb.grants.set("cap.test", { rentalId: link.rentalId, checkpointId: link.checkpointId, accountId: "acc" });
+  captureDb.grants.set("cap.test", { rentalId: link.rentalId, checkpointId: link.checkpointId, accountId: "acc", expiresAt: Date.now() + 1800_000 });
   captureTokenStore.set({ accessToken: "cap.test", tokenType: "Bearer", expiresIn: 1800, rentalId: link.rentalId, checkpointId: link.checkpointId });
   return link;
 }
@@ -54,4 +54,14 @@ test("다른 시점의 세트를 만들려 하면 403 OUT_OF_SCOPE", async () =>
   });
   await expect(unwrap(call)).rejects.toMatchObject({ status: 403, code: "OUT_OF_SCOPE" });
   expect(grantFromRequest(new Request("http://x", { headers: { Authorization: "Bearer cap.test" } }))).not.toBeNull();
+});
+
+test("만료된 촬영 권한으로 세트를 만들면 401", async () => {
+  const link = await grantFor();
+  const grant = captureDb.grants.get("cap.test");
+  if (grant) grant.expiresAt = Date.now() - 1;
+  const call = captureApi.POST("/api/v1/captures/sets", {
+    body: { rentalId: link.rentalId, checkpointId: link.checkpointId, source: "PHONE", photos: [] },
+  });
+  await expect(unwrap(call)).rejects.toMatchObject({ status: 401 });
 });

@@ -16,6 +16,7 @@ interface Grant {
   rentalId: string;
   checkpointId: string;
   accountId: string;
+  expiresAt: number;
 }
 
 export interface MockSet {
@@ -55,7 +56,8 @@ export function mockCaptureLink(rentalId = nanoid(), checkpointId = nanoid(), mi
 
 export function grantFromRequest(request: Request): Grant | null {
   const header = request.headers.get("Authorization") ?? "";
-  return captureDb.grants.get(header.replace(/^Bearer /, "")) ?? null;
+  const grant = captureDb.grants.get(header.replace(/^Bearer /, ""));
+  return grant && grant.expiresAt > Date.now() ? grant : null;
 }
 
 export function objectPath(setId: string, face: CaptureFace, light: CaptureLight): string {

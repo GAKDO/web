@@ -25,7 +25,7 @@ export const captureHandlers = [
     link.used = true;
     captureDb.rentalOwner.set(link.rentalId, account.accountId);
     const accessToken = `cap.${nanoid()}`;
-    captureDb.grants.set(accessToken, { rentalId: link.rentalId, checkpointId: link.checkpointId, accountId: account.accountId });
+    captureDb.grants.set(accessToken, { rentalId: link.rentalId, checkpointId: link.checkpointId, accountId: account.accountId, expiresAt: Date.now() + 1800_000 });
     const body: CaptureTokenResponse = {
       accessToken,
       tokenType: "Bearer",

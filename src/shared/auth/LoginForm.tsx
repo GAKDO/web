@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { ApiError } from "../../../shared/api/problem";
-import { messageFor } from "../../../shared/api/errorMessages";
-import { Button } from "../../../shared/ui/Button";
-import { Field } from "../../../shared/ui/Field";
+import { ApiError } from "../api/problem";
+import { messageFor } from "../api/errorMessages";
+import { Button } from "../ui/Button";
+import { Field } from "../ui/Field";
 
 /** 관리자·고객 로그인 화면이 같이 쓰는 입력 부분. 실패하면 비밀번호 칸만 비운다 */
 export function LoginForm({ onLogin }: { onLogin(email: string, password: string): Promise<void> }) {

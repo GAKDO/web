@@ -4,6 +4,7 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { AppProviders, createQueryClient } from "../../AppProviders";
 import { routes } from "../../App";
 import { RequireCustomer } from "../../shared/auth/RequireCustomer";
+import { captureTokenStore } from "../../shared/auth/captureTokenStore";
 import { MOCK_ADMIN, MOCK_CUSTOMER } from "../../shared/mocks/db";
 import { safeNext } from "./safeNext";
 
@@ -64,4 +65,12 @@ test("next가 외부 주소면 따르지 않는다", () => {
   expect(safeNext("/\\evil.example.com")).toBe("/");
   expect(safeNext(null)).toBe("/");
   expect(safeNext("/capture?t=abc")).toBe("/capture?t=abc");
+});
+
+test("로그인하면 이전 계정의 촬영 권한이 지워진다", async () => {
+  captureTokenStore.set({ accessToken: "cap.old", tokenType: "Bearer", expiresIn: 1800, rentalId: "r".repeat(21), checkpointId: "c".repeat(21) });
+  renderWithCustomerRoute("/login?next=/my");
+  await login(MOCK_CUSTOMER.email, MOCK_CUSTOMER.password);
+  await screen.findByText("내 화면");
+  expect(captureTokenStore.get()).toBeNull();
 });
