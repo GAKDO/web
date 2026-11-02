@@ -81,18 +81,18 @@
 - [x] T033 [P] [US4] 테스트: `nextAction(rental)` 표(data-model) 그대로 (`src/features/rentals/nextAction.test.ts`)
 - [x] T034 [P] [US4] `nextAction` 순수 함수 (`src/features/rentals/nextAction.ts`)
 - [x] T035 [P] [US4] MSW 렌탈 핸들러(생성 409 `DEVICE_NOT_ACTIVE`·`RENTAL_OPEN_EXISTS`, 시점 순서 409, 종료는 RET SEALED만, 반납 시작 뒤 몇 초 뒤 봉인, `?mock=slow-seal`이면 GRADED에서 멈춤) (`src/shared/mocks/handlers/rental.ts`)
-- [ ] T036 [P] [US4] 테스트: 시나리오 1~10(+1-1 스위치) (`src/features/rentals/*.test.tsx`)
-- [ ] T037 [US4] 훅 `useRentals`, `useRental`, `useCreateRental`, `useStartCheckpoint`, `useCloseRental` (409면 렌탈 다시 읽기) (`src/features/rentals/api/`)
-- [ ] T038 [US4] 렌탈 목록 화면(계약 필드만) (`src/features/rentals/components/RentalListPage.tsx`)
-- [ ] T039 [US4] 렌탈 만들기(기기 고르기 + "다른 상태 기기도 보기" 스위치, 대여자 참조 번호) (`src/features/rentals/components/RentalCreatePage.tsx`)
+- [x] T036 [P] [US4] 테스트: 시나리오 1~10(+1-1 스위치) (`src/features/rentals/*.test.tsx`)
+- [x] T037 [US4] 훅 `useRentals`, `useRental`, `useCreateRental`, `useStartCheckpoint`, `useCloseRental` (409면 렌탈 다시 읽기) (`src/features/rentals/api/`)
+- [x] T038 [US4] 렌탈 목록 화면(계약 필드만) (`src/features/rentals/components/RentalListPage.tsx`)
+- [x] T039 [US4] 렌탈 만들기(기기 고르기 + "다른 상태 기기도 보기" 스위치, 대여자 참조 번호) (`src/features/rentals/components/RentalCreatePage.tsx`)
 - [x] T040 [US4] 렌탈 상세와 시점 단계 표시·버튼·봉인 대기 안내 (`src/features/rentals/components/{RentalDetailPage,CheckpointSteps}.tsx`)
 
 ## Phase 7: 마무리 — PR ③
 
-- [ ] T041 [P] 375px·1280px 렌더 테스트(matchMedia 목으로 카드·표 둘 다) (`src/shared/ui/ResponsiveList.test.tsx`)
-- [ ] T041a [P] SC-006: 목 기기 100대에서 검색 결과가 1초 안에 보이는 테스트 (`src/features/devices/DeviceListPage.perf.test.tsx`)
-- [ ] T042 [P] 기존 nginx·`/version.txt`·Dockerfile 그대로인지 확인, `npm run build` 통과
-- [ ] T043 quickstart.md 순서대로 목 화면 확인, 스크린샷(375·1280) PR 본문에
+- [x] T041 [P] 375px·1280px: ResponsiveList 대신 CSS 한 벌로 처리해 렌더 테스트는 두지 않고, PR마다 두 폭 스크린샷과 가로 스크롤 없음(scrollWidth)으로 확인
+- [x] T041a [P] SC-006: 목 기기 100대에서 검색 결과가 1초 안에 보이는 테스트 (`src/features/devices/DeviceListPage.perf.test.tsx`)
+- [x] T042 [P] 기존 nginx·`/version.txt`·Dockerfile 그대로인지 확인(WE1 PR은 손대지 않음, nginx 변경은 #5 HTTPS), `npm run build` 통과
+- [x] T043 quickstart.md 순서대로 목 화면 확인(Playwright), 스크린샷(375·1280)은 PR마다 프로젝트 스레드에 첨부
 - [ ] T043a (11/10 리허설로 미룸, 11/02 결정) SC-001·002: 팀 밖 3명이 설명 없이 로그인 → 렌탈 → 출고, 409 문장 이해 확인
 - [ ] T044 c1-questions.md 답 반영(A 답이 오면 sync-contracts → gen:api → 타입 오류 고치기)
 

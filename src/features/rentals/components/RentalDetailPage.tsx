@@ -9,6 +9,7 @@ import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { useCloseRental, useRental, useStartCheckpoint } from "../api/rentals";
 import { nextAction } from "../nextAction";
+import { formatDate } from "./RentalListPage";
 
 const STEPS: CheckpointType[] = ["OUT", "RCV", "RET"];
 const BEFORE: Record<CheckpointType, string> = { OUT: "출고를", RCV: "수령을", RET: "반납을" };
@@ -19,7 +20,6 @@ function reason(type: CheckpointType, action: ReturnType<typeof nextAction>): st
   if (action.kind === "waitSeal" && action.type === prev) return `${CHECKPOINT_TYPE_LABEL[prev]} 기록이 봉인되면 시작할 수 있습니다`;
   return `${BEFORE[prev]} 먼저 시작하세요`;
 }
-export const formatDate = (iso: string) => new Date(iso).toLocaleDateString("ko-KR");
 const toMessage = (e: unknown) => (e instanceof ApiError ? messageFor(e) : "요청을 처리하지 못했습니다.");
 
 /** 출고 → 수령 → 반납 단계. 다음 단계 버튼만 켜고, 꺼진 버튼에는 이유를 붙인다(FR-022) */

@@ -6,6 +6,7 @@ export interface DeviceFilters {
   modelCode?: string;
   status?: DeviceStatus;
   q?: string;
+  limit?: number;
 }
 
 const DEVICES = ["devices"] as const;

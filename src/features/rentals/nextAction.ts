@@ -10,7 +10,7 @@ const ORDER: CheckpointType[] = ["OUT", "RCV", "RET"];
 
 /**
  * 렌탈에서 지금 누를 수 있는 동작 하나. 서버가 준 시점 상태로만 정한다(data-model.md, FR-022·023).
- * 앞 시점이 봉인(SEALED)된 뒤에만 다음 시점·종료를 연다(11/02 C 결정, 서버 동작은 c1-questions 11로 A 확인 중).
+ * 앞 시점이 봉인(SEALED)된 뒤에만 다음 시점·종료를 연다(11/02 C 결정, rental-server도 같은 규칙 — c1-questions 11).
  */
 export function nextAction(rental: Pick<Rental, "status" | "checkpoints">): NextAction {
   if (rental.status === "CLOSED") return { kind: "closed" };
