@@ -22,8 +22,13 @@ export class CameraError extends Error {
 }
 
 /** 보안 연결(HTTPS·localhost)이고 카메라 API가 있는가 */
-export function isCameraContext(): boolean {
-  return window.isSecureContext === true && !!navigator.mediaDevices?.getUserMedia;
+export function isSecure(): boolean {
+  return window.isSecureContext === true;
+}
+
+/** 브라우저가 카메라 API를 주는지(https와 별개) */
+export function hasCameraApi(): boolean {
+  return !!navigator.mediaDevices?.getUserMedia;
 }
 
 /** 후면 카메라를 우선 연다(없으면 있는 카메라) */

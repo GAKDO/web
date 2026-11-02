@@ -94,13 +94,29 @@ export function FaceShooter({ guide, onAccept, onCancel }: Props) {
       )}
       <div className="row">
         {review?.check.ok && <Button onClick={() => onAccept(review)}>이 사진 쓰기</Button>}
-        {review && <Button onClick={() => setReview(null)}>다시 찍기</Button>}
+        {review && (
+          <Button
+            onClick={() => {
+              URL.revokeObjectURL(review.shot.previewUrl);
+              setReview(null);
+            }}
+          >
+            다시 찍기
+          </Button>
+        )}
         {!review && phase === "live" && (
           <Button busy={busy} onClick={() => void take()}>
             찍기
           </Button>
         )}
-        <Button onClick={onCancel}>면 목록으로</Button>
+        <Button
+          onClick={() => {
+            if (review) URL.revokeObjectURL(review.shot.previewUrl);
+            onCancel();
+          }}
+        >
+          면 목록으로
+        </Button>
       </div>
     </section>
   );

@@ -8,8 +8,9 @@ export function exchangeOnce(token: string): Promise<CaptureGrant> {
   let pending = inflight.get(token);
   if (!pending) {
     pending = unwrap(api.POST("/api/v1/auth/capture-links/exchange", { body: { token } })).then((r) => captureTokenStore.set(r));
-    // 네트워크 오류면 같은 토큰으로 다시 시도할 수 있게 지운다
-    pending.catch(() => inflight.delete(token));
+    // 끝나면(성공·실패 모두) 지운다. 동시 요청만 합치고, 세션이 바뀐 뒤 옛 허가를 돌려주지 않게 한다
+    const done = () => inflight.delete(token);
+    pending.then(done, done);
     inflight.set(token, pending);
   }
   return pending;

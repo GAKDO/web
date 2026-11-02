@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { CaptureFace } from "../../../shared/api/types";
 import type { CaptureGrant } from "../../../shared/auth/captureTokenStore";
 import { CAPTURE_FACE_LABEL } from "../../../shared/codes/labels";
@@ -30,8 +30,16 @@ export function CapturePage({ grant, renderSubmit }: Props) {
   const minutesLeft = useMinutesLeft(grant.expiresAt);
   const remaining = PHONE_FACES.filter((f) => f.required && !shots[f.face]).map((f) => f.face);
   const guide = PHONE_FACES.find((f) => f.face === active);
+  const expired = minutesLeft <= 0;
+
+  // 페이지를 떠날 때 남은 미리보기 URL을 한 번 해제한다
+  const latest = useRef(shots);
+  latest.current = shots;
+  useEffect(() => () => Object.values(latest.current).forEach((a) => a && URL.revokeObjectURL(a.shot.previewUrl)), []);
 
   function accept(face: CaptureFace, accepted: Accepted) {
+    const previous = shots[face];
+    if (previous) URL.revokeObjectURL(previous.shot.previewUrl);
     const next = { ...shots, [face]: accepted };
     setShots(next);
     setActive(PHONE_FACES.find((f) => f.required && !next[f.face])?.face ?? null);
@@ -41,12 +49,12 @@ export function CapturePage({ grant, renderSubmit }: Props) {
     <main className="page capture">
       <h1>수령 사진 찍기</h1>
       <p className="notice">촬영이 끝날 때까지 새로 고치거나 창을 닫지 마세요. 찍은 사진이 사라지고 QR을 다시 받아야 합니다.</p>
-      {minutesLeft <= 0 ? (
+      {expired ? (
         <p role="alert">촬영 시간이 지났습니다. 대여 담당자에게 새 QR을 받아 주세요.</p>
       ) : (
         minutesLeft <= 5 && <p role="alert">촬영 시간이 {minutesLeft}분 남았습니다. 서둘러 제출해 주세요.</p>
       )}
-      {guide ? (
+      {expired ? null : guide ? (
         <FaceShooter key={guide.face} guide={guide} onAccept={(a) => accept(guide.face, a)} onCancel={() => setActive(null)} />
       ) : (
         <>

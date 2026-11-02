@@ -13,12 +13,13 @@ import { blurredGray, fakeShot, glareGray, sharpGray } from "./testing";
 
 vi.mock("./camera", async (importOriginal) => {
   const real = await importOriginal<typeof import("./camera")>();
-  return { ...real, isCameraContext: vi.fn(), openCamera: vi.fn(), attachStream: vi.fn(), stopCamera: vi.fn(), captureShot: vi.fn() };
+  return { ...real, isSecure: vi.fn(), hasCameraApi: vi.fn(), openCamera: vi.fn(), attachStream: vi.fn(), stopCamera: vi.fn(), captureShot: vi.fn() };
 });
 const cam = vi.mocked(camera);
 
 beforeEach(() => {
-  cam.isCameraContext.mockReturnValue(true);
+  cam.isSecure.mockReturnValue(true);
+  cam.hasCameraApi.mockReturnValue(true);
   cam.openCamera.mockResolvedValue({} as MediaStream);
   cam.captureShot.mockResolvedValue(fakeShot(sharpGray()));
 });
@@ -66,13 +67,23 @@ test("다른 고객 계정에 연결된 렌탈의 QR을 열면 그 사실과 로
 });
 
 test("보안 연결이 아니면 카메라를 켜지 않고 QR도 쓰지 않는다", async () => {
-  cam.isCameraContext.mockReturnValue(false);
+  cam.isSecure.mockReturnValue(false);
   const link = mockCaptureLink();
   asCustomer();
   renderApp(`/capture?t=${link.token}`);
   expect(await screen.findByText(/보안 연결\(https\)에서만 촬영할 수 있습니다/)).toBeInTheDocument();
   expect(link.used).toBe(false);
   expect(cam.openCamera).not.toHaveBeenCalled();
+});
+
+test("https여도 브라우저가 카메라를 못 쓰면 https 안내 대신 브라우저 안내를 보이고 QR을 쓰지 않는다", async () => {
+  cam.hasCameraApi.mockReturnValue(false);
+  const link = mockCaptureLink();
+  asCustomer();
+  renderApp(`/capture?t=${link.token}`);
+  expect(await screen.findByText(/이 브라우저는 카메라를 쓸 수 없습니다/)).toBeInTheDocument();
+  expect(screen.queryByText(/보안 연결/)).not.toBeInTheDocument();
+  expect(link.used).toBe(false);
 });
 
 test("윗면(덮개)을 고르면 윤곽 설명이 보이고, 흔들린 사진은 쓸 수 없으며 다시 찍어 통과하면 체크되고 다음 면으로 넘어간다", async () => {
@@ -135,4 +146,30 @@ test("같은 QR 토큰으로 교환을 두 번 불러도 요청은 한 번만 �
   const [a, b] = await Promise.all([exchangeOnce(link.token), exchangeOnce(link.token)]);
   expect(a).toBe(b);
   expect(link.used).toBe(true);
+});
+
+test("촬영 시간이 지나면 면 목록과 찍기 버튼을 숨기고 새 QR 안내만 보인다", async () => {
+  asCustomer();
+  captureTokenStore.set({ accessToken: "cap.x", tokenType: "Bearer", expiresIn: 0, rentalId: "r".repeat(21), checkpointId: "c".repeat(21) });
+  renderApp("/capture");
+  expect(await screen.findByText(/촬영 시간이 지났습니다/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /윗면/ })).not.toBeInTheDocument();
+});
+
+test("교환이 끝난 QR 토큰은 기억하지 않아, 다시 부르면 서버의 410을 그대로 받는다", async () => {
+  const link = mockCaptureLink();
+  tokenStore.set(await unwrap(api.POST("/api/v1/auth/login", { body: MOCK_CUSTOMER })));
+  await exchangeOnce(link.token);
+  await expect(exchangeOnce(link.token)).rejects.toMatchObject({ status: 410 });
+});
+
+test("다시 찍으면 버린 사진의 미리보기 URL을 해제한다", async () => {
+  const revoke = vi.spyOn(URL, "revokeObjectURL");
+  asCustomer();
+  renderApp(`/capture?t=${mockCaptureLink().token}`);
+  const user = await openTop();
+  cam.captureShot.mockResolvedValueOnce(fakeShot(blurredGray()));
+  await user.click(await screen.findByRole("button", { name: "찍기" }));
+  await user.click(await screen.findByRole("button", { name: "다시 찍기" }));
+  expect(revoke).toHaveBeenCalled();
 });

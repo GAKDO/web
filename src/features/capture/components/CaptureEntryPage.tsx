@@ -5,7 +5,7 @@ import { useAuth } from "../../../shared/auth/AuthProvider";
 import { captureTokenStore, type CaptureGrant } from "../../../shared/auth/captureTokenStore";
 import { Button } from "../../../shared/ui/Button";
 import { exchangeOnce } from "../api/exchange";
-import { isCameraContext } from "../camera";
+import { hasCameraApi, isSecure } from "../camera";
 import { CapturePage } from "./CapturePage";
 
 type EntryError = "invalid" | "otherAccount" | "notCustomer" | "retry";
@@ -34,11 +34,12 @@ export function CaptureEntryPage() {
   const [grant, setGrant] = useState<CaptureGrant | null>(() => captureTokenStore.get());
   const [error, setError] = useState<EntryError | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const secure = isCameraContext();
+  const secure = isSecure();
+  const ready = secure && hasCameraApi();
 
   useEffect(() => {
-    // 보안 연결이 아니면 1회용 QR을 쓰지 않는다
-    if (!secure || !token) return;
+    // 보안 연결이 아니거나 카메라를 못 쓰면 1회용 QR을 쓰지 않는다
+    if (!ready || !token) return;
     let alive = true;
     setError(null);
     exchangeOnce(token)
@@ -51,10 +52,13 @@ export function CaptureEntryPage() {
     return () => {
       alive = false;
     };
-  }, [secure, token, navigate, attempt]);
+  }, [ready, token, navigate, attempt]);
 
   if (!secure) {
     return <p className="page" role="alert">보안 연결(https)에서만 촬영할 수 있습니다. QR을 다시 읽어 https 주소로 열어 주세요.</p>;
+  }
+  if (!ready) {
+    return <p className="page" role="alert">이 브라우저는 카메라를 쓸 수 없습니다. 폰 기본 브라우저(Safari·Chrome)로 QR을 다시 열어 주세요.</p>;
   }
   if (error) {
     return (
