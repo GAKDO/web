@@ -301,7 +301,10 @@ export interface paths {
         put?: never;
         /**
          * 페어링 코드 → AGENT JWT
-         * @description 6자리 코드를 AGENT JWT(10분, role AGENT, scope=checkpointId, 클레임 rentalId·deviceSerial)로 바꾼다. 코드는 한 번만 쓸 수 있다. diagnostics-server는 이벤트 봉투의 rentalId를 이 클레임에서 읽는다. (FR-AUTH-02)
+         * @description 6자리 코드를 AGENT JWT(10분, role AGENT, scope=checkpointId, 클레임 rentalId·deviceSerial)로 바꾼다. 코드는 한 번만 쓸 수 있다.
+         *     diagnostics-server는 이벤트 봉투의 rentalId를 이 클레임에서 읽는다. (FR-AUTH-02)
+         *     - 대입 공격 방지: gateway의 IP당 제한(분당 10회) 위에 auth-server가 전역 실패 한도를 둔다.
+         *       모든 클라이언트를 합쳐 틀린 코드가 1분에 30번을 넘으면 다음 1분 동안 교환을 모두 429 RATE_LIMITED(Retry-After)로 막는다.
          */
         post: operations["exchangePairingCode"];
         delete?: never;

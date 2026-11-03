@@ -33,7 +33,7 @@ export interface paths {
         };
         /**
          * 렌탈 목록
-         * @description ADMIN은 전체, CUSTOMER는 rentals 클레임에 있는 내 렌탈만 보인다. 최근 생성 순. (FR-USR-03)
+         * @description ADMIN은 전체, CUSTOMER는 rentals 클레임에 있는 내 렌탈만 보인다. 최근 생성 순. 항목마다 지금 시점(currentCheckpoint)을 준다. (FR-USR-03)
          */
         get: operations["listRentals"];
         put?: never;
@@ -255,6 +255,8 @@ export interface components {
         Rental: {
             rentalId: components["schemas"]["PublicId"];
             deviceId: components["schemas"]["PublicId"];
+            /** @description 기기 시리얼. 1.0.x에 더한 선택 필드지만 rental-server는 항상 보낸다(화면이 기기를 따로 부르지 않게). */
+            serial?: string;
             renterRef: string;
             status: components["schemas"]["RentalStatus"];
             startedAt: components["schemas"]["DateTime"] | null;
@@ -270,6 +272,11 @@ export interface components {
             modelCode: components["schemas"]["ModelCode"];
             status: components["schemas"]["RentalStatus"];
             createdAt: components["schemas"]["DateTime"];
+            /**
+             * @description 지금 시점 = 시작된 시점 중 가장 뒤(OUT → RCV → RET). 아직 시작한 시점이 없으면 null.
+             *     1.0.x에 더한 선택 필드지만 rental-server는 항상 보낸다(값이 없으면 null).
+             */
+            currentCheckpoint?: components["schemas"]["Checkpoint"] | null;
         };
         RentalPage: {
             items: components["schemas"]["RentalSummary"][];
@@ -381,6 +388,16 @@ export interface components {
          */
         DateTime: string;
         /**
+         * @description codes.yaml rental.checkpoint_type
+         * @enum {string}
+         */
+        RentalCheckpointType: "OUT" | "RCV" | "RET";
+        /**
+         * @description codes.yaml rental.checkpoint_status
+         * @enum {string}
+         */
+        RentalCheckpointStatus: "OPEN" | "CAPTURED" | "GRADED" | "SEALED";
+        /**
          * @description codes.yaml error_code
          * @enum {string}
          */
@@ -416,16 +433,6 @@ export interface components {
             /** @description 409 CAPTURE_FACES_MISSING일 때 빠진 필수 면 */
             missingFaces?: components["schemas"]["CaptureFace"][];
         };
-        /**
-         * @description codes.yaml rental.checkpoint_type
-         * @enum {string}
-         */
-        RentalCheckpointType: "OUT" | "RCV" | "RET";
-        /**
-         * @description codes.yaml rental.checkpoint_status
-         * @enum {string}
-         */
-        RentalCheckpointStatus: "OPEN" | "CAPTURED" | "GRADED" | "SEALED";
         /**
          * @description codes.yaml device.status
          * @enum {string}
@@ -582,7 +589,13 @@ export interface operations {
                      *           "serial": "C02EXAMPLE01",
                      *           "modelCode": "MBA13-M2",
                      *           "status": "OPEN",
-                     *           "createdAt": "2026-11-12T08:50:00+09:00"
+                     *           "createdAt": "2026-11-12T08:50:00+09:00",
+                     *           "currentCheckpoint": {
+                     *             "checkpointId": "h40b9AN9xMQhXRHrOyJWB",
+                     *             "type": "RCV",
+                     *             "status": "OPEN",
+                     *             "occurredAt": null
+                     *           }
                      *         }
                      *       ],
                      *       "nextCursor": null
@@ -627,6 +640,7 @@ export interface operations {
                      * @example {
                      *       "rentalId": "Ws0HLv6QRbDILPWOcz5I2",
                      *       "deviceId": "aAXQFO2Vz6ZTFbPctC2dq",
+                     *       "serial": "C02EXAMPLE01",
                      *       "renterRef": "R-2026-0012",
                      *       "status": "OPEN",
                      *       "startedAt": null,
@@ -674,6 +688,7 @@ export interface operations {
                      * @example {
                      *       "rentalId": "Ws0HLv6QRbDILPWOcz5I2",
                      *       "deviceId": "aAXQFO2Vz6ZTFbPctC2dq",
+                     *       "serial": "C02EXAMPLE01",
                      *       "renterRef": "R-2026-0012",
                      *       "status": "OPEN",
                      *       "startedAt": "2026-11-12T09:00:00+09:00",

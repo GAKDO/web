@@ -50,7 +50,7 @@ export function PairingCodePanel({ rentalId, checkpointId, deviceSerial }: { ren
         </>
       )}
       {expired && <p role="status">페어링 코드가 만료됐습니다. 새로 만들어 주세요.</p>}
-      {!deviceSerial && <p role="note">기기 시리얼을 읽는 중이거나 찾지 못했습니다. 렌탈 목록에서 이 렌탈을 다시 열어 주세요.</p>}
+      {!deviceSerial && <p role="note">렌탈 정보에 기기 시리얼이 없어 코드를 만들 수 없습니다. 렌탈 목록에서 이 렌탈을 다시 열어 주세요.</p>}
       <Button busy={create.isPending} disabled={!deviceSerial} onClick={() => create.mutate()}>
         {issued ? "페어링 코드 다시 만들기" : "진단 페어링 코드 만들기"}
       </Button>

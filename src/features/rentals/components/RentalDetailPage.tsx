@@ -7,7 +7,7 @@ import { CHECKPOINT_STATUS_LABEL, CHECKPOINT_TYPE_LABEL, RENTAL_STATUS_LABEL } f
 import { Button } from "../../../shared/ui/Button";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
-import { useCloseRental, useRental, useRentalSerial, useStartCheckpoint } from "../api/rentals";
+import { useCloseRental, useRental, useStartCheckpoint } from "../api/rentals";
 import { nextAction } from "../nextAction";
 import { CaptureLinkPanel } from "./CaptureLinkPanel";
 import { PairingCodePanel } from "./PairingCodePanel";
@@ -72,7 +72,7 @@ function CheckpointSteps({ rental, serial, onError }: { rental: Rental; serial?:
 
 export function RentalDetailPage() {
   const { rentalId = "" } = useParams();
-  const serial = useRentalSerial(rentalId, (useLocation().state as { serial?: string } | null)?.serial);
+  const hint = (useLocation().state as { serial?: string } | null)?.serial;
   const rental = useRental(rentalId);
   const close = useCloseRental(rentalId);
   const [asking, setAsking] = useState(false);
@@ -83,6 +83,8 @@ export function RentalDetailPage() {
   const data = rental.data;
   if (!data) return <ErrorBanner message={toMessage(rental.error)} onRetry={() => void rental.refetch()} />;
   const action = nextAction(data);
+  // 시리얼은 렌탈 상세(계약 1.0.0)에서 오고, 없거나 빈 값이면 목록·등록 화면이 넘긴 값을 쓴다
+  const serial = data.serial || hint;
 
   return (
     <section className="narrow">

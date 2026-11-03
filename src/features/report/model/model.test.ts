@@ -29,7 +29,7 @@ describe("시점 슬라이더", () => {
 describe("비교표 값", () => {
   const diag: CheckpointDiagnostics = {
     checkpointId: ID,
-    current: { runId: ID, collectedAt: "2026-11-12T13:20:00+09:00", os: "MACOS", battery: { cycleCount: 112, designCapacity: 4382, fullChargeCapacity: 3681, capacityUnit: "mAh", maxCapacityPct: 84.0, condition: "NORMAL", skippedReason: null }, ssd: { percentUsed: null, availableSparePct: null, criticalWarning: null, powerOnHours: null, mediaErrors: null, skippedReason: "smartctl 권한 없음" }, components: [], benchmarks: [] },
+    current: { runId: ID, collectedAt: "2026-11-12T13:20:00+09:00", os: "MACOS", battery: { cycleCount: 112, designCapacity: 4382, fullChargeCapacity: 3681, capacityUnit: "mAh", maxCapacityPct: 84.0, condition: "NORMAL", skippedReason: null }, ssd: { percentUsed: null, availableSparePct: null, criticalWarning: null, powerOnHours: null, mediaErrors: null, skippedReason: "NO_PERMISSION" }, components: [], benchmarks: [] },
     previous: { runId: ID, collectedAt: "2026-11-12T09:02:00+09:00", os: "MACOS", battery: { cycleCount: 110, designCapacity: 4382, fullChargeCapacity: 3996, capacityUnit: "mAh", maxCapacityPct: 91.2, condition: "NORMAL", skippedReason: null }, ssd: null, components: [], benchmarks: [] },
     flags: [{ kind: "CAPACITY_DROP", baseRunId: ID, detail: {} }],
   };
@@ -40,7 +40,7 @@ describe("비교표 값", () => {
     expect(col.batteryDeltaPct).toBe(-7.2);
     expect(deltaText(col.batteryDeltaPct ?? 0)).toBe("−7.2%p");
     expect(col.flags).toEqual(["배터리 용량이 크게 줄었습니다"]);
-    expect(col.ssd).toEqual({ kind: "missing", reason: "smartctl 권한 없음" });
+    expect(col.ssd).toEqual({ kind: "missing", reason: "권한 없음" });
     expect(col.cycles).toEqual({ kind: "value", text: "112회" });
   });
 

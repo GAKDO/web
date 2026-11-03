@@ -88,3 +88,4 @@ export type CheckpointDiagnostics = DiagnosticsSchemas["CheckpointDiagnostics"];
 export type RunSummary = DiagnosticsSchemas["RunSummary"];
 export type DiagnosticsFlag = DiagnosticsSchemas["InspectionFlag"];
 export type DiagnosticsFlagKind = DiagnosticsSchemas["DiagnosticsFlagKind"];
+export type DiagnosticsSkippedReason = DiagnosticsSchemas["DiagnosticsSkippedReason"];
