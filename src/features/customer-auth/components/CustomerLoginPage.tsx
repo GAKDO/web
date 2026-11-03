@@ -5,6 +5,7 @@ import { useAuth } from "../../../shared/auth/AuthProvider";
 import { LoginForm } from "../../../shared/auth/LoginForm";
 import { LOGIN_NOTICE } from "../../../shared/auth/loginNotice";
 import { demoCustomerEmails } from "../../../shared/config/demoAccounts";
+import { isArchived } from "../../../shared/config/features";
 import { pendingSignup } from "../../signup/pendingSignup";
 import { safeNext } from "../safeNext";
 
@@ -18,6 +19,7 @@ export function CustomerLoginPage({ demoEmails = demoCustomerEmails() }: { demoE
   // 이메일 칸을 새로 채우려면 폼을 다시 만든다(데모 계정 고르기)
   const [formKey, setFormKey] = useState(0);
   const [unverified, setUnverified] = useState<string | null>(null);
+  const accountArchived = isArchived("account");
 
   if (status === "authenticated") return <Navigate to={next} replace />;
 
@@ -54,19 +56,24 @@ export function CustomerLoginPage({ demoEmails = demoCustomerEmails() }: { demoE
         </div>
       )}
       <LoginForm key={formKey} initialEmail={email} onLogin={onLogin} />
-      {unverified && (
+      {unverified && !accountArchived && (
         <p>
           <Link to={`/signup/verify?${new URLSearchParams({ next }).toString()}`} onClick={() => pendingSignup.set(unverified, null)}>
             메일 인증하러 가기
           </Link>
         </p>
       )}
-      <p>
-        <Link to="/password/reset">비밀번호를 잊으셨나요?</Link>
-      </p>
-      <p>
-        처음이신가요? <Link to={`/signup?${new URLSearchParams({ next }).toString()}`}>회원가입</Link>
-      </p>
+      {/* 가입·메일 인증·비밀번호 재설정(AU2)은 MVP 배포에서 보관(숨김). 시연 계정은 A가 미리 만든다 */}
+      {!accountArchived && (
+        <>
+          <p>
+            <Link to="/password/reset">비밀번호를 잊으셨나요?</Link>
+          </p>
+          <p>
+            처음이신가요? <Link to={`/signup?${new URLSearchParams({ next }).toString()}`}>회원가입</Link>
+          </p>
+        </>
+      )}
     </main>
   );
 }

@@ -1,0 +1,65 @@
+import { screen, within } from "@testing-library/react";
+import { nanoid } from "nanoid";
+import { renderApp, renderAsAdmin } from "../../test/renderApp";
+import { db } from "../mocks/db";
+
+// 보관 기능(VITE_ARCHIVED_FEATURES)은 코드를 그대로 두고 메뉴·링크만 숨긴다(11/3 방향 전환)
+
+afterEach(() => vi.unstubAllEnvs());
+
+/** 출고 봉인 뒤 수령이 촬영 대기(OPEN)인 렌탈을 넣고 상세를 연다 */
+async function openRentalWithOpenReceipt() {
+  const device = db.devices.find((d) => d.serial === "C02AIR0002");
+  const rentalId = nanoid();
+  const now = new Date().toISOString();
+  db.rentals.push({
+    rentalId,
+    deviceId: device?.deviceId ?? "",
+    renterRef: "R-3001",
+    status: "OPEN",
+    startedAt: now,
+    endedAt: null,
+    createdAt: now,
+    checkpoints: [
+      { checkpointId: nanoid(), type: "OUT", status: "SEALED", occurredAt: now },
+      { checkpointId: nanoid(), type: "RCV", status: "OPEN", occurredAt: null },
+    ],
+  });
+  renderAsAdmin(`/admin/rentals/${rentalId}`);
+  return screen.findByRole("listitem", { name: "수령" });
+}
+
+test("보관 설정이 없으면 렌탈 상세에 수령 QR·페어링 코드·리포트 보기가 그대로 보인다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "");
+  const receipt = await openRentalWithOpenReceipt();
+  expect(within(receipt).getByRole("button", { name: /QR/ })).toBeInTheDocument();
+  expect(within(receipt).getByRole("button", { name: /페어링/ })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "리포트 보기" })).toBeInTheDocument();
+});
+
+test("폰 촬영·진단·리포트를 보관하면 렌탈 상세에서 수령 QR·페어링 코드·리포트 보기가 사라지고 시점 진행은 그대로다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "phoneCapture,diagnostics,report");
+  const receipt = await openRentalWithOpenReceipt();
+  expect(within(receipt).queryByRole("button", { name: /QR/ })).not.toBeInTheDocument();
+  expect(within(receipt).queryByRole("button", { name: /페어링/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "리포트 보기" })).not.toBeInTheDocument();
+  expect(within(receipt).getByText("촬영 대기")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "새로 고침" })).toBeInTheDocument();
+});
+
+test("가입·재설정을 보관하면 고객 로그인 화면에 회원가입·비밀번호 재설정 링크가 없고 로그인은 그대로 된다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "account");
+  renderApp("/login");
+  await screen.findByRole("button", { name: "로그인" });
+  expect(screen.queryByRole("link", { name: "회원가입" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "비밀번호를 잊으셨나요?" })).not.toBeInTheDocument();
+  expect(screen.getByLabelText("이메일")).toBeInTheDocument();
+});
+
+test("파일럿 추이를 보관하면 Grafana 주소가 있어도 관리 메뉴에 보이지 않는다", async () => {
+  vi.stubEnv("VITE_PILOT_DASHBOARD_URL", "https://grafana.example/d/trace-pilot-trend");
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "pilot");
+  renderAsAdmin("/admin/devices");
+  await screen.findByRole("link", { name: "기기" });
+  expect(screen.queryByRole("link", { name: /파일럿 추이/ })).not.toBeInTheDocument();
+});
