@@ -83,8 +83,8 @@ export function RentalDetailPage() {
   const data = rental.data;
   if (!data) return <ErrorBanner message={toMessage(rental.error)} onRetry={() => void rental.refetch()} />;
   const action = nextAction(data);
-  // 시리얼은 렌탈 상세(계약 1.0.0)에서 오고, 아직 없는 서버면 목록·등록 화면이 넘긴 값을 쓴다
-  const serial = data.serial ?? hint;
+  // 시리얼은 렌탈 상세(계약 1.0.0)에서 오고, 없거나 빈 값이면 목록·등록 화면이 넘긴 값을 쓴다
+  const serial = data.serial || hint;
 
   return (
     <section className="narrow">
