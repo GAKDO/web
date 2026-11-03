@@ -29,6 +29,12 @@ export function simulateCapture(rentalId: string, type: CheckpointType, from: "s
   [1, 2, 3].forEach((n) => setTimeout(() => advanceCheckpoint(rentalId, type, until), n * 2000));
 }
 
+/** 응답의 렌탈 상세에는 기기 시리얼을 붙인다(계약 1.0.0 Rental.serial). 목 DB에는 기기 쪽에만 있다 */
+function withSerial(rental: Rental): Rental {
+  const serial = db.devices.find((d) => d.deviceId === rental.deviceId)?.serial;
+  return serial ? { ...rental, serial } : rental;
+}
+
 export const rentalHandlers = [
   http.get("*/api/v1/rentals", ({ request }) => {
     const owner = ownedBy(request);
@@ -44,7 +50,9 @@ export const rentalHandlers = [
       .filter((r) => !owner || db.report.owners.get(r.rentalId) === owner);
     const items = matched.slice(start, start + limit).map((r) => {
       const device = db.devices.find((d) => d.deviceId === r.deviceId);
-      return { rentalId: r.rentalId, deviceId: r.deviceId, serial: device?.serial ?? "", modelCode: device?.modelCode ?? "", status: r.status, createdAt: r.createdAt };
+      // 지금 시점 = 시작된 시점 중 가장 뒤(OUT→RCV→RET 순으로 쌓이므로 마지막), 없으면 null
+      const currentCheckpoint = r.checkpoints.at(-1) ?? null;
+      return { rentalId: r.rentalId, deviceId: r.deviceId, serial: device?.serial ?? "", modelCode: device?.modelCode ?? "", status: r.status, createdAt: r.createdAt, currentCheckpoint };
     });
     const body: RentalPage = { items, nextCursor: start + limit < matched.length ? String(start + limit) : null };
     return HttpResponse.json(body);
@@ -63,7 +71,7 @@ export const rentalHandlers = [
     const now = new Date().toISOString();
     const rental: Rental = { rentalId: nanoid(), deviceId: device.deviceId, renterRef: body.renterRef, status: "OPEN", startedAt: null, endedAt: null, createdAt: now, checkpoints: [] };
     db.rentals.push(rental);
-    return HttpResponse.json(rental, { status: 201 });
+    return HttpResponse.json(withSerial(rental), { status: 201 });
   }),
 
   http.get("*/api/v1/rentals/:rentalId", ({ request, params }) => {
@@ -72,7 +80,7 @@ export const rentalHandlers = [
     if (no) return no;
     const rental = db.rentals.find((r) => r.rentalId === params.rentalId);
     if (rental && owner && db.report.owners.get(rental.rentalId) !== owner) return problem(403, "OUT_OF_SCOPE", "이 렌탈을 볼 권한이 없습니다");
-    return rental ? HttpResponse.json(rental) : problem(404, "NOT_FOUND", "렌탈이 없습니다");
+    return rental ? HttpResponse.json(withSerial(rental)) : problem(404, "NOT_FOUND", "렌탈이 없습니다");
   }),
 
   http.post("*/api/v1/rentals/:rentalId/checkpoints", async ({ request, params }) => {

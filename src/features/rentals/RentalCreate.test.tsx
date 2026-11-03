@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { nanoid } from "nanoid";
 import { renderAsAdmin } from "../../test/renderApp";
 import { db, mockDevice } from "../../shared/mocks/db";
 
@@ -66,12 +67,24 @@ test("진행 중인 렌탈이 있는 기기로 또 렌탈을 만들면 문장과
   expect(await screen.findByRole("listitem", { name: "C02AIR0001" })).toBeInTheDocument();
 });
 
-test("렌탈 목록을 열면 렌탈마다 기기 시리얼·기종·렌탈 상태·만든 날이 보인다", async () => {
+test("렌탈 목록을 열면 렌탈마다 기기 시리얼·기종·렌탈 상태·지금 시점·만든 날이 보인다", async () => {
+  const device = db.devices[2];
+  const at = new Date().toISOString();
+  db.rentals.push({
+    rentalId: nanoid(), deviceId: device.deviceId, renterRef: "R-2101", status: "OPEN", startedAt: at, endedAt: null, createdAt: at,
+    checkpoints: [
+      { checkpointId: nanoid(), type: "OUT", status: "SEALED", occurredAt: at },
+      { checkpointId: nanoid(), type: "RCV", status: "CAPTURED", occurredAt: at },
+    ],
+  });
   renderAsAdmin("/admin/rentals");
   const row = await screen.findByRole("listitem", { name: "C02AIR0001" });
   await waitFor(() => expect(within(row).getByText("MacBook Air (M2, 2022)")).toBeInTheDocument());
   expect(within(row).getByText("진행 중")).toBeInTheDocument();
+  expect(within(row).getByText("지금 시점: 시작 전")).toBeInTheDocument();
   expect(within(row).getByText(/만든 날 2026\. 11\. 1\./)).toBeInTheDocument();
+  const started = screen.getByRole("listitem", { name: device.serial });
+  expect(within(started).getByText("지금 시점: 수령 · 촬영됨")).toBeInTheDocument();
 });
 
 test("기기 100대 목록에서 검색 결과가 1초 안에 보인다", async () => {

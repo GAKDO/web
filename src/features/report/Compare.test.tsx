@@ -32,7 +32,7 @@ test("진단에 점검 플래그가 있으면 사람이 읽는 문장으로 보�
 test("진단을 못 읽은 항목은 빈칸 대신 '읽지 못함'과 사유가 보인다", async () => {
   await openCompare();
   const rcv = await screen.findByRole("region", { name: "수령 비교" });
-  expect(await within(rcv).findByText("읽지 못함 (smartctl 권한 없음)")).toBeInTheDocument();
+  expect(await within(rcv).findByText("읽지 못함 (권한 없음)")).toBeInTheDocument();
 });
 
 test("진단 기록이 없는 시점은 '진단 기록 없음'으로 보인다", async () => {

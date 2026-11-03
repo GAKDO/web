@@ -5,8 +5,9 @@
 # 0.5.0(2026-11-02): capture.face_required.PHONE 추가(7면, KB 제외·SCR1 선택).
 # 0.6.0(2026-11-02): error_code DEVICE_STATUS_TRANSITION_INVALID 추가(폐기 기기는 수리 중으로만 되돌림).
 # 0.7.0(2026-11-02): error_code RECORD_ALREADY_SEALED 추가(관리자 수동 봉인, RP1).
+# 1.0.0(2026-11-03): 계약 고정. 값은 0.7.0과 같고, 이후로는 값 추가만 한다(이름 변경·삭제 없음).
 #   OpenAPI용 enum은 scripts/gen_openapi_codes.py로 만든다. 값은 문자열이어야 한다(OFF·ON·YES·NO는 따옴표).
-version: 0.7.0
+version: 1.0.0
 
 rental:
   status: [OPEN, RETURNED, CLOSED]

@@ -1,8 +1,8 @@
 import { Link, useSearchParams } from "react-router-dom";
-import type { RentalStatus } from "../../../shared/api/types";
+import type { RentalStatus, RentalSummary } from "../../../shared/api/types";
 import { ApiError } from "../../../shared/api/problem";
 import { messageFor } from "../../../shared/api/errorMessages";
-import { RENTAL_STATUS_LABEL } from "../../../shared/codes/labels";
+import { CHECKPOINT_STATUS_LABEL, CHECKPOINT_TYPE_LABEL, RENTAL_STATUS_LABEL } from "../../../shared/codes/labels";
 import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { SelectField } from "../../../shared/ui/Field";
@@ -11,7 +11,14 @@ import { useRentals } from "../api/rentals";
 
 export const formatDate = (iso: string) => new Date(iso).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" });
 
-/** 렌탈 목록: 계약 RentalSummary의 시리얼·기종·상태·만든 날만(FR-021). ?status=OPEN으로 거른다 */
+/** 지금 시점(시작된 시점 중 가장 뒤). 없으면 시작 전, 옛 서버라 값이 안 오면 표시하지 않는다 */
+function currentStep(r: RentalSummary): string | null {
+  if (r.currentCheckpoint === undefined) return null;
+  if (r.currentCheckpoint === null) return "지금 시점: 시작 전";
+  return `지금 시점: ${CHECKPOINT_TYPE_LABEL[r.currentCheckpoint.type]} · ${CHECKPOINT_STATUS_LABEL[r.currentCheckpoint.status]}`;
+}
+
+/** 렌탈 목록: 계약 RentalSummary의 시리얼·기종·상태·지금 시점·만든 날(FR-021). ?status=OPEN으로 거른다 */
 export function RentalListPage() {
   const [params, setParams] = useSearchParams();
   const raw = params.get("status");
@@ -57,6 +64,7 @@ export function RentalListPage() {
               </Link>
               <span>{modelName(r.modelCode)}</span>
               <span className="badge">{RENTAL_STATUS_LABEL[r.status]}</span>
+              {currentStep(r) && <span>{currentStep(r)}</span>}
               <span>만든 날 {formatDate(r.createdAt)}</span>
             </div>
           </li>

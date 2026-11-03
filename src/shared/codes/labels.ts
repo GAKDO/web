@@ -9,6 +9,7 @@ import type {
   DeviceOs,
   DeviceStatus,
   DiagnosticsFlagKind,
+  DiagnosticsSkippedReason,
   InspectionGrade,
   ProgressStage,
   RentalStatus,
@@ -74,4 +75,11 @@ export const CHAIN_STATUS_LABEL: Record<ChainStatus, string> = {
   VALID: "기록 정상",
   BROKEN: "기록이 바뀌었을 수 있습니다",
   PENDING: "기록 확인 중",
+};
+
+export const SKIPPED_REASON_LABEL: Record<DiagnosticsSkippedReason, string> = {
+  NO_PERMISSION: "권한 없음",
+  UNSUPPORTED: "지원하지 않는 기기",
+  TOOL_ERROR: "읽는 도구 오류",
+  NO_AC_POWER: "전원 어댑터 없음",
 };

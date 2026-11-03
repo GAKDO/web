@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: TRACE diagnostics-server
-  version: 0.3.0
+  version: 1.0.0
   description: |
     진단 JSON 업로드와 시점별 진단 요약·이전 시점 비교·점검 플래그. 원본은 GAKDO/docs design/rest-api-v0.md "diagnostics-server" 표.
 
@@ -235,7 +235,7 @@ paths:
                     criticalWarning: null
                     powerOnHours: null
                     mediaErrors: null
-                    skippedReason: smartctl 권한 없음
+                    skippedReason: NO_PERMISSION
                   components:
                     - kind: CPU
                       identifier: Apple M2
@@ -319,7 +319,10 @@ components:
           type: [number, 'null']
           description: 서버 계산(완충 ÷ 설계 × 100)
         condition:
-          type: [string, 'null']
+          oneOf:
+            - $ref: './components/codes.gen.yaml#/components/schemas/DiagnosticsBatteryCondition'
+            - type: 'null'
+          description: 운영체제가 보고한 배터리 상태(진단 JSON `battery.osCondition`)
         skippedReason:
           oneOf:
             - $ref: './components/codes.gen.yaml#/components/schemas/DiagnosticsSkippedReason'
@@ -340,8 +343,10 @@ components:
         mediaErrors:
           type: [integer, 'null']
         skippedReason:
-          type: [string, 'null']
-          description: 읽지 못했을 때 이유
+          oneOf:
+            - $ref: './components/codes.gen.yaml#/components/schemas/DiagnosticsSkippedReason'
+            - type: 'null'
+          description: SSD를 읽지 못했을 때 이유(진단 JSON `storage.skippedReason`). 읽었으면 null
     RunSummary:
       type: object
       required: [runId, collectedAt, os, battery, ssd, components, benchmarks]

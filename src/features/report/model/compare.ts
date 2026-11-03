@@ -1,5 +1,5 @@
 import type { CheckpointDiagnostics, DiagnosticsFlagKind, Grade, TimelineCheckpoint } from "../../../shared/api/types";
-import { FLAG_LABEL } from "../../../shared/codes/labels";
+import { FLAG_LABEL, SKIPPED_REASON_LABEL } from "../../../shared/codes/labels";
 
 // 시점 비교표의 한 열(FR-016~019). 화면은 이 값을 그리기만 한다
 export interface CompareColumn {
@@ -54,7 +54,7 @@ export function compareColumn(checkpoint: TimelineCheckpoint, diag: CheckpointDi
   if (current) {
     const s = current.ssd;
     if (!s) ssd = { kind: "missing", reason: "SSD를 읽지 못함" };
-    else if (s.skippedReason) ssd = { kind: "missing", reason: s.skippedReason };
+    else if (s.skippedReason) ssd = { kind: "missing", reason: SKIPPED_REASON_LABEL[s.skippedReason] };
     else ssd = ssdReading(s);
   }
   const now = current?.battery?.maxCapacityPct ?? checkpoint.diagnosticsSummary?.maxCapacityPct ?? null;

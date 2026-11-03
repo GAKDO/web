@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: TRACE capture-server
-  version: 0.1.0
+  version: 1.0.0
   description: |
     촬영 세트·사전 서명 업로드 URL·부스 탐지 결과·검사 결과·사진 보기 URL. 원본은 GAKDO/docs design/rest-api-v0.md "capture-server" 표.
 

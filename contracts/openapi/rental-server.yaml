@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: TRACE rental-server
-  version: 0.1.0
+  version: 1.0.0
   description: |
     렌탈·시점·기기·기종·파일럿. 원본은 GAKDO/docs design/rest-api-v0.md "rental-server" 표.
 
@@ -84,6 +84,7 @@ paths:
               example:
                 rentalId: Ws0HLv6QRbDILPWOcz5I2
                 deviceId: aAXQFO2Vz6ZTFbPctC2dq
+                serial: C02EXAMPLE01
                 renterRef: R-2026-0012
                 status: OPEN
                 startedAt: null
@@ -126,7 +127,7 @@ paths:
       tags: [렌탈]
       operationId: listRentals
       summary: 렌탈 목록
-      description: ADMIN은 전체, CUSTOMER는 rentals 클레임에 있는 내 렌탈만 보인다. 최근 생성 순. (FR-USR-03)
+      description: ADMIN은 전체, CUSTOMER는 rentals 클레임에 있는 내 렌탈만 보인다. 최근 생성 순. 항목마다 지금 시점(currentCheckpoint)을 준다. (FR-USR-03)
       security:
         - bearerJwt: []
       x-trace-requirements: [FR-USR-03]
@@ -158,6 +159,11 @@ paths:
                     modelCode: MBA13-M2
                     status: OPEN
                     createdAt: '2026-11-12T08:50:00+09:00'
+                    currentCheckpoint:
+                      checkpointId: h40b9AN9xMQhXRHrOyJWB
+                      type: RCV
+                      status: OPEN
+                      occurredAt: null
                 nextCursor: null
         '400':
           $ref: './components/common.yaml#/components/responses/BadRequest'
@@ -190,6 +196,7 @@ paths:
               example:
                 rentalId: Ws0HLv6QRbDILPWOcz5I2
                 deviceId: aAXQFO2Vz6ZTFbPctC2dq
+                serial: C02EXAMPLE01
                 renterRef: R-2026-0012
                 status: OPEN
                 startedAt: '2026-11-12T09:00:00+09:00'
@@ -759,6 +766,9 @@ components:
           $ref: './components/common.yaml#/components/schemas/PublicId'
         deviceId:
           $ref: './components/common.yaml#/components/schemas/PublicId'
+        serial:
+          type: string
+          description: 기기 시리얼. 1.0.x에 더한 선택 필드지만 rental-server는 항상 보낸다(화면이 기기를 따로 부르지 않게).
         renterRef:
           type: string
         status:
@@ -795,6 +805,13 @@ components:
           $ref: './components/codes.gen.yaml#/components/schemas/RentalStatus'
         createdAt:
           $ref: './components/common.yaml#/components/schemas/DateTime'
+        currentCheckpoint:
+          description: |
+            지금 시점 = 시작된 시점 중 가장 뒤(OUT → RCV → RET). 아직 시작한 시점이 없으면 null.
+            1.0.x에 더한 선택 필드지만 rental-server는 항상 보낸다(값이 없으면 null).
+          oneOf:
+            - $ref: '#/components/schemas/Checkpoint'
+            - type: 'null'
     RentalPage:
       type: object
       required: [items, nextCursor]
@@ -910,15 +927,19 @@ components:
         widthMm:
           type: number
           exclusiveMinimum: 0
+          maximum: 1000
         depthMm:
           type: number
           exclusiveMinimum: 0
+          maximum: 1000
         baseHMm:
           type: number
           exclusiveMinimum: 0
+          maximum: 100
         lidHMm:
           type: number
           exclusiveMinimum: 0
+          maximum: 100
     DeviceModel:
       type: object
       required: [modelCode, name, manufacturer, formFactor, spec, dimensions, updatedAt]

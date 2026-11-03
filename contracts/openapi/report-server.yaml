@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: TRACE report-server
-  version: 0.1.0
+  version: 1.0.0
   description: |
     타임라인 리포트·진행률 SSE·해시 체인·공개 검증·기록 검색. 원본은 GAKDO/docs design/rest-api-v0.md "report-server" 표.
 

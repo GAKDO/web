@@ -92,7 +92,8 @@ export interface components {
             capacityUnit: components["schemas"]["DiagnosticsCapacityUnit"] | null;
             /** @description 서버 계산(완충 ÷ 설계 × 100) */
             maxCapacityPct: number | null;
-            condition: string | null;
+            /** @description 운영체제가 보고한 배터리 상태(진단 JSON `battery.osCondition`) */
+            condition: components["schemas"]["DiagnosticsBatteryCondition"] | null;
             /** @description 배터리를 읽지 못했을 때 이유(진단 JSON `battery.skippedReason`). 읽었으면 null. 배터리 없는 기기는 battery 자체가 null */
             skippedReason: components["schemas"]["DiagnosticsSkippedReason"] | null;
         };
@@ -102,8 +103,8 @@ export interface components {
             criticalWarning: number | null;
             powerOnHours: number | null;
             mediaErrors: number | null;
-            /** @description 읽지 못했을 때 이유 */
-            skippedReason: string | null;
+            /** @description SSD를 읽지 못했을 때 이유(진단 JSON `storage.skippedReason`). 읽었으면 null */
+            skippedReason: components["schemas"]["DiagnosticsSkippedReason"] | null;
         };
         RunSummary: {
             runId: components["schemas"]["PublicId"];
@@ -792,7 +793,7 @@ export interface operations {
                      *           "criticalWarning": null,
                      *           "powerOnHours": null,
                      *           "mediaErrors": null,
-                     *           "skippedReason": "smartctl 권한 없음"
+                     *           "skippedReason": "NO_PERMISSION"
                      *         },
                      *         "components": [
                      *           {

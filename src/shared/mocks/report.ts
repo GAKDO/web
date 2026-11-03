@@ -89,7 +89,7 @@ function run(collectedAt: string, maxCapacityPct: number, cycleCount: number): R
     collectedAt,
     os: "MACOS",
     battery: { cycleCount, designCapacity: 4382, fullChargeCapacity: Math.round((4382 * maxCapacityPct) / 100), capacityUnit: "mAh", maxCapacityPct, condition: "NORMAL", skippedReason: null },
-    ssd: { percentUsed: null, availableSparePct: null, criticalWarning: null, powerOnHours: null, mediaErrors: null, skippedReason: "smartctl 권한 없음" },
+    ssd: { percentUsed: null, availableSparePct: null, criticalWarning: null, powerOnHours: null, mediaErrors: null, skippedReason: "NO_PERMISSION" },
     components: [{ kind: "CPU", identifier: "Apple M2" }],
     benchmarks: [{ metric: "CPU_SINGLE", median: 2580 }],
   };
