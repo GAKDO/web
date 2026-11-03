@@ -9,6 +9,8 @@ import { CaptureEntryPage } from "./features/capture/components/CaptureEntryPage
 import { CustomerLoginPage } from "./features/customer-auth/components/CustomerLoginPage";
 import { DeviceCreatePage } from "./features/devices/components/DeviceCreatePage";
 import { DeviceListPage } from "./features/devices/components/DeviceListPage";
+import { InspectionDetailPage } from "./features/inspections/components/InspectionDetailPage";
+import { InspectionListPage } from "./features/inspections/components/InspectionListPage";
 import { ModelEditPage } from "./features/models/components/ModelEditPage";
 import { ModelListPage } from "./features/models/components/ModelListPage";
 import { RentalCreatePage } from "./features/rentals/components/RentalCreatePage";
@@ -61,6 +63,9 @@ export const routes: RouteObject[] = [
       { path: "rentals", element: <RentalListPage /> },
       { path: "rentals/new", element: <RentalCreatePage /> },
       { path: "rentals/:rentalId", element: <RentalDetailPage /> },
+      // MVP(11/3): 부스 검사 결과 조회
+      { path: "inspections", element: <InspectionListPage /> },
+      { path: "inspections/:rentalId/:checkpointId", element: <InspectionDetailPage /> },
     ],
   },
 ];

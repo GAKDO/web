@@ -47,6 +47,24 @@ test("폰 촬영·진단·리포트를 보관하면 렌탈 상세에서 수령 Q
   expect(screen.getByRole("button", { name: "새로 고침" })).toBeInTheDocument();
 });
 
+test("수령·반납 시점을 보관하면 렌탈 상세에 출고만 보이고 수령·반납 시작과 렌탈 종료 버튼이 없다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "laterCheckpoints");
+  const rental = db.rentals.find((r) => r.checkpoints.length === 0);
+  renderAsAdmin(`/admin/rentals/${rental?.rentalId}`);
+  expect(await screen.findByRole("button", { name: "출고 시작" })).toBeEnabled();
+  expect(screen.queryByRole("listitem", { name: "수령" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("listitem", { name: "반납" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "렌탈 종료" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "새로 고침" })).toBeInTheDocument();
+});
+
+test("수령·반납 시점을 보관해도 이미 시작한 수령 시점은 그대로 보인다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "laterCheckpoints");
+  const receipt = await openRentalWithOpenReceipt();
+  expect(within(receipt).getByText("촬영 대기")).toBeInTheDocument();
+  expect(screen.queryByRole("listitem", { name: "반납" })).not.toBeInTheDocument();
+});
+
 test("리포트를 보관하면 고객 내 렌탈 목록에서도 리포트 보기 링크가 사라지고 렌탈 카드는 그대로 보인다", async () => {
   vi.stubEnv("VITE_ARCHIVED_FEATURES", "report");
   renderAsCustomer("/my/rentals");

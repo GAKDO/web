@@ -15,6 +15,8 @@ export const ARCHIVABLE_FEATURES = [
   "account",
   /** 파일럿 추이 Grafana(WE4): 관리 메뉴 링크 */
   "pilot",
+  /** 수령·반납 시점(2차 검사, 11/10~12 해시 체인과 함께 재도입): 렌탈 상세의 수령·반납 시작과 렌탈 종료. MVP는 렌탈당 출고 검사 1번 */
+  "laterCheckpoints",
 ] as const;
 
 export type ArchivableFeature = (typeof ARCHIVABLE_FEATURES)[number];

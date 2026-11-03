@@ -29,9 +29,11 @@ const toMessage = (e: unknown) => (e instanceof ApiError ? messageFor(e) : "요�
 function CheckpointSteps({ rental, serial, onError }: { rental: Rental; serial?: string; onError: (message: string | null) => void }) {
   const start = useStartCheckpoint(rental.rentalId);
   const action = nextAction(rental);
+  // MVP(11/3, A 답변)는 렌탈당 출고 검사 1번이라 수령·반납 시작 버튼을 숨긴다. 이미 시작한 시점은 그대로 보인다
+  const steps = STEPS.filter((type) => type === "OUT" || !isArchived("laterCheckpoints") || rental.checkpoints.some((c) => c.type === type));
   return (
     <ol className="steps" aria-label="시점">
-      {STEPS.map((type) => {
+      {steps.map((type) => {
         const checkpoint = rental.checkpoints.find((c) => c.type === type);
         const isNext = action.kind === "start" && action.type === type;
         return (
@@ -84,6 +86,7 @@ export function RentalDetailPage() {
   const data = rental.data;
   if (!data) return <ErrorBanner message={toMessage(rental.error)} onRetry={() => void rental.refetch()} />;
   const action = nextAction(data);
+  const laterArchived = isArchived("laterCheckpoints");
   // 시리얼은 렌탈 상세(계약 1.0.0)에서 오고, 없거나 빈 값이면 목록·등록 화면이 넘긴 값을 쓴다
   const serial = data.serial || hint;
 
@@ -102,7 +105,7 @@ export function RentalDetailPage() {
           <Link to={`/my/rentals/${data.rentalId}`}>리포트 보기</Link>
         </p>
       )}
-      {action.kind === "waitSeal" && action.type === "RET" && (
+      {action.kind === "waitSeal" && action.type === "RET" && !laterArchived && (
         <p role="status">반납 기록이 봉인되면 종료할 수 있습니다. 지금 반납 시점: {CHECKPOINT_STATUS_LABEL[action.status]}</p>
       )}
       {action.kind === "closed" ? (
@@ -110,9 +113,12 @@ export function RentalDetailPage() {
       ) : (
         <div className="row">
           <Button onClick={() => void rental.refetch()}>새로 고침</Button>
-          <Button disabled={action.kind !== "close"} onClick={() => setAsking(true)}>
-            렌탈 종료
-          </Button>
+          {/* 종료는 반납 봉인 뒤에만 되므로 수령·반납을 보관한 MVP에서는 숨긴다(다시 검사하려면 렌탈을 새로 만든다) */}
+          {!laterArchived && (
+            <Button disabled={action.kind !== "close"} onClick={() => setAsking(true)}>
+              렌탈 종료
+            </Button>
+          )}
         </div>
       )}
       {asking && (

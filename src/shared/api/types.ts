@@ -83,6 +83,7 @@ export type Grade = ReportSchemas["InspectionGrade"];
 export type Inspection = CaptureSchemas["Inspection"];
 export type Defect = CaptureSchemas["Defect"];
 export type DefectClass = CaptureSchemas["InspectionDefectClass"];
+export type DefectSource = CaptureSchemas["InspectionDefectSource"];
 export type CheckpointMedia = CaptureSchemas["CheckpointMedia"];
 export type CheckpointDiagnostics = DiagnosticsSchemas["CheckpointDiagnostics"];
 export type RunSummary = DiagnosticsSchemas["RunSummary"];

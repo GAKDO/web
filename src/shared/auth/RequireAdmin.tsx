@@ -16,6 +16,7 @@ export function RequireAdmin() {
       <header className="admin-header">
         <strong>TRACE 관리</strong>
         <nav aria-label="관리 메뉴">
+          <NavLink to="/admin/inspections">검사 결과</NavLink>
           <NavLink to="/admin/devices">기기</NavLink>
           <NavLink to="/admin/models">기종</NavLink>
           <NavLink to="/admin/rentals">렌탈</NavLink>

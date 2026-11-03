@@ -5,6 +5,7 @@ import type {
   CheckpointStatus,
   CheckpointType,
   DefectClass,
+  DefectSource,
   DeviceFormFactor,
   DeviceOs,
   DeviceStatus,
@@ -56,6 +57,9 @@ export const INSPECTION_GRADE_LABEL: Record<InspectionGrade, string> = { A: "A�
 
 // WE3 리포트
 export const DEFECT_CLASS_LABEL: Record<DefectClass, string> = { scratch: "긁힘", dent: "찍힘", crack: "균열", stain: "오염" };
+
+// 관리자 검사 결과(spec 006)
+export const DEFECT_SOURCE_LABEL: Record<DefectSource, string> = { AUTO: "자동 탐지", HUMAN: "사람이 표시" };
 
 export const FLAG_LABEL: Record<DiagnosticsFlagKind, string> = {
   COMPONENT_CHANGED: "부품 구성이 바뀌었습니다",
