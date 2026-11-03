@@ -124,6 +124,22 @@
       ],
       "description": "codes.yaml capture.face_required.PHONE"
     },
+    "CaptureProfile": {
+      "type": "string",
+      "enum": [
+        "FULL",
+        "QUICK"
+      ],
+      "description": "codes.yaml capture.profile"
+    },
+    "CaptureFaceRequiredQuickBooth": {
+      "type": "string",
+      "enum": [
+        "TOP",
+        "BOT"
+      ],
+      "description": "codes.yaml capture.face_required_quick.BOOTH"
+    },
     "CaptureLight": {
       "type": "string",
       "enum": [

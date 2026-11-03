@@ -16,7 +16,9 @@
 
 - Q: "기기별 최근 검사"를 어디서 읽나? → A: 전용 API가 없어 렌탈 목록(`GET /api/v1/rentals`, 최근 것부터)의 `currentCheckpoint`(지금 시점)를 쓴다. 렌탈 한 건 = 기기 한 대의 한 번 대여라 기기별 최근 검사와 같다.
 - Q: 판정은 어떻게 보이나? → A: `GET …/inspection`의 `grade`가 A면 "문제 없음", B·C·D면 "문제 있음"(등급 함께). grade가 null이고 reasons가 있으면 "판정 불가", 둘 다 없거나 404면 "판정 대기". 시점이 없으면 "검사 전".
-- Q: 사진·폴리곤은 이 PR에 들어가나? → A: 아니다. 원본 사진 URL(`CheckpointMedia.photos`)과 원본 px 폴리곤(`Defect.coordinateSpace=PHOTO`)은 contracts #20이 머지된 뒤 다음 PR에서 붙인다. 그 전에는 그 값에 의존하는 코드를 머지하지 않는다(11/3 결정).
+- Q: 사진·폴리곤은 첫 PR에 들어가나? → A: 아니다. 첫 PR(web#43)은 계약 1.0.0 값만 쓴다. contracts #20(11/3 07:43 머지)이 더한 원본 사진 URL(`CheckpointMedia.photos`)과 원본 px 흠집(`Inspection.photoDefects`, QUICK은 `defects`가 빈 배열)은 다음 PR에서 붙인다. 그 전에는 그 값에 의존하는 코드를 머지하지 않는다(11/3 결정).
+- Q: 사진은 몇 장인가? → A: 12장. 위·아래 2면 × 조명 L1·L2·L3 × CAM1·CAM2(contracts #20, A 11/3 답변). 격자는 면마다 카메라 2(행) × 조명 3(열).
+- Q: 시점은 어디까지 보이나? → A: MVP(11/9)는 렌탈당 출고 검사 1번(A 11/3 답변, 민서 확인 중). 수령·반납 시작과 렌탈 종료는 `VITE_ARCHIVED_FEATURES=laterCheckpoints`로 숨긴다.
 - Q: 흠집 목록은 표인가 카드인가? → A: 카드. 375px에서 5열 표는 가로 스크롤이 생긴다.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -52,7 +54,7 @@
 2. **Given** 등급 A 시점, **Then** "문제 없음"과 "흠집이 없습니다"가 보인다.
 3. **Given** 검사 결과가 없는 시점(404), **Then** "아직 검사 결과가 없습니다. 판정 대기" 안내가 보이고 오류로 보이지 않는다.
 4. **Given** 서버 오류(5xx), **Then** 오류 문장과 다시 시도 버튼이 보인다.
-5. **Given** 상세, **Then** 사진·폴리곤 자리에 "계약 반영 뒤 붙는다" 안내가 보인다(다음 PR에서 교체).
+5. **Given** 빠른 검사(QUICK) 시점의 상세, **When** 사진이 있으면, **Then** 면(윗면·바닥)마다 카메라 2 × 조명 3 격자로 원본 사진이 보이고, 각 사진 위에 그 사진의 흠집 폴리곤이 겹쳐 보이며 칸 설명에 카메라·조명·흠집 수가 있다. 사진이 아직 없으면 "사진이 아직 없습니다", 읽기 오류면 판정은 그대로 두고 사진 자리에만 오류와 다시 시도가 보인다.
 
 ### Edge Cases
 
@@ -70,9 +72,9 @@
 - **FR-002**: 목록은 `GET /api/v1/rentals`(limit 20, cursor)를 최근 것부터 보이고, 카드마다 시리얼·기종 이름·지금 시점(종류·상태)·판정을 보인다.
 - **FR-003**: 판정은 지금 시점의 `GET /api/v1/captures/checkpoints/{checkpointId}/inspection`으로 정한다: A → 문제 없음, B·C·D → 문제 있음(등급), grade null + reasons → 판정 불가, 404/grade null → 판정 대기, 시점 없음 → 검사 전.
 - **FR-004**: 상세(`/admin/inspections/:rentalId/:checkpointId`)는 렌탈 상세(시리얼·시점 종류)와 검사 결과를 읽어 판정 상자(색 + 문구), 근거 문장, 규칙 버전, 흠집 카드 목록을 보인다.
-- **FR-005**: 흠집 카드는 면·종류·신뢰도·길이(mm, null은 —)·출처(자동/사람)를 보인다. 이름표는 `shared/codes/labels`에서 온다.
+- **FR-005**: 흠집 카드는 면·종류·신뢰도·길이(mm)·면적(mm², null은 둘 다 —)·출처(자동/사람)를 보인다. 빠른 검사 흠집(`photoDefects`)은 길이 대신 카메라·조명을 보이고(mm 환산은 계약 범위 밖), 사진마다 따로 센 수라는 안내를 붙인다. 이름표는 `shared/codes/labels`에서 온다.
 - **FR-006**: 404는 "판정 대기" 안내로, 그 밖의 오류는 `messageFor` 문장과 다시 시도로 보인다. 판정 대기인 동안은 3초마다 다시 읽어 결과가 생기면 저절로 바뀐다.
-- **FR-007**: 사진·폴리곤 영역은 자리만 두고 안내 문장을 보인다(contracts #20 뒤 교체).
+- **FR-007**: 사진은 `GET /api/v1/captures/checkpoints/{checkpointId}/media`로 읽는다. `photos`(또는 `photoDefects`)가 있으면 면마다 카메라(행) × 조명(열) 격자로 원본 사진을 보이고 각 사진 위에 그 사진의 `photoDefects` 폴리곤(원본 px)을 SVG로 겹친다(사진 natural 크기를 viewBox로). 정합 세트는 면 사진(`textures`) 위에 표준 좌표 `defects`를 겹친다. 404는 "사진이 아직 없습니다"(3초마다 다시 읽음), 그 밖의 오류는 사진 자리에만 다시 시도. 주소는 만료 1분 전에 새로 받는다. 사진을 누르면 원본을 새 탭에 연다.
 - **FR-008**: 375px·1280px에서 가로 스크롤 없이 쓸 수 있다.
 - **FR-009**: 타입은 contracts에서 만든 생성물에서만 꺼내고, 목(MSW)은 기존 `captureReportHandlers`를 쓴다.
 

@@ -1,5 +1,5 @@
 import { nanoid } from "nanoid";
-import { customerFixtures, type ReportState } from "./report";
+import { customerFixtures, quickFixture, type ReportState } from "./report";
 import type { CheckpointStatus, CheckpointType, Device, DeviceModel, DeviceStatus, Rental, TokenRole } from "../api/types";
 
 // MSW 목 서버의 메모리 데이터. ID는 계약대로 NanoID 21자(헌법 1.1.0). 테스트마다 resetDb()로 처음 상태로 돌린다.
@@ -84,10 +84,15 @@ function initialState(): MockState {
   ];
   // 고객 계정의 렌탈 2개(WE3 리포트)
   const customer = customerFixtures(accounts[1].accountId, [devices[3], devices[5]]);
+  // MVP(11/3) 부스 빠른 검사 예: 고객 렌탈 ①이 반납된 C02PRO0001을 다시 빌려준 렌탈, 출고 시점이 등급 C, 원본 사진 12장 위에 흠집
+  // (기기 상태 바꾸기·새 렌탈 테스트가 쓰는 기기는 피한다)
+  const quick = quickFixture(devices[3]);
+  customer.report.inspections.set(quick.inspection.checkpointId, quick.inspection);
+  customer.report.media.set(quick.media.checkpointId, quick.media);
   return {
     models: [air, pro, gram],
     devices,
-    rentals: [...rentals, ...customer.rentals],
+    rentals: [...rentals, ...customer.rentals, quick.rental],
     report: customer.report,
     accounts,
     accessTokens: new Map(),

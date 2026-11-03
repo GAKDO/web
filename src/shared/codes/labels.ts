@@ -1,6 +1,8 @@
 // 코드 값(contracts codes.yaml)의 한국어 이름표. 값 자체는 생성 타입에서만 온다(FR-015).
 import type {
+  CaptureCamera,
   CaptureFace,
+  CaptureLight,
   ChainStatus,
   CheckpointStatus,
   CheckpointType,
@@ -52,6 +54,19 @@ export const CAPTURE_FACE_LABEL: Record<CaptureFace, string> = {
   SCR0: "화면(꺼짐)",
   SCR1: "화면(흰색)",
 };
+
+/** 부스 조명(codes.yaml capture.light): L1 확산, L2 왼쪽·L3 뒤·L4 앞 스침광, 폰은 실내등 */
+export const CAPTURE_LIGHT_LABEL: Record<CaptureLight, string> = {
+  L1: "L1 확산",
+  L2: "L2 왼쪽 스침광",
+  L3: "L3 뒤쪽 스침광",
+  L4: "L4 앞쪽 스침광",
+  ROOM: "실내등",
+  OFF: "조명 끔",
+};
+
+/** 카메라(codes.yaml capture.camera): 부스 위 두 대가 앞 반·뒤 반을 나눠 찍는다 */
+export const CAPTURE_CAMERA_LABEL: Record<CaptureCamera, string> = { CAM1: "CAM1 앞 반", CAM2: "CAM2 뒤 반", PHONE: "폰" };
 
 export const INSPECTION_GRADE_LABEL: Record<InspectionGrade, string> = { A: "A등급", B: "B등급", C: "C등급", D: "D등급" };
 

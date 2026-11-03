@@ -198,6 +198,11 @@ paths:
         올라간 사진의 해시를 확인하고 capture.uploaded 이벤트를 발행한다(검사 시작). (FR-CAP-01·02)
         - 필수 면은 세트 source별 codes.yaml `capture.face_required`(BOOTH 8면, PHONE 7면·KB 제외). 하나라도 없으면
           409 CAPTURE_FACES_MISSING(Problem `missingFaces`에 빠진 면).
+        - profile=QUICK 세트(부스 빠른 검사)는 `capture.face_required_quick`(BOOTH: TOP·BOT)로 검사한다. 두 카메라가 면의 앞·뒤 반을
+          나눠 찍으므로 필수 면마다 CAM1·CAM2 사진이 모두 올라가야 있는 것으로 보고, 하나라도 없으면 그 면을 `missingFaces`에 넣어 409.
+          완료 뒤 부스 탐지(`POST /api/v1/captures/sets/{setId}/detections`)가 오면 inspect-worker 정합을 기다리지 않고 바로 등급을
+          매긴다(11/3 MVP). 탐지가 완료보다 먼저 와도 완료할 때 등급을 매긴다. 앞 시점과 비교하지 않으므로 trace.checkpoint.graded는
+          `compared: false`, 핀은 빈 배열이다. 흠집은 검사 결과의 `photoDefects`(원본 사진 px)로 돌려준다.
         - 필수가 아닌 면(예: SCR1)을 찍지 못했으면 본문 `skippedFaces`에 면 → 사유로 적는다. 필수 면을 넣으면 400 VALIDATION_FAILED.
         - 해시가 다르면 409 CAPTURE_HASH_MISMATCH.
         `Idempotency-Key`로 한 번만 처리하고, 같은 키로 다시 보내면 처음 응답을 돌려준다.
@@ -309,6 +314,7 @@ paths:
         alignments(사진별 호모그래피)를 준 뒤 capture-server가 한다. 세트에 없는 (face, light, camera)면 400. (11/2 결정)
         같은 세트에 다시 보내면 그 세트의 부스 탐지를 **통째로 바꾼다**(마지막 요청이 남는다. modelVersion이 달라도 같다).
         그래서 같은 요청을 다시 보내도 중복이 생기지 않고 Idempotency-Key는 받지 않는다. 등급이 매겨진 세트는 409 CAPTURE_SET_CLOSED. (11/2 결정)
+        빠른 검사(QUICK) 세트는 `analyzedPhotos`에 TOP·BOT 세트 사진을 모두 담아야 한다(빠지면 400, 일부만 분석한 결과로 등급을 내지 않음). (11/3)
       security:
         - bearerJwt: []
       x-trace-requirements: [FR-INS-01]
@@ -564,6 +570,11 @@ components:
             $ref: '#/components/schemas/PhotoSpec'
         device:
           $ref: '#/components/schemas/CaptureDevice'
+        profile:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureProfile'
+          description: >-
+            세트 범위(11/3 MVP, 선택). 빼면 FULL. QUICK은 부스 빠른 검사(위·아래 2면)로 source=BOOTH만 허용(PHONE이면 400 VALIDATION_FAILED).
+            QUICK 세트는 codes.yaml capture.face_required_quick로 완료를 검사하고, inspect-worker 정합 없이 부스 탐지만으로 등급을 매긴다
     CaptureDevice:
       type: object
       additionalProperties: false
@@ -704,6 +715,9 @@ components:
           $ref: './components/common.yaml#/components/schemas/PublicId'
         source:
           $ref: './components/codes.gen.yaml#/components/schemas/CaptureSource'
+        profile:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureProfile'
+          description: 세트 범위(선택 필드, 11/3 추가). 없으면 FULL로 본다
         boothId:
           type: [string, 'null']
         status:
@@ -745,6 +759,26 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Detection'
+        analyzedPhotos:
+          type: array
+          maxItems: 80
+          description: >-
+            이 요청으로 분석을 마친 사진(선택 필드, 11/3 추가). 빠른 검사(QUICK) 세트는 필수이고, 필수 면(TOP·BOT)의 세트 사진을 모두 담아야
+            한다. 빠지면 400 VALIDATION_FAILED(field analyzedPhotos). 흠집이 없는 사진은 여기에만 넣고 detections에는 넣지 않는다.
+            그래서 받은 요청은 늘 세트 전체의 결과이고, 일부만 분석한 요청으로 등급이 나지 않는다
+          items:
+            $ref: '#/components/schemas/PhotoRef'
+    PhotoRef:
+      type: object
+      additionalProperties: false
+      required: [face, light, camera]
+      properties:
+        face:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+        light:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+        camera:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
     DetectionBatchResponse:
       type: object
       required: [accepted]
@@ -814,6 +848,36 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Defect'
+        photoDefects:
+          type: array
+          description: >-
+            원본 사진 px 흠집(선택 필드, 11/3 추가). 정합 없이 판정한 부스 빠른 검사(QUICK) 세트에만 있고, 그때 `defects`는 빈 배열이다
+            (`defects[].polygon`은 늘 표준 좌표). 조명만 다른 사진의 같은 흠집도 사진마다 따로 있으며, 관리자 화면은 camera·light로
+            그 사진(`CheckpointMedia.photos`)을 찾아 겹쳐 그린다
+          items:
+            $ref: '#/components/schemas/PhotoDefect'
+    PhotoDefect:
+      type: object
+      required: [defectId, face, light, camera, class, polygon, confidence, modelVersion]
+      properties:
+        defectId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        face:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+        light:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+        camera:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
+        class:
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionDefectClass'
+        polygon:
+          $ref: '#/components/schemas/PhotoPolygon'
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        modelVersion:
+          type: string
     CheckpointMedia:
       type: object
       required: [checkpointId, expiresAt, textures, crops]
@@ -841,6 +905,25 @@ components:
             properties:
               defectId:
                 $ref: './components/common.yaml#/components/schemas/PublicId'
+              url:
+                type: string
+                format: uri
+        photos:
+          type: array
+          description: >-
+            원본 사진 보기 URL(선택 필드, 11/3 추가). 정합 텍스처가 없는 QUICK 세트도 관리자 화면에서 사진과 `photoDefects`를 겹쳐 보이게.
+            QUICK 세트는 반드시 싣는다. 완료 때 올라간 사진을 모두 넣으므로, 모든 `photoDefects[]`의 face·light·camera와 같은 항목이
+            여기 하나씩 있다(관리자 화면은 이 세 값으로 짝을 짓는다). 만료는 expiresAt과 같다
+          items:
+            type: object
+            required: [face, light, camera, url]
+            properties:
+              face:
+                $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+              light:
+                $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+              camera:
+                $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
               url:
                 type: string
                 format: uri

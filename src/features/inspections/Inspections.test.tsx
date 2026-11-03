@@ -1,16 +1,24 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http } from "msw";
 import { nanoid } from "nanoid";
 import { renderAsAdmin } from "../../test/renderApp";
 import type { Checkpoint, Defect, Inspection } from "../../shared/api/types";
 import { db } from "../../shared/mocks/db";
+import { quickDefect, quickMedia } from "../../shared/mocks/report";
 import { problem } from "../../shared/mocks/handlers/problem";
 import { server } from "../../shared/mocks/node";
 
 // 목 데이터: 고객 렌탈 ①(C02PRO0001) 출고·수령 봉인, 반납 촬영됨(결과 없음) / ②(LGGRAM0001) 출고 A / 관리자 렌탈(C02AIR0001) 시점 없음
+// / 빠른 검사: C02PRO0001을 다시 빌려준 렌탈, 출고 C(원본 사진 12장)
 
-const card = (serial: string) => screen.findByRole("listitem", { name: serial });
+/** 시리얼 카드. 같은 기기의 렌탈이 여럿이면 contains 글자가 든 카드를 고른다 */
+async function card(serial: string, contains?: string) {
+  const cards = await screen.findAllByRole("listitem", { name: serial });
+  const hit = contains ? cards.find((c) => c.textContent?.includes(contains)) : cards[0];
+  if (!hit) throw new Error(`카드 없음: ${serial} ${contains ?? ""}`);
+  return hit;
+}
 
 function defect(face: Defect["face"], cls: Defect["class"], confidence: number, lengthMm: number | null): Defect {
   return {
@@ -50,7 +58,7 @@ function addRental(serial: string, status: Checkpoint["status"], inspection?: Om
 test("검사 결과 목록은 렌탈마다 지금 시점과 판정을 보인다: 결과 없음은 판정 대기, A는 문제 없음, 시점 없음은 검사 전", async () => {
   renderAsAdmin("/admin/inspections");
   expect(await screen.findByRole("link", { name: "검사 결과" })).toBeInTheDocument();
-  const returned = await card("C02PRO0001");
+  const returned = await card("C02PRO0001", "반납");
   expect(within(returned).getByText("반납 · 촬영됨")).toBeInTheDocument();
   expect(await within(returned).findByText("판정 대기")).toBeInTheDocument();
   expect(within(returned).getByRole("link", { name: "결과 보기" })).toBeInTheDocument();
@@ -59,6 +67,8 @@ test("검사 결과 목록은 렌탈마다 지금 시점과 판정을 보인다:
   expect(within(none).getByText("검사 전")).toBeInTheDocument();
   expect(within(none).queryByRole("link", { name: "결과 보기" })).not.toBeInTheDocument();
   expect(within(none).getByRole("link", { name: "렌탈 열기" })).toBeInTheDocument();
+  const quick = await card("C02PRO0001", "출고 · 등급 매김");
+  expect(await within(quick).findByText("문제 있음 · C등급")).toBeInTheDocument();
 });
 
 test("등급 B~D면 목록에 문제 있음과 등급이 보이고, 결과 보기를 누르면 판정·근거·흠집 카드가 보인다", async () => {
@@ -85,7 +95,7 @@ test("등급 B~D면 목록에 문제 있음과 등급이 보이고, 결과 보�
   expect(first).toHaveTextContent("신뢰도 91%");
   expect(first).toHaveTextContent("길이 12.0 mm");
   expect(screen.getByRole("listitem", { name: "흠집 2" })).toHaveTextContent("길이 —");
-  expect(screen.getByRole("note")).toHaveTextContent("사진과 흠집 위치 겹쳐 보기는 계약 반영 뒤");
+  expect(await screen.findByText("사진이 아직 없습니다.")).toBeInTheDocument();
 });
 
 test("A 등급 시점의 상세는 문제 없음과 흠집이 없다는 문장을 보인다", async () => {
@@ -95,6 +105,63 @@ test("A 등급 시점의 상세는 문제 없음과 흠집이 없다는 문장�
   expect(await screen.findByRole("heading", { name: "LGGRAM0001 출고 검사 결과" })).toBeInTheDocument();
   expect(screen.getByRole("status", { name: "판정" })).toHaveTextContent("문제 없음");
   expect(screen.getByText("흠집이 없습니다.")).toBeInTheDocument();
+  // 정합 세트라 면 사진(부스 8면)을 보인다
+  expect(within(await screen.findByRole("list", { name: "면 사진" })).getAllByRole("listitem")).toHaveLength(8);
+});
+
+/** 사진이 로드된 것처럼 natural 크기를 넣고 load 이벤트를 낸다(jsdom은 이미지를 읽지 않는다) */
+function loadImage(img: HTMLElement, width = 1600, height = 1200) {
+  Object.defineProperty(img, "naturalWidth", { value: width });
+  Object.defineProperty(img, "naturalHeight", { value: height });
+  fireEvent.load(img);
+}
+
+test("빠른 검사(QUICK) 시점의 상세는 면마다 카메라 2 × 조명 3 사진 격자를 보이고, 사진이 로드되면 그 사진의 흠집 폴리곤을 겹친다", async () => {
+  const { rentalId, checkpointId } = addRental("C02AIR0002", "GRADED", {
+    grade: "C",
+    ruleVersion: "grade-rules-v1",
+    reasons: ["긁힘 1개·찍힘 1개"],
+    defects: [],
+    photoDefects: [
+      quickDefect("TOP", "L1", "CAM1", "scratch", 600, 400, 0.91),
+      quickDefect("TOP", "L2", "CAM1", "scratch", 604, 402, 0.87),
+      quickDefect("BOT", "L3", "CAM2", "dent", 900, 700, 0.78),
+    ],
+  });
+  db.report.media.set(checkpointId, quickMedia(checkpointId));
+  renderAsAdmin(`/admin/inspections/${rentalId}/${checkpointId}`);
+  expect(await screen.findByRole("heading", { name: "흠집 3개" })).toBeInTheDocument();
+  const first = screen.getByRole("listitem", { name: "흠집 1" });
+  expect(first).toHaveTextContent("긁힘");
+  expect(first).toHaveTextContent("CAM1 앞 반 · L1 확산");
+  expect(first).not.toHaveTextContent("길이");
+  const top = await screen.findByRole("region", { name: "윗면(덮개) 사진" });
+  expect(within(top).getByRole("heading", { name: "윗면(덮개) · 흠집 2개" })).toBeInTheDocument();
+  expect(within(top).getAllByRole("listitem")).toHaveLength(6);
+  const cell = within(top).getByRole("listitem", { name: "윗면(덮개) CAM1 L1" });
+  expect(cell).toHaveTextContent("CAM1 앞 반 · L1 확산 · 흠집 1개");
+  expect(within(cell).queryByRole("img", { name: "흠집 1개 표시" })).not.toBeInTheDocument();
+  loadImage(within(cell).getByRole("img", { name: "윗면(덮개) CAM1 L1 사진" }));
+  const overlay = within(cell).getByRole("img", { name: "흠집 1개 표시" });
+  expect(overlay).toHaveAttribute("viewBox", "0 0 1600 1200");
+  const polygons = overlay.querySelectorAll("polygon");
+  expect(polygons).toHaveLength(1);
+  expect(polygons[0].getAttribute("points")).toBe("540,392 660,396 660,408 540,404");
+  // 흠집 없는 사진에는 겹치는 그림이 없다
+  const clean = within(top).getByRole("listitem", { name: "윗면(덮개) CAM2 L1" });
+  loadImage(within(clean).getByRole("img", { name: "윗면(덮개) CAM2 L1 사진" }));
+  expect(within(clean).queryByRole("img", { name: /표시/ })).not.toBeInTheDocument();
+  expect(clean).toHaveTextContent("흠집 0개");
+  expect(screen.getByRole("region", { name: "바닥 사진" })).toHaveTextContent("바닥 · 흠집 1개");
+});
+
+test("사진을 읽다 오류가 나도 판정은 보이고, 사진 자리에 오류와 다시 시도가 보인다", async () => {
+  server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/media", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
+  const rental = db.rentals.find((r) => db.devices.find((d) => d.deviceId === r.deviceId)?.serial === "LGGRAM0001");
+  renderAsAdmin(`/admin/inspections/${rental?.rentalId}/${rental?.checkpoints[0]?.checkpointId}`);
+  expect(await screen.findByRole("status", { name: "판정" })).toHaveTextContent("문제 없음");
+  expect(await screen.findByRole("alert")).toHaveTextContent("사진을 불러오지 못했습니다.");
+  expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
 });
 
 test("검사 결과가 아직 없는 시점의 상세는 판정 대기 안내를 보이고 오류로 보이지 않는다", async () => {
@@ -138,9 +205,12 @@ test("주소의 시점이 그 렌탈에 없으면 검사 결과를 읽지 않고
   server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/inspection", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
   const none = db.rentals.find((r) => r.checkpoints.length === 0);
   const graded = db.rentals.find((r) => r.checkpoints.length === 1);
-  renderAsAdmin(`/admin/inspections/${none?.rentalId}/${graded?.checkpoints[0]?.checkpointId}`);
+  const other = graded?.checkpoints[0]?.checkpointId;
+  const { client } = renderAsAdmin(`/admin/inspections/${none?.rentalId}/${other}`);
   expect(await screen.findByRole("heading", { name: "C02AIR0001 검사 결과" })).toBeInTheDocument();
   expect(screen.getByRole("status", { name: "판정" })).toHaveTextContent("검사 전");
+  // 다른 렌탈의 시점으로 검사 결과 쿼리를 만들지 않았다
+  expect(client.getQueryCache().find({ queryKey: ["inspections", other] })).toBeUndefined();
   expect(screen.getByText("이 렌탈에 그런 시점이 없습니다.")).toBeInTheDocument();
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   expect(screen.queryByRole("heading", { name: /흠집/ })).not.toBeInTheDocument();

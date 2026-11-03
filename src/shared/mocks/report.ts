@@ -1,10 +1,14 @@
 import { nanoid } from "nanoid";
 import type {
+  CaptureCamera,
   CaptureFace,
+  CaptureLight,
   CheckpointDiagnostics,
   CheckpointMedia,
+  CheckpointPhoto,
   Device,
   Inspection,
+  PhotoDefect,
   Rental,
   RentalTimeline,
   RunSummary,
@@ -197,4 +201,73 @@ export function customerFixtures(customerId: string, devices: [Device, Device]):
   state.diagnostics.set(out2.checkpointId, { checkpointId: out2.checkpointId, current: run("2026-11-14T09:02:00+09:00", 95.0, 40), previous: null, flags: [] });
 
   return { rentals, report: state };
+}
+
+// MVP(11/3) 부스 빠른 검사(QUICK) 세트: 위·아래 2면 × 조명 L1·L2·L3 × CAM1·CAM2 = 원본 사진 12장(1600×1200), 흠집은 원본 px(contracts 1.1.0)
+const QUICK_FACES: CaptureFace[] = ["TOP", "BOT"];
+const QUICK_LIGHTS: CaptureLight[] = ["L1", "L2", "L3"];
+const QUICK_CAMERAS: CaptureCamera[] = ["CAM1", "CAM2"];
+const LIGHT_TINT: Record<CaptureLight, string> = { L1: "#e3e8ef", L2: "#d9e2ea", L3: "#cfd9e3", L4: "#c9d3dd", ROOM: "#efe9df", OFF: "#555" };
+export const QUICK_PHOTO = { width: 1600, height: 1200 };
+
+/** QUICK 세트의 원본 사진 12장(면 이름이 적힌 SVG) */
+export function quickPhotos(): CheckpointPhoto[] {
+  return QUICK_FACES.flatMap((face) =>
+    QUICK_CAMERAS.flatMap((camera) =>
+      QUICK_LIGHTS.map((light) => ({ face, light, camera, url: svgUrl(`${face} ${light} ${camera}`, QUICK_PHOTO.width, QUICK_PHOTO.height, LIGHT_TINT[light]) })),
+    ),
+  );
+}
+
+/** 원본 사진 px 흠집 하나(가로로 긴 사각형 폴리곤) */
+export function quickDefect(face: CaptureFace, light: CaptureLight, camera: CaptureCamera, cls: PhotoDefect["class"], cx: number, cy: number, confidence: number): PhotoDefect {
+  return {
+    defectId: nanoid(),
+    face,
+    light,
+    camera,
+    class: cls,
+    polygon: [[cx - 60, cy - 8], [cx + 60, cy - 4], [cx + 60, cy + 8], [cx - 60, cy + 4]],
+    confidence,
+    modelVersion: "yolo11s-seg-v002",
+  };
+}
+
+/** QUICK 세트 사진 응답(정합 텍스처·크롭 없음) */
+export function quickMedia(checkpointId: string): CheckpointMedia {
+  return { checkpointId, expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(), textures: [], crops: [], photos: quickPhotos() };
+}
+
+/**
+ * 관리자가 만든 렌탈의 출고 시점이 QUICK 세트로 등급 C: 윗면 긁힘(조명 L1·L2 두 사진에 같은 자리), 바닥 찍힘.
+ * MVP는 렌탈당 출고 검사 1번이라 출고 검사 뒤 반납됨(RETURNED)으로 둔다
+ */
+export function quickFixture(device: Device): { rental: Rental; inspection: Inspection; media: CheckpointMedia } {
+  const checkpointId = nanoid();
+  const at = "2026-11-05T10:00:00+09:00";
+  return {
+    rental: {
+      rentalId: nanoid(),
+      deviceId: device.deviceId,
+      renterRef: "R-1002",
+      status: "RETURNED",
+      startedAt: at,
+      endedAt: null,
+      createdAt: at,
+      checkpoints: [{ checkpointId, type: "OUT", status: "GRADED", occurredAt: at }],
+    },
+    inspection: {
+      checkpointId,
+      grade: "C",
+      ruleVersion: "grade-rules-v1",
+      reasons: ["긁힘 1개·찍힘 1개 (부스 빠른 검사, 앞 시점과 비교 없음)"],
+      defects: [],
+      photoDefects: [
+        quickDefect("TOP", "L1", "CAM1", "scratch", 600, 400, 0.91),
+        quickDefect("TOP", "L2", "CAM1", "scratch", 604, 402, 0.87),
+        quickDefect("BOT", "L3", "CAM2", "dent", 900, 700, 0.78),
+      ],
+    },
+    media: quickMedia(checkpointId),
+  };
 }

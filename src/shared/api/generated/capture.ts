@@ -94,6 +94,11 @@ export interface paths {
          * @description 올라간 사진의 해시를 확인하고 capture.uploaded 이벤트를 발행한다(검사 시작). (FR-CAP-01·02)
          *     - 필수 면은 세트 source별 codes.yaml `capture.face_required`(BOOTH 8면, PHONE 7면·KB 제외). 하나라도 없으면
          *       409 CAPTURE_FACES_MISSING(Problem `missingFaces`에 빠진 면).
+         *     - profile=QUICK 세트(부스 빠른 검사)는 `capture.face_required_quick`(BOOTH: TOP·BOT)로 검사한다. 두 카메라가 면의 앞·뒤 반을
+         *       나눠 찍으므로 필수 면마다 CAM1·CAM2 사진이 모두 올라가야 있는 것으로 보고, 하나라도 없으면 그 면을 `missingFaces`에 넣어 409.
+         *       완료 뒤 부스 탐지(`POST /api/v1/captures/sets/{setId}/detections`)가 오면 inspect-worker 정합을 기다리지 않고 바로 등급을
+         *       매긴다(11/3 MVP). 탐지가 완료보다 먼저 와도 완료할 때 등급을 매긴다. 앞 시점과 비교하지 않으므로 trace.checkpoint.graded는
+         *       `compared: false`, 핀은 빈 배열이다. 흠집은 검사 결과의 `photoDefects`(원본 사진 px)로 돌려준다.
          *     - 필수가 아닌 면(예: SCR1)을 찍지 못했으면 본문 `skippedFaces`에 면 → 사유로 적는다. 필수 면을 넣으면 400 VALIDATION_FAILED.
          *     - 해시가 다르면 409 CAPTURE_HASH_MISMATCH.
          *     `Idempotency-Key`로 한 번만 처리하고, 같은 키로 다시 보내면 처음 응답을 돌려준다.
@@ -125,6 +130,7 @@ export interface paths {
          *     alignments(사진별 호모그래피)를 준 뒤 capture-server가 한다. 세트에 없는 (face, light, camera)면 400. (11/2 결정)
          *     같은 세트에 다시 보내면 그 세트의 부스 탐지를 **통째로 바꾼다**(마지막 요청이 남는다. modelVersion이 달라도 같다).
          *     그래서 같은 요청을 다시 보내도 중복이 생기지 않고 Idempotency-Key는 받지 않는다. 등급이 매겨진 세트는 409 CAPTURE_SET_CLOSED. (11/2 결정)
+         *     빠른 검사(QUICK) 세트는 `analyzedPhotos`에 TOP·BOT 세트 사진을 모두 담아야 한다(빠지면 400, 일부만 분석한 결과로 등급을 내지 않음). (11/3)
          */
         post: operations["saveBoothDetections"];
         delete?: never;
@@ -225,6 +231,8 @@ export interface components {
             /** @description 사진 목록. (face, light, camera)는 겹치지 않는다. 부스 촬영 목록은 한 대 29장(패스 1 18장 + 패스 2 10장 + SCR1), 80은 여유를 둔 상한 */
             photos: components["schemas"]["PhotoSpec"][];
             device?: components["schemas"]["CaptureDevice"];
+            /** @description 세트 범위(11/3 MVP, 선택). 빼면 FULL. QUICK은 부스 빠른 검사(위·아래 2면)로 source=BOOTH만 허용(PHONE이면 400 VALIDATION_FAILED). QUICK 세트는 codes.yaml capture.face_required_quick로 완료를 검사하고, inspect-worker 정합 없이 부스 탐지만으로 등급을 매긴다 */
+            profile?: components["schemas"]["CaptureProfile"];
         };
         /** @description 찍는 기기의 기종과 치수(rental-server device_model 값). 서비스끼리 REST를 부르지 않으므로 rentalId와 같은 방식으로 클라이언트가 옮긴다. 폰(고객 촬영 JWT)은 렌탈 기종으로 rental-server `GET /api/v1/device-models/{modelCode}`(CUSTOMER 허용)를 읽어 싣고, 부스는 rentalId·checkpointId처럼 관리자 화면(ADMIN)이 고른 기종·치수를 그대로 받아 싣는다(부스는 rental-server를 부르지 않는다). capture-server는 저장했다가 이벤트 trace.capture.uploaded의 device로 싣고, inspect-worker가 이 치수로 표준 좌표(1 px = 0.25 mm)를 만든다. 빼면 worker 기본 기종으로 펼치므로 여러 기종을 쓰면 꼭 보낸다. 범위는 이벤트 $defs/DeviceModel과 같다 */
         CaptureDevice: {
@@ -291,6 +299,8 @@ export interface components {
             captureSetId: components["schemas"]["PublicId"];
             checkpointId: components["schemas"]["PublicId"];
             source: components["schemas"]["CaptureSource"];
+            /** @description 세트 범위(선택 필드, 11/3 추가). 없으면 FULL로 본다 */
+            profile?: components["schemas"]["CaptureProfile"];
             boothId: string | null;
             status: components["schemas"]["CaptureSetStatus"];
             quality: components["schemas"]["CaptureQuality"];
@@ -307,6 +317,13 @@ export interface components {
         DetectionBatchRequest: {
             modelVersion: string;
             detections: components["schemas"]["Detection"][];
+            /** @description 이 요청으로 분석을 마친 사진(선택 필드, 11/3 추가). 빠른 검사(QUICK) 세트는 필수이고, 필수 면(TOP·BOT)의 세트 사진을 모두 담아야 한다. 빠지면 400 VALIDATION_FAILED(field analyzedPhotos). 흠집이 없는 사진은 여기에만 넣고 detections에는 넣지 않는다. 그래서 받은 요청은 늘 세트 전체의 결과이고, 일부만 분석한 요청으로 등급이 나지 않는다 */
+            analyzedPhotos?: components["schemas"]["PhotoRef"][];
+        };
+        PhotoRef: {
+            face: components["schemas"]["CaptureFace"];
+            light: components["schemas"]["CaptureLight"];
+            camera: components["schemas"]["CaptureCamera"];
         };
         DetectionBatchResponse: {
             accepted: number;
@@ -336,6 +353,18 @@ export interface components {
             /** @description 등급 근거(사람이 읽는 문장) */
             reasons: string[];
             defects: components["schemas"]["Defect"][];
+            /** @description 원본 사진 px 흠집(선택 필드, 11/3 추가). 정합 없이 판정한 부스 빠른 검사(QUICK) 세트에만 있고, 그때 `defects`는 빈 배열이다 (`defects[].polygon`은 늘 표준 좌표). 조명만 다른 사진의 같은 흠집도 사진마다 따로 있으며, 관리자 화면은 camera·light로 그 사진(`CheckpointMedia.photos`)을 찾아 겹쳐 그린다 */
+            photoDefects?: components["schemas"]["PhotoDefect"][];
+        };
+        PhotoDefect: {
+            defectId: components["schemas"]["PublicId"];
+            face: components["schemas"]["CaptureFace"];
+            light: components["schemas"]["CaptureLight"];
+            camera: components["schemas"]["CaptureCamera"];
+            class: components["schemas"]["InspectionDefectClass"];
+            polygon: components["schemas"]["PhotoPolygon"];
+            confidence: number;
+            modelVersion: string;
         };
         CheckpointMedia: {
             checkpointId: components["schemas"]["PublicId"];
@@ -347,6 +376,14 @@ export interface components {
             }[];
             crops: {
                 defectId: components["schemas"]["PublicId"];
+                /** Format: uri */
+                url: string;
+            }[];
+            /** @description 원본 사진 보기 URL(선택 필드, 11/3 추가). 정합 텍스처가 없는 QUICK 세트도 관리자 화면에서 사진과 `photoDefects`를 겹쳐 보이게. QUICK 세트는 반드시 싣는다. 완료 때 올라간 사진을 모두 넣으므로, 모든 `photoDefects[]`의 face·light·camera와 같은 항목이 여기 하나씩 있다(관리자 화면은 이 세 값으로 짝을 짓는다). 만료는 expiresAt과 같다 */
+            photos?: {
+                face: components["schemas"]["CaptureFace"];
+                light: components["schemas"]["CaptureLight"];
+                camera: components["schemas"]["CaptureCamera"];
                 /** Format: uri */
                 url: string;
             }[];
@@ -397,6 +434,11 @@ export interface components {
         DateTime: string;
         /** @example MBA13-M2 */
         ModelCode: string;
+        /**
+         * @description codes.yaml capture.profile
+         * @enum {string}
+         */
+        CaptureProfile: "FULL" | "QUICK";
         /**
          * @description codes.yaml error_code
          * @enum {string}
