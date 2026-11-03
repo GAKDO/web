@@ -26,6 +26,16 @@ npm install
 npm run dev
 ```
 
+## 빌드 설정값 (`VITE_*`, 빌드 때 화면에 박히므로 비밀 값은 넣지 않는다)
+
+| 변수 | 뜻 | 기본값 |
+|---|---|---|
+| `VITE_API_BASE` | gateway 주소. 비우면 같은 출처의 `/api`(개발은 vite 프록시) | 비움 |
+| `VITE_USE_MOCK` | `true`면 브라우저에서 MSW 목 서버를 켠다 | 비움 |
+| `VITE_ARCHIVED_FEATURES` | MVP 배포에서 메뉴·링크를 숨기는 보관 기능(쉼표 구분): `phoneCapture`(수령 QR) `diagnostics`(페어링 코드) `report`(리포트 보기) `account`(가입·재설정) `pilot`(Grafana). 코드·주소는 그대로다 | 개발·테스트 비움, Docker 이미지는 전부 |
+| `VITE_PILOT_DASHBOARD_URL` | 파일럿 추이 Grafana 주소. 비우면 메뉴를 숨긴다 | 비움 |
+| `VITE_DEMO_CUSTOMER_EMAILS` | 시연용 고객 계정 이메일(쉼표 구분). 비밀번호는 넣지 않는다 | Docker 이미지만 기본값 있음 |
+
 ## CI/CD
 
 | 워크플로 | 언제 | 하는 일 |

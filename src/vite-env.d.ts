@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_PILOT_DASHBOARD_URL?: string;
   /** 시연용 고객 계정 이메일, 쉼표로 구분(비밀번호는 넣지 않음) */
   readonly VITE_DEMO_CUSTOMER_EMAILS?: string;
+  /** MVP 배포에서 메뉴·링크를 숨기는 보관 기능, 쉼표로 구분(src/shared/config/features.ts). 비우면 모두 보인다 */
+  readonly VITE_ARCHIVED_FEATURES?: string;
 }
 
 interface ImportMeta {

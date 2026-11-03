@@ -4,6 +4,7 @@ import type { CheckpointType, Rental } from "../../../shared/api/types";
 import { ApiError } from "../../../shared/api/problem";
 import { messageFor } from "../../../shared/api/errorMessages";
 import { CHECKPOINT_STATUS_LABEL, CHECKPOINT_TYPE_LABEL, RENTAL_STATUS_LABEL } from "../../../shared/codes/labels";
+import { isArchived } from "../../../shared/config/features";
 import { Button } from "../../../shared/ui/Button";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
@@ -39,12 +40,12 @@ function CheckpointSteps({ rental, serial, onError }: { rental: Rental; serial?:
             {checkpoint ? (
               <>
                 <span className={`badge${checkpoint.status === "SEALED" ? "" : " badge-maintenance"}`}>{CHECKPOINT_STATUS_LABEL[checkpoint.status]}</span>
-                {/* 수령은 고객이 폰으로 찍는다. 시점을 시작한 뒤 촬영 전(OPEN)에만 QR을 만든다(WE2 US1) */}
-                {type === "RCV" && checkpoint.status === "OPEN" && (
+                {/* 수령은 고객이 폰으로 찍는다. 시점을 시작한 뒤 촬영 전(OPEN)에만 QR을 만든다(WE2 US1). MVP 배포에서는 보관(숨김) */}
+                {type === "RCV" && checkpoint.status === "OPEN" && !isArchived("phoneCapture") && (
                   <CaptureLinkPanel rentalId={rental.rentalId} checkpointId={checkpoint.checkpointId} />
                 )}
-                {/* 진단 에이전트는 시점마다 붙는다. 봉인 전(OPEN)에만 코드를 만든다 */}
-                {checkpoint.status === "OPEN" && (
+                {/* 진단 에이전트는 시점마다 붙는다. 봉인 전(OPEN)에만 코드를 만든다. MVP 배포에서는 보관(숨김) */}
+                {checkpoint.status === "OPEN" && !isArchived("diagnostics") && (
                   <PairingCodePanel key={`${rental.rentalId}:${checkpoint.checkpointId}`} rentalId={rental.rentalId} checkpointId={checkpoint.checkpointId} deviceSerial={serial} />
                 )}
               </>
@@ -95,7 +96,8 @@ export function RentalDetailPage() {
       {rental.isError && <ErrorBanner message={toMessage(rental.error)} onRetry={() => void rental.refetch()} />}
       {error && <ErrorBanner message={error} />}
       <CheckpointSteps rental={data} serial={serial} onError={setError} />
-      {data.checkpoints.length > 0 && (
+      {/* 3D 리포트(WE3)는 MVP 배포에서 보관(숨김) */}
+      {data.checkpoints.length > 0 && !isArchived("report") && (
         <p>
           <Link to={`/my/rentals/${data.rentalId}`}>리포트 보기</Link>
         </p>
