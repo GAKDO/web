@@ -5,7 +5,7 @@ import { nanoid } from "nanoid";
 import { renderAsAdmin } from "../../test/renderApp";
 import type { Checkpoint, Defect, Inspection } from "../../shared/api/types";
 import { db } from "../../shared/mocks/db";
-import { quickDefect, quickMedia } from "../../shared/mocks/report";
+import { quickDefect, quickMedia, quickPhotos } from "../../shared/mocks/report";
 import { problem } from "../../shared/mocks/handlers/problem";
 import { server } from "../../shared/mocks/node";
 
@@ -231,4 +231,35 @@ test("새로 고침을 누르면 목록을 다시 읽어 부스가 시작한 시
   await user.click(screen.getByRole("button", { name: "새로 고침" }));
   expect(await within(await card("LGGRAM0002")).findByText("문제 없음")).toBeInTheDocument();
   expect(within(await card("LGGRAM0002")).getByRole("link", { name: "결과 보기" })).toBeInTheDocument();
+});
+
+test("정합 세트(FULL)의 사진 응답에 원본 사진이 함께 와도 면 사진 위의 표준 좌표 흠집을 보인다", async () => {
+  const rental = db.rentals.find((r) => db.devices.find((d) => d.deviceId === r.deviceId)?.serial === "LGGRAM0001");
+  const out = rental?.checkpoints[0];
+  const media = db.report.media.get(out?.checkpointId ?? "");
+  if (media) media.photos = quickPhotos();
+  renderAsAdmin(`/admin/inspections/${rental?.rentalId}/${out?.checkpointId}`);
+  expect(within(await screen.findByRole("list", { name: "면 사진" })).getAllByRole("listitem")).toHaveLength(8);
+  expect(screen.queryByRole("region", { name: /사진$/ })).not.toBeInTheDocument();
+});
+
+test("사진 주소를 못 읽으면 그 칸에만 안내와 다시 시도가 보이고, 다시 시도하면 사진을 다시 읽는다", async () => {
+  const { rentalId, checkpointId } = addRental("C02AIR0002", "GRADED", {
+    grade: "C",
+    ruleVersion: "grade-rules-v1",
+    reasons: ["긁힘 1개"],
+    defects: [],
+    photoDefects: [quickDefect("TOP", "L1", "CAM1", "scratch", 600, 400, 0.91)],
+  });
+  db.report.media.set(checkpointId, quickMedia(checkpointId));
+  const user = userEvent.setup();
+  renderAsAdmin(`/admin/inspections/${rentalId}/${checkpointId}`);
+  const top = await screen.findByRole("region", { name: "윗면(덮개) 사진" });
+  const cell = within(top).getByRole("listitem", { name: "윗면(덮개) CAM1 L1" });
+  fireEvent.error(within(cell).getByRole("img", { name: "윗면(덮개) CAM1 L1 사진" }));
+  expect(cell).toHaveTextContent("사진을 불러오지 못함");
+  expect(within(top).getByRole("listitem", { name: "윗면(덮개) CAM2 L1" })).not.toHaveTextContent("사진을 불러오지 못함");
+  await user.click(within(cell).getByRole("button", { name: "다시 시도" }));
+  expect(within(cell).getByRole("img", { name: "윗면(덮개) CAM1 L1 사진" })).toBeInTheDocument();
+  expect(cell).not.toHaveTextContent("사진을 불러오지 못함");
 });

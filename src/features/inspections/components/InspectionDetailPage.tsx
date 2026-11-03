@@ -83,8 +83,11 @@ function Photos({ checkpointId, inspection }: { checkpointId: string; inspection
   if (media.isError) return <ErrorBanner message="사진을 불러오지 못했습니다." onRetry={() => void media.refetch()} />;
   const photoDefects = photoDefectsOf(inspection);
   const photos = media.data?.photos ?? [];
-  if (photos.length > 0 || photoDefects.length > 0) return <PhotoGrid grids={faceGrids(photos, photoDefects)} />;
-  if (media.data && media.data.textures.length > 0) return <TextureList overlays={textureOverlays(media.data, inspection?.defects ?? [])} />;
+  const textures = media.data?.textures ?? [];
+  // 빠른 검사(QUICK)는 면 사진이 없고 흠집이 원본 사진 px(photoDefects)라 원본 사진 격자로 간다.
+  // 정합 세트(FULL)는 원본 사진(photos)이 함께 와도 표준 좌표 흠집(defects)이 사라지지 않게 면 사진을 먼저 고른다
+  if (photoDefects.length > 0 || (photos.length > 0 && textures.length === 0)) return <PhotoGrid grids={faceGrids(photos, photoDefects)} />;
+  if (media.data && textures.length > 0) return <TextureList overlays={textureOverlays(media.data, inspection?.defects ?? [])} />;
   return <p className="muted">사진이 아직 없습니다.</p>;
 }
 
