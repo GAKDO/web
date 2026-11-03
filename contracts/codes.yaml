@@ -6,6 +6,7 @@
 # 0.6.0(2026-11-02): error_code DEVICE_STATUS_TRANSITION_INVALID 추가(폐기 기기는 수리 중으로만 되돌림).
 # 0.7.0(2026-11-02): error_code RECORD_ALREADY_SEALED 추가(관리자 수동 봉인, RP1).
 # 1.0.0(2026-11-03): 계약 고정. 값은 0.7.0과 같고, 이후로는 값 추가만 한다(이름 변경·삭제 없음).
+# Unreleased(2026-11-03): capture.profile·face_required_quick 추가(부스 위·아래 2면 빠른 검사, MVP). 값 추가만.
 #   OpenAPI용 enum은 scripts/gen_openapi_codes.py로 만든다. 값은 문자열이어야 한다(OFF·ON·YES·NO는 따옴표).
 version: 1.0.0
 
@@ -26,6 +27,9 @@ capture:
   face_required:                       # 세트 완료(/complete)에 꼭 있어야 하는 면, 출처별 (11/2)
     BOOTH: [TOP, BOT, SF, SB, SL, SR, KB, SCR0]   # SCR1(화면 흰색)은 선택: 건너뛰면 skippedFaces에 사유
     PHONE: [TOP, BOT, SF, SB, SL, SR, SCR0]       # 폰은 KB를 찍지 않음, SCR1은 선택 (11/2 민서·C 확정)
+  profile: [FULL, QUICK]               # 세트 범위 (11/3 MVP): FULL은 face_required, QUICK은 부스 빠른 검사(face_required_quick)
+  face_required_quick:                 # QUICK 세트 완료에 꼭 있어야 하는 면. QUICK은 부스만 (11/3 강사님 리뷰, 민서 결정)
+    BOOTH: [TOP, BOT]                  # 위·아래 2면, 조명 L1(확산)·L2(왼쪽 스침광)·L3(뒤쪽 스침광), CAM1·CAM2 → 사진 12장(면마다 두 카메라 필수). 정합 없이 부스 탐지만으로 등급
   light: [L1, L2, L3, L4, ROOM, 'OFF']   # 부스: L1 확산, L2 왼쪽·L3 뒤·L4 앞 스침광 / 폰: ROOM
   camera: [CAM1, CAM2, PHONE]          # 부스 위 카메라 앞 반·뒤 반, 수령 폰
 inspection:

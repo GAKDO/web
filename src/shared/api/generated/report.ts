@@ -215,6 +215,8 @@ export interface components {
             occurredAt: components["schemas"]["DateTime"] | null;
             grade: components["schemas"]["InspectionGrade"] | null;
             newDefectCount: number;
+            /** @description 앞 시점과 흠집을 비교했는지(선택 필드, 11/3 추가). false면 부스 빠른 검사(QUICK)라 비교하지 않았고 newDefectCount 0은 '신규 흠집 없음'이 아니다. 출고(OUT)·기준선도 false다. trace.checkpoint.graded의 compared를 그대로 옮기고, 이벤트에 없으면(1.1) OUT은 false, 그 밖에는 true로 채운다 */
+            compared?: boolean;
             pins: components["schemas"]["Pin"][];
             diagnosticsSummary: {
                 maxCapacityPct: number | null;

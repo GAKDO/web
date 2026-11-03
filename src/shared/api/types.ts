@@ -85,6 +85,10 @@ export type Defect = CaptureSchemas["Defect"];
 export type DefectClass = CaptureSchemas["InspectionDefectClass"];
 export type DefectSource = CaptureSchemas["InspectionDefectSource"];
 export type CheckpointMedia = CaptureSchemas["CheckpointMedia"];
+/** 빠른 검사(QUICK) 세트의 원본 사진 px 흠집(contracts 1.1.0) */
+export type PhotoDefect = CaptureSchemas["PhotoDefect"];
+/** 원본 사진 보기 주소 한 장(면·조명·카메라) */
+export type CheckpointPhoto = NonNullable<CheckpointMedia["photos"]>[number];
 export type CheckpointDiagnostics = DiagnosticsSchemas["CheckpointDiagnostics"];
 export type RunSummary = DiagnosticsSchemas["RunSummary"];
 export type DiagnosticsFlag = DiagnosticsSchemas["InspectionFlag"];

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError, unwrap } from "../../../shared/api/client";
-import type { Inspection } from "../../../shared/api/types";
+import type { CheckpointMedia, Inspection } from "../../../shared/api/types";
+import { mediaRefreshMs } from "../../report/api/report";
 
 // 관리자 검사 결과 화면(spec 006)의 서버 상태. 검사 결과는 capture-server, 렌탈 목록·상세는 rentals 기능의 훅을 그대로 쓴다
 export const INSPECTIONS = ["inspections"] as const;
@@ -33,5 +34,26 @@ export function useCheckpointInspection(checkpointId: string | undefined) {
     enabled: !!checkpointId,
     retry: false,
     refetchInterval: (query) => (query.state.status === "success" ? inspectionPollMs(query.state.data) : false),
+  });
+}
+
+/** 한 시점의 사진 보기 주소(원본 사진·면 사진). 아직 없으면(404) null이고 판정처럼 3초마다 다시 읽는다. 주소는 만료 전에 새로 받는다 */
+export function useCheckpointMedia(checkpointId: string | undefined) {
+  return useQuery<CheckpointMedia | null>({
+    queryKey: [...INSPECTIONS, "media", checkpointId],
+    queryFn: async () => {
+      try {
+        return await unwrap(api.GET("/api/v1/captures/checkpoints/{checkpointId}/media", { params: { path: { checkpointId: checkpointId ?? "" } } }));
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) return null;
+        throw e;
+      }
+    },
+    enabled: !!checkpointId,
+    retry: false,
+    refetchInterval: (query) => {
+      if (query.state.status !== "success") return false;
+      return query.state.data ? mediaRefreshMs(query.state.data.expiresAt) : INSPECTION_POLL_MS;
+    },
   });
 }
