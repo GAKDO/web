@@ -1,0 +1,66 @@
+import { Link } from "react-router-dom";
+import { ApiError } from "../../../shared/api/problem";
+import { messageFor } from "../../../shared/api/errorMessages";
+import { CHECKPOINT_STATUS_LABEL, CHECKPOINT_TYPE_LABEL } from "../../../shared/codes/labels";
+import { Button } from "../../../shared/ui/Button";
+import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
+import { useDeviceModels } from "../../devices/api/devices";
+import { useRentals } from "../../rentals/api/rentals";
+import { VerdictBadge } from "./VerdictBadge";
+
+/**
+ * 검사 결과 목록(spec 006 US1). 전용 API가 없어 렌탈 목록(최근 것부터)의 지금 시점으로 기기별 최근 검사를 보인다.
+ * MVP(11/3): 부스가 위·아래 2면을 찍어 올리면 capture-server가 등급을 매기고, 여기서 문제 있음/없음을 본다.
+ */
+export function InspectionListPage() {
+  const rentals = useRentals();
+  const models = useDeviceModels();
+  const modelName = (code: string) => models.data?.find((m) => m.modelCode === code)?.name ?? code;
+  const items = rentals.data?.pages.flatMap((page) => page.items) ?? [];
+
+  return (
+    <section>
+      <h1>검사 결과</h1>
+      <p className="muted">기기(렌탈)마다 지금 시점의 판정입니다. 문제 있음은 등급 B~D, 문제 없음은 A입니다.</p>
+      {rentals.isError && (
+        <ErrorBanner
+          message={rentals.error instanceof ApiError ? messageFor(rentals.error) : "목록을 불러오지 못했습니다."}
+          onRetry={() => void rentals.refetch()}
+        />
+      )}
+      {rentals.isPending && <p>불러오는 중…</p>}
+      {rentals.isSuccess && items.length === 0 && <p>검사할 렌탈이 없습니다. 렌탈을 먼저 만들어 주세요.</p>}
+      <ul className="cards" aria-label="검사 결과">
+        {items.map((r) => {
+          const checkpoint = r.currentCheckpoint ?? null;
+          return (
+            <li key={r.rentalId} className="card" aria-label={r.serial}>
+              <div className="card-main">
+                <strong>{r.serial}</strong>
+                <span>{modelName(r.modelCode)}</span>
+                <span>{checkpoint ? `${CHECKPOINT_TYPE_LABEL[checkpoint.type]} · ${CHECKPOINT_STATUS_LABEL[checkpoint.status]}` : "시점 없음"}</span>
+                <VerdictBadge checkpoint={checkpoint} />
+              </div>
+              <div className="row">
+                {checkpoint ? (
+                  <Link className="button-link" to={`/admin/inspections/${r.rentalId}/${checkpoint.checkpointId}`} state={{ serial: r.serial }}>
+                    결과 보기
+                  </Link>
+                ) : (
+                  <Link className="button-link" to={`/admin/rentals/${r.rentalId}`} state={{ serial: r.serial }}>
+                    렌탈 열기
+                  </Link>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {rentals.hasNextPage && (
+        <Button busy={rentals.isFetchingNextPage} onClick={() => void rentals.fetchNextPage()}>
+          더 보기
+        </Button>
+      )}
+    </section>
+  );
+}

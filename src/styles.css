@@ -11,7 +11,8 @@ body { margin: 0; }
 .page { max-width: 1200px; margin: 0 auto; padding: 16px; }
 .login { max-width: 420px; }
 .admin-header { display: flex; flex-wrap: wrap; gap: var(--gap); align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--border); }
-.admin-header nav { display: flex; gap: var(--gap); flex: 1; }
+.admin-header nav { display: flex; flex-wrap: wrap; gap: 4px var(--gap); flex: 1; }
+.admin-header nav a { white-space: nowrap; }
 .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: var(--gap); }
 .field input, .field select { padding: 10px; font-size: 16px; border: 1px solid var(--border); border-radius: 6px; width: 100%; }
 .field-error, .error-banner { color: var(--danger); }
@@ -28,6 +29,8 @@ button { min-height: 44px; padding: 0 16px; font-size: 16px; }
 .badge { padding: 0 8px; border-radius: 999px; background: #e7f6ec; }
 .badge-maintenance { background: #fff4d6; }
 .badge-retired { background: #eceef1; color: #555; }
+/* 관리자 검사 결과(spec 006): 문제 있음은 색 + 글자(✖·등급)로 함께 구분 */
+.badge-bad { background: #fdecea; color: var(--danger); font-weight: 600; }
 .confirm { border: 1px solid var(--danger); border-radius: 8px; padding: 12px; margin-top: 8px; }
 .danger { color: #fff; background: var(--danger); border: 0; border-radius: 6px; }
 .editor { border-top: 1px solid var(--border); padding-top: 8px; }
