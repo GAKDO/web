@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import { nanoid } from "nanoid";
-import { renderApp, renderAsAdmin } from "../../test/renderApp";
+import { renderApp, renderAsAdmin, renderAsCustomer } from "../../test/renderApp";
 import { db } from "../mocks/db";
 
 // 보관 기능(VITE_ARCHIVED_FEATURES)은 코드를 그대로 두고 메뉴·링크만 숨긴다(11/3 방향 전환)
@@ -45,6 +45,13 @@ test("폰 촬영·진단·리포트를 보관하면 렌탈 상세에서 수령 Q
   expect(screen.queryByRole("link", { name: "리포트 보기" })).not.toBeInTheDocument();
   expect(within(receipt).getByText("촬영 대기")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "새로 고침" })).toBeInTheDocument();
+});
+
+test("리포트를 보관하면 고객 내 렌탈 목록에서도 리포트 보기 링크가 사라지고 렌탈 카드는 그대로 보인다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "report");
+  renderAsCustomer("/my/rentals");
+  expect((await screen.findAllByRole("listitem")).length).toBeGreaterThan(0);
+  expect(screen.queryByRole("link", { name: "리포트 보기" })).not.toBeInTheDocument();
 });
 
 test("가입·재설정을 보관하면 고객 로그인 화면에 회원가입·비밀번호 재설정 링크가 없고 로그인은 그대로 된다", async () => {

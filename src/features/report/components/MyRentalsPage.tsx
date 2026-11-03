@@ -3,6 +3,7 @@ import type { RentalSummary } from "../../../shared/api/types";
 import { ApiError } from "../../../shared/api/client";
 import { messageFor } from "../../../shared/api/errorMessages";
 import { CHECKPOINT_TYPE_LABEL, RENTAL_STATUS_LABEL } from "../../../shared/codes/labels";
+import { isArchived } from "../../../shared/config/features";
 import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { useDeviceModel, useMyRentals, useTimeline } from "../api/report";
@@ -25,9 +26,12 @@ function RentalCard({ rental }: { rental: RentalSummary }) {
           </span>
         )}
       </div>
-      <Link className="button-link" to={`/my/rentals/${rental.rentalId}`}>
-        리포트 보기
-      </Link>
+      {/* 3D 리포트(WE3)를 보관하면 목록에서도 리포트 링크를 숨긴다 */}
+      {!isArchived("report") && (
+        <Link className="button-link" to={`/my/rentals/${rental.rentalId}`}>
+          리포트 보기
+        </Link>
+      )}
     </li>
   );
 }
