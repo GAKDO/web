@@ -40,12 +40,13 @@ export function InspectionDetailPage() {
   const { rentalId = "", checkpointId = "" } = useParams();
   const hint = (useLocation().state as { serial?: string } | null)?.serial;
   const rental = useRental(rentalId);
-  const inspection = useCheckpointInspection(checkpointId);
   const checkpoint = rental.data?.checkpoints.find((c) => c.checkpointId === checkpointId) ?? null;
+  // 이 렌탈의 시점일 때만 검사 결과를 읽는다. 다른 렌탈의 시점 주소를 넣어도 그 결과가 이 렌탈 아래 보이지 않는다
+  const inspection = useCheckpointInspection(checkpoint?.checkpointId);
   const serial = rental.data?.serial || hint || "";
   const title = checkpoint ? `${serial} ${CHECKPOINT_TYPE_LABEL[checkpoint.type]} 검사 결과` : `${serial} 검사 결과`.trim();
 
-  if (rental.isPending || inspection.isPending) return <p>불러오는 중…</p>;
+  if (rental.isPending || (checkpoint && inspection.isPending)) return <p>불러오는 중…</p>;
   const error = rental.isError ? rental.error : inspection.isError ? inspection.error : null;
   if (error) {
     return (
@@ -55,15 +56,15 @@ export function InspectionDetailPage() {
           message={toMessage(error)}
           onRetry={() => {
             void rental.refetch();
-            void inspection.refetch();
+            if (checkpoint) void inspection.refetch();
           }}
         />
         <Link to="/admin/inspections">검사 결과 목록으로</Link>
       </section>
     );
   }
-  // 렌탈에 그 시점이 없으면(주소가 틀림) 검사 전으로 보인다
-  const data = inspection.data ?? null;
+  // 렌탈에 그 시점이 없으면(주소가 틀림) 읽지 않았으므로 검사 전으로 보인다
+  const data = checkpoint ? (inspection.data ?? null) : null;
   const verdict = verdictOf(checkpoint, data);
 
   return (

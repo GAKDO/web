@@ -132,3 +132,33 @@ test("렌탈이 20건 넘으면 더 보기로 다음 쪽을 이어 붙인다", a
   await waitFor(() => expect(screen.getByRole("listitem", { name: "C02AIR0001" })).toBeInTheDocument());
   expect(screen.queryByRole("button", { name: "더 보기" })).not.toBeInTheDocument();
 });
+
+test("주소의 시점이 그 렌탈에 없으면 검사 결과를 읽지 않고 검사 전으로 보인다(다른 렌탈의 결과가 섞이지 않음)", async () => {
+  // 검사 결과를 읽으면 500이 나게 두어, 읽지 않았음을 오류 없음으로 확인한다
+  server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/inspection", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
+  const none = db.rentals.find((r) => r.checkpoints.length === 0);
+  const graded = db.rentals.find((r) => r.checkpoints.length === 1);
+  renderAsAdmin(`/admin/inspections/${none?.rentalId}/${graded?.checkpoints[0]?.checkpointId}`);
+  expect(await screen.findByRole("heading", { name: "C02AIR0001 검사 결과" })).toBeInTheDocument();
+  expect(screen.getByRole("status", { name: "판정" })).toHaveTextContent("검사 전");
+  expect(screen.getByText("이 렌탈에 그런 시점이 없습니다.")).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: /흠집/ })).not.toBeInTheDocument();
+});
+
+test("새로 고침을 누르면 목록을 다시 읽어 부스가 시작한 시점과 그 판정이 보인다", async () => {
+  const device = db.devices.find((d) => d.serial === "LGGRAM0002");
+  const now = new Date().toISOString();
+  const rental = { rentalId: nanoid(), deviceId: device?.deviceId ?? "", renterRef: "R-4002", status: "OPEN" as const, startedAt: now, endedAt: null, createdAt: now, checkpoints: [] as Checkpoint[] };
+  db.rentals.push(rental);
+  const user = userEvent.setup();
+  renderAsAdmin("/admin/inspections");
+  expect(within(await card("LGGRAM0002")).getByText("검사 전")).toBeInTheDocument();
+  // 부스가 출고 시점을 시작하고 등급이 매겨진 뒤
+  const checkpointId = nanoid();
+  rental.checkpoints.push({ checkpointId, type: "OUT", status: "GRADED", occurredAt: now });
+  db.report.inspections.set(checkpointId, { checkpointId, grade: "A", ruleVersion: "grade-rules-v1", reasons: ["흠집 없음"], defects: [] });
+  await user.click(screen.getByRole("button", { name: "새로 고침" }));
+  expect(await within(await card("LGGRAM0002")).findByText("문제 없음")).toBeInTheDocument();
+  expect(within(await card("LGGRAM0002")).getByRole("link", { name: "결과 보기" })).toBeInTheDocument();
+});

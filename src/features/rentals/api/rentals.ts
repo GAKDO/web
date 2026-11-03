@@ -6,12 +6,16 @@ import { nextAction } from "../nextAction";
 const RENTALS = ["rentals"] as const;
 const rentalKey = (rentalId: string) => [...RENTALS, "detail", rentalId] as const;
 
-export function useRentals(status?: RentalStatus) {
+/** 목록을 열어 둔 동안 다시 읽는 간격(검사 결과 목록). 부스가 시점을 시작하면 카드의 지금 시점이 바뀐다 */
+export const RENTALS_LIVE_MS = 5000;
+
+export function useRentals(status?: RentalStatus, options: { live?: boolean } = {}) {
   return useInfiniteQuery({
     queryKey: [...RENTALS, "list", status ?? "all"],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => unwrap(api.GET("/api/v1/rentals", { params: { query: { status, cursor: pageParam } } })),
     getNextPageParam: (page) => page.nextCursor ?? undefined,
+    refetchInterval: options.live ? RENTALS_LIVE_MS : false,
   });
 }
 
