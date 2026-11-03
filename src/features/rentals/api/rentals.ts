@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { api, unwrap } from "../../../shared/api/client";
 import type { CheckpointType, RentalCreateRequest, RentalStatus } from "../../../shared/api/types";
 import { nextAction } from "../nextAction";
@@ -18,12 +19,18 @@ export function useRentals(status?: RentalStatus, enabled = true) {
 
 /**
  * 렌탈 기기의 시리얼. 렌탈 상세(Rental)에는 시리얼이 없어 목록·등록 화면이 넘긴 값을 쓰고,
- * 없으면(주소로 바로 들어옴) 렌탈 목록 첫 쪽에서 찾는다. 못 찾으면 undefined.
+ * 없으면(주소로 바로 들어옴) 렌탈 목록을 찾을 때까지 다음 쪽으로 넘기며 찾는다(최대 SERIAL_PAGE_LIMIT쪽). 못 찾으면 undefined.
  */
+export const SERIAL_PAGE_LIMIT = 20;
 export function useRentalSerial(rentalId: string, hint?: string): string | undefined {
   const list = useRentals(undefined, !hint);
-  if (hint) return hint;
-  return list.data?.pages.flatMap((p) => p.items).find((r) => r.rentalId === rentalId)?.serial;
+  const found = list.data?.pages.flatMap((p) => p.items).find((r) => r.rentalId === rentalId)?.serial;
+  const pages = list.data?.pages.length ?? 0;
+  const { hasNextPage, isFetchingNextPage, isError, fetchNextPage } = list;
+  useEffect(() => {
+    if (!hint && !found && hasNextPage && !isFetchingNextPage && !isError && pages < SERIAL_PAGE_LIMIT) void fetchNextPage();
+  }, [hint, found, hasNextPage, isFetchingNextPage, isError, pages, fetchNextPage]);
+  return hint ?? found;
 }
 
 /** 렌탈 상세. 봉인 전 시점이 있는 동안 3초마다 다시 읽어 버튼을 맞춘다 */

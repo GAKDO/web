@@ -38,7 +38,9 @@ export function useFaceGuides(rentalId: string, waitMs: number = MODEL_WAIT_MS):
     retry: false,
     staleTime: Infinity,
   });
-  const dims = model.data?.dimensions;
+  // 촬영 계약(CaptureDeviceDimensions)이 받는 범위를 넘는 치수는 윤곽·device 모두 쓰지 않고 기본값으로 찍는다(세트가 400으로 막히지 않게)
+  const raw = model.data?.dimensions;
+  const dims = raw && sendable(raw) ? raw : undefined;
   const faces = useMemo(() => (dims ? faceGuides(dims) : PHONE_FACES), [dims]);
   const device = useMemo<CaptureDevice | undefined>(
     () => (dims && modelCode ? { modelCode, dimensions: { widthMm: dims.widthMm, depthMm: dims.depthMm, baseHMm: dims.baseHMm, lidHMm: dims.lidHMm } } : undefined),
@@ -52,4 +54,10 @@ export function useFaceGuides(rentalId: string, waitMs: number = MODEL_WAIT_MS):
     if (!loading && !locked) setLocked({ faces, device });
   }, [loading, locked, faces, device]);
   return locked ? { faces: locked.faces, loading, device: locked.device } : { faces, loading, device };
+}
+
+/** contracts capture CaptureDeviceDimensions: 너비·깊이 0 초과 1000 이하, 높이 0 초과 100 이하(mm) */
+export function sendable(d: { widthMm: number; depthMm: number; baseHMm: number; lidHMm: number }): boolean {
+  const ok = (v: number, max: number) => v > 0 && v <= max;
+  return ok(d.widthMm, 1000) && ok(d.depthMm, 1000) && ok(d.baseHMm, 100) && ok(d.lidHMm, 100);
 }

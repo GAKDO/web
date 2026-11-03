@@ -10,11 +10,15 @@ import { db } from "../../shared/mocks/db";
 
 const now = new Date().toISOString();
 
-async function openRental(out: Checkpoint["status"]) {
+async function openRental(out: Checkpoint["status"], newerRentals = 0) {
   const device = db.devices.find((d) => d.serial === "C02AIR0002");
   const rentalId = nanoid();
   const checkpoints: Checkpoint[] = [{ checkpointId: nanoid(), type: "OUT", status: out, occurredAt: now }];
   db.rentals.push({ rentalId, deviceId: device?.deviceId ?? "", renterRef: "R-3101", status: "OPEN", startedAt: now, endedAt: null, createdAt: now, checkpoints });
+  // 이 렌탈을 목록 첫 쪽(20개) 뒤로 밀어낸다
+  for (let i = 0; i < newerRentals; i++) {
+    db.rentals.push({ rentalId: nanoid(), deviceId: device?.deviceId ?? "", renterRef: `R-9${i}`, status: "CLOSED", startedAt: now, endedAt: now, createdAt: now, checkpoints: [] });
+  }
   renderAsAdmin(`/admin/rentals/${rentalId}`);
   return { step: await screen.findByRole("listitem", { name: "출고" }), rentalId, checkpointId: checkpoints[0].checkpointId };
 }
@@ -79,4 +83,13 @@ test("기기 시리얼을 찾지 못하면 코드를 만들 수 없고 이유가
   const { step } = await openRental("OPEN");
   expect(within(step).getByRole("button", { name: "진단 페어링 코드 만들기" })).toBeDisabled();
   expect(within(step).getByRole("note")).toHaveTextContent("기기 시리얼");
+});
+
+test("주소로 바로 연 오래된 렌탈도 목록 다음 쪽에서 시리얼을 찾아 코드를 만든다", async () => {
+  const { step, rentalId } = await openRental("OPEN", 25);
+  const button = within(step).getByRole("button", { name: "진단 페어링 코드 만들기" });
+  await vi.waitFor(() => expect(button).toBeEnabled());
+  await userEvent.setup().click(button);
+  await within(step).findByLabelText("페어링 코드");
+  expect(captureDb.pairings.at(-1)).toMatchObject({ rentalId, deviceSerial: "C02AIR0002" });
 });
