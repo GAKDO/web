@@ -52,7 +52,7 @@ export function RentalListPage() {
         {items.map((r) => (
           <li key={r.rentalId} className="card" aria-label={r.serial}>
             <div className="card-main">
-              <Link to={`/admin/rentals/${r.rentalId}`}>
+              <Link to={`/admin/rentals/${r.rentalId}`} state={{ serial: r.serial }}>
                 <strong>{r.serial}</strong>
               </Link>
               <span>{modelName(r.modelCode)}</span>

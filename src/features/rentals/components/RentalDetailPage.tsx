@@ -7,7 +7,7 @@ import { CHECKPOINT_STATUS_LABEL, CHECKPOINT_TYPE_LABEL, RENTAL_STATUS_LABEL } f
 import { Button } from "../../../shared/ui/Button";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
-import { useCloseRental, useRental, useStartCheckpoint } from "../api/rentals";
+import { useCloseRental, useRental, useRentalSerial, useStartCheckpoint } from "../api/rentals";
 import { nextAction } from "../nextAction";
 import { CaptureLinkPanel } from "./CaptureLinkPanel";
 import { PairingCodePanel } from "./PairingCodePanel";
@@ -25,7 +25,7 @@ function reason(type: CheckpointType, action: ReturnType<typeof nextAction>): st
 const toMessage = (e: unknown) => (e instanceof ApiError ? messageFor(e) : "요청을 처리하지 못했습니다.");
 
 /** 출고 → 수령 → 반납 단계. 다음 단계 버튼만 켜고, 꺼진 버튼에는 이유를 붙인다(FR-022) */
-function CheckpointSteps({ rental, onError }: { rental: Rental; onError: (message: string | null) => void }) {
+function CheckpointSteps({ rental, serial, onError }: { rental: Rental; serial?: string; onError: (message: string | null) => void }) {
   const start = useStartCheckpoint(rental.rentalId);
   const action = nextAction(rental);
   return (
@@ -45,7 +45,7 @@ function CheckpointSteps({ rental, onError }: { rental: Rental; onError: (messag
                 )}
                 {/* 진단 에이전트는 시점마다 붙는다. 봉인 전(OPEN)에만 코드를 만든다 */}
                 {checkpoint.status === "OPEN" && (
-                  <PairingCodePanel key={`${rental.rentalId}:${checkpoint.checkpointId}`} rentalId={rental.rentalId} checkpointId={checkpoint.checkpointId} />
+                  <PairingCodePanel key={`${rental.rentalId}:${checkpoint.checkpointId}`} rentalId={rental.rentalId} checkpointId={checkpoint.checkpointId} deviceSerial={serial} />
                 )}
               </>
             ) : (
@@ -72,7 +72,7 @@ function CheckpointSteps({ rental, onError }: { rental: Rental; onError: (messag
 
 export function RentalDetailPage() {
   const { rentalId = "" } = useParams();
-  const serial = (useLocation().state as { serial?: string } | null)?.serial;
+  const serial = useRentalSerial(rentalId, (useLocation().state as { serial?: string } | null)?.serial);
   const rental = useRental(rentalId);
   const close = useCloseRental(rentalId);
   const [asking, setAsking] = useState(false);
@@ -92,7 +92,7 @@ export function RentalDetailPage() {
       </p>
       {rental.isError && <ErrorBanner message={toMessage(rental.error)} onRetry={() => void rental.refetch()} />}
       {error && <ErrorBanner message={error} />}
-      <CheckpointSteps rental={data} onError={setError} />
+      <CheckpointSteps rental={data} serial={serial} onError={setError} />
       {data.checkpoints.length > 0 && (
         <p>
           <Link to={`/my/rentals/${data.rentalId}`}>리포트 보기</Link>

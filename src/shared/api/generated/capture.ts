@@ -224,6 +224,19 @@ export interface components {
             source: components["schemas"]["CaptureSource"];
             /** @description 사진 목록. (face, light, camera)는 겹치지 않는다. 부스 촬영 목록은 한 대 29장(패스 1 18장 + 패스 2 10장 + SCR1), 80은 여유를 둔 상한 */
             photos: components["schemas"]["PhotoSpec"][];
+            device?: components["schemas"]["CaptureDevice"];
+        };
+        /** @description 찍는 기기의 기종과 치수(rental-server device_model 값). 서비스끼리 REST를 부르지 않으므로 rentalId와 같은 방식으로 클라이언트가 옮긴다. 폰(고객 촬영 JWT)은 렌탈 기종으로 rental-server `GET /api/v1/device-models/{modelCode}`(CUSTOMER 허용)를 읽어 싣고, 부스는 rentalId·checkpointId처럼 관리자 화면(ADMIN)이 고른 기종·치수를 그대로 받아 싣는다(부스는 rental-server를 부르지 않는다). capture-server는 저장했다가 이벤트 trace.capture.uploaded의 device로 싣고, inspect-worker가 이 치수로 표준 좌표(1 px = 0.25 mm)를 만든다. 빼면 worker 기본 기종으로 펼치므로 여러 기종을 쓰면 꼭 보낸다. 범위는 이벤트 $defs/DeviceModel과 같다 */
+        CaptureDevice: {
+            modelCode: components["schemas"]["ModelCode"];
+            dimensions: components["schemas"]["CaptureDeviceDimensions"];
+        };
+        /** @description 기종 치수(mm). rental-server ModelDimensions와 같은 뜻이고, 이벤트 $defs/DeviceModel.dimensions와 같은 범위 */
+        CaptureDeviceDimensions: {
+            widthMm: number;
+            depthMm: number;
+            baseHMm: number;
+            lidHMm: number;
         };
         UploadTarget: {
             face: components["schemas"]["CaptureFace"];
@@ -382,11 +395,13 @@ export interface components {
          * @example 2026-11-12T09:00:00+09:00
          */
         DateTime: string;
+        /** @example MBA13-M2 */
+        ModelCode: string;
         /**
          * @description codes.yaml error_code
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
         FieldError: {
             /** @description camelCase 필드 경로 (예 photos[0].sha256) */
             field: string;
@@ -570,6 +585,15 @@ export interface operations {
                  *       "rentalId": "Ws0HLv6QRbDILPWOcz5I2",
                  *       "checkpointId": "IPv6mcQOlTkKj6mOecAQt",
                  *       "source": "PHONE",
+                 *       "device": {
+                 *         "modelCode": "MBA13-M2",
+                 *         "dimensions": {
+                 *           "widthMm": 304.1,
+                 *           "depthMm": 215,
+                 *           "baseHMm": 7,
+                 *           "lidHMm": 4
+                 *         }
+                 *       },
                  *       "photos": [
                  *         {
                  *           "face": "TOP",

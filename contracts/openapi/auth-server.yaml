@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: TRACE auth-server
-  version: 0.1.0
+  version: 0.2.0
   description: |
     회원·로그인·자격 교환·QR 링크·페어링·JWKS. 원본은 GAKDO/docs design/rest-api-v0.md "auth-server" 표.
 
@@ -587,7 +587,7 @@ paths:
       tags: [자격]
       operationId: createPairingCode
       summary: 에이전트 페어링 코드 발급
-      description: 진단 에이전트가 시점 하나에 붙을 6자리 코드(5분, 해시만 저장). 렌탈과 시점을 함께 정하고, 교환한 AGENT JWT에 둘 다 들어간다. (FR-AUTH-02)
+      description: 진단 에이전트가 시점 하나에 붙을 6자리 코드(5분, 해시만 저장). 렌탈·시점과 대여 기기의 시리얼(`deviceSerial`, 관리자가 기기 목록에서 고른 등록 시리얼)을 함께 정하고, 교환한 AGENT JWT에 셋 다 들어간다. diagnostics-server는 업로드한 진단 JSON의 `device.serial`을 이 클레임과 대조한다(다르면 422 DEVICE_SERIAL_MISMATCH). (FR-AUTH-02)
       security:
         - bearerJwt: []
       x-trace-requirements: [FR-AUTH-02]
@@ -604,6 +604,7 @@ paths:
             example:
               rentalId: Ws0HLv6QRbDILPWOcz5I2
               checkpointId: aJ3bYet82WYF8iVlHstT2
+              deviceSerial: C02XG2JHJGH5
       responses:
         '201':
           description: 발급됨
@@ -625,7 +626,7 @@ paths:
       tags: [자격]
       operationId: exchangePairingCode
       summary: 페어링 코드 → AGENT JWT
-      description: 6자리 코드를 AGENT JWT(10분, role AGENT, scope=checkpointId, 클레임 rentalId)로 바꾼다. 코드는 한 번만 쓸 수 있다. diagnostics-server는 이벤트 봉투의 rentalId를 이 클레임에서 읽는다. (FR-AUTH-02)
+      description: 6자리 코드를 AGENT JWT(10분, role AGENT, scope=checkpointId, 클레임 rentalId·deviceSerial)로 바꾼다. 코드는 한 번만 쓸 수 있다. diagnostics-server는 이벤트 봉투의 rentalId를 이 클레임에서 읽는다. (FR-AUTH-02)
       security: []
       x-trace-requirements: [FR-AUTH-02]
       requestBody:
@@ -649,6 +650,7 @@ paths:
                 expiresIn: 600
                 rentalId: Ws0HLv6QRbDILPWOcz5I2
                 checkpointId: aJ3bYet82WYF8iVlHstT2
+                deviceSerial: C02XG2JHJGH5
         '400':
           description: 코드 틀림 또는 형식 오류
           x-trace-error-codes: [VALIDATION_FAILED, PAIRING_CODE_INVALID]
@@ -896,12 +898,17 @@ components:
     PairingCodeCreateRequest:
       type: object
       additionalProperties: false
-      required: [rentalId, checkpointId]
+      required: [rentalId, checkpointId, deviceSerial]
       properties:
         rentalId:
           $ref: './components/common.yaml#/components/schemas/PublicId'
         checkpointId:
           $ref: './components/common.yaml#/components/schemas/PublicId'
+        deviceSerial:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 대여 기기의 등록 시리얼(rental-server 기기의 serial). 진단 JSON `device.serial`과 같은 형식이며 AGENT JWT의 deviceSerial 클레임이 된다
     PairingCodeResponse:
       type: object
       required: [code, expiresAt]
@@ -919,7 +926,7 @@ components:
           $ref: '#/components/schemas/SixDigitCode'
     AgentTokenResponse:
       type: object
-      required: [accessToken, tokenType, expiresIn, rentalId, checkpointId]
+      required: [accessToken, tokenType, expiresIn, rentalId, checkpointId, deviceSerial]
       properties:
         accessToken:
           type: string
@@ -934,6 +941,10 @@ components:
           description: 페어링 코드를 만들 때 정한 렌탈. JWT의 rentalId 클레임과 같다
         checkpointId:
           $ref: './components/common.yaml#/components/schemas/PublicId'
+        deviceSerial:
+          type: string
+          maxLength: 64
+          description: 페어링 코드를 만들 때 정한 기기 시리얼. JWT의 deviceSerial 클레임과 같다. 에이전트는 수집한 시리얼과 다르면 올리기 전에 알린다
     Jwks:
       type: object
       required: [keys]

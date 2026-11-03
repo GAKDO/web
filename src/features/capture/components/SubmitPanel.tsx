@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { ApiError } from "../../../shared/api/problem";
-import type { CaptureFace } from "../../../shared/api/types";
+import type { CaptureDevice, CaptureFace } from "../../../shared/api/types";
 import type { CaptureGrant } from "../../../shared/auth/captureTokenStore";
 import { CAPTURE_FACE_LABEL } from "../../../shared/codes/labels";
 import { Button } from "../../../shared/ui/Button";
@@ -16,6 +16,8 @@ const GRANT_EXPIRED = "촬영 시간이 지났습니다. 대여 담당자에게 
 
 interface Props {
   grant: CaptureGrant;
+  /** 윤곽에 쓴 기종·치수(모르면 생략) */
+  device?: CaptureDevice;
   shots: Shots;
   remaining: CaptureFace[];
   /** 서버가 빠졌다고 한 면(그 면 사진을 지우고 다시 찍게 함) */
@@ -26,7 +28,7 @@ interface Props {
 }
 
 /** 제출: 건너뛴 이유 → 세트 생성 → 업로드 진행률 → 완료(US4) */
-export function SubmitPanel({ grant, shots, remaining, onMissing, onDone, onBusyChange }: Props) {
+export function SubmitPanel({ grant, device, shots, remaining, onMissing, onDone, onBusyChange }: Props) {
   const session = useRef<UploadSession | null>(null);
   // 세트 생성 응답 전에 두 번 눌러도 요청은 하나만 보낸다
   const running = useRef(false);
@@ -41,7 +43,7 @@ export function SubmitPanel({ grant, shots, remaining, onMissing, onDone, onBusy
   const ready = remaining.length === 0 && (!skipScr1 || skipReason.length > 0);
 
   async function upload(allowRenew: boolean): Promise<boolean> {
-    if (!session.current || !sameShots(session.current, photos)) session.current = await createSession(grant, photos);
+    if (!session.current || !sameShots(session.current, photos)) session.current = await createSession(grant, photos, device);
     setProgress(session.current.done.filter(Boolean).length);
     const result = await uploadPending(session.current, photos, setProgress);
     if (result === "expired" && allowRenew) {

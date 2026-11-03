@@ -1,10 +1,10 @@
 # 생성 파일입니다. 손으로 고치지 말고 codes.yaml을 고친 뒤
 #   python3 scripts/gen_openapi_codes.py
-# 로 다시 만드세요. (codes.yaml version 0.6.0)
+# 로 다시 만드세요. (codes.yaml version 0.7.0)
 openapi: 3.1.0
 info:
   title: TRACE 코드 값 (생성)
-  version: 0.6.0
+  version: 0.7.0
 paths: {}
 components:
   schemas:
@@ -321,4 +321,5 @@ components:
       - DIAGNOSTIC_ALREADY_UPLOADED
       - DIAGNOSTIC_SCHEMA_INVALID
       - DEVICE_SERIAL_MISMATCH
+      - RECORD_ALREADY_SEALED
       description: codes.yaml error_code

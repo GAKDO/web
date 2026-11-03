@@ -1,5 +1,5 @@
 import { nanoid } from "nanoid";
-import type { CaptureFace, CaptureLight, PhotoSpec, UploadTarget } from "../api/types";
+import type { CaptureDevice, CaptureFace, CaptureLight, PhotoSpec, UploadTarget } from "../api/types";
 
 // WE2 목: 수령 QR 링크·촬영 권한·촬영 세트·저장소 파일. db.ts와 따로 두고 테스트마다 resetCaptureDb()로 비운다.
 export const MOCK_STORAGE_ORIGIN = "https://storage.mock";
@@ -24,6 +24,8 @@ export interface MockSet {
   rentalId: string;
   checkpointId: string;
   photos: PhotoSpec[];
+  /** 세트에 실려 온 기종·치수(없으면 undefined) */
+  device?: CaptureDevice;
   uploads: UploadTarget[];
   completed: boolean;
   idempotencyKey: string | null;
@@ -34,7 +36,7 @@ export interface MockSet {
 interface CaptureState {
   links: CaptureLink[];
   /** 발급한 에이전트 페어링 코드 */
-  pairings: { code: string; rentalId: string; checkpointId: string }[];
+  pairings: { code: string; rentalId: string; checkpointId: string; deviceSerial: string }[];
   /** 업로드 URL 다시 받기 횟수 */
   reissued: number;
   /** 렌탈 → 연결된 고객 계정 */

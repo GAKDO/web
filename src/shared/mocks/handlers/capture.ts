@@ -60,9 +60,13 @@ export const captureHandlers = [
     const account = accountFromRequest(request);
     if (!account) return problem(401, "UNAUTHENTICATED", "로그인이 필요합니다");
     if (account.role !== "ADMIN") return problem(403, "FORBIDDEN", "권한이 없습니다");
-    const { rentalId, checkpointId } = (await request.json()) as { rentalId: string; checkpointId: string };
+    const { rentalId, checkpointId, deviceSerial } = (await request.json()) as { rentalId: string; checkpointId: string; deviceSerial?: unknown };
+    // contracts auth 0.2.0: 기기 시리얼 필수(1~64자). 없으면 400
+    if (typeof deviceSerial !== "string" || deviceSerial.length < 1 || deviceSerial.length > 64) {
+      return problem(400, "VALIDATION_FAILED", "기기 시리얼(deviceSerial)이 필요합니다");
+    }
     const code = String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
-    captureDb.pairings.push({ code, rentalId, checkpointId });
+    captureDb.pairings.push({ code, rentalId, checkpointId, deviceSerial });
     return HttpResponse.json({ code, expiresAt: new Date(Date.now() + 5 * 60_000).toISOString() }, { status: 201 });
   }),
   http.post("*/api/v1/auth/capture-links/exchange", async ({ request }) => {
@@ -101,6 +105,9 @@ export const captureHandlers = [
     if (body.photos.length < 1 || body.photos.length > MAX_SET_PHOTOS) {
       return problem(400, "VALIDATION_FAILED", `사진은 1~${MAX_SET_PHOTOS}장이어야 합니다`);
     }
+    if (body.device !== undefined && !validDevice(body.device)) {
+      return problem(400, "VALIDATION_FAILED", "기종·치수(device) 형식이 맞지 않습니다");
+    }
     const captureSetId = nanoid();
     const expiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
     const uploads = body.photos.map((p) => ({
@@ -112,7 +119,7 @@ export const captureHandlers = [
       headers: { "Content-Type": p.contentType, "x-amz-checksum-sha256": hexToBase64(p.sha256) },
       expiresAt,
     }));
-    captureDb.sets.push({ captureSetId, rentalId: body.rentalId, checkpointId: body.checkpointId, photos: body.photos, uploads, completed: false, idempotencyKey: null });
+    captureDb.sets.push({ captureSetId, rentalId: body.rentalId, checkpointId: body.checkpointId, photos: body.photos, device: body.device, uploads, completed: false, idempotencyKey: null });
     const response: CaptureSetCreateResponse = { captureSetId, uploads };
     return HttpResponse.json(response, { status: 201 });
   }),
@@ -198,3 +205,16 @@ export const captureHandlers = [
     return new HttpResponse(null, { status: 200 });
   }),
 ];
+
+/** contracts capture CaptureDevice: 기종 코드와 치수(mm) 범위. 다른 키는 받지 않는다 */
+function validDevice(device: unknown): boolean {
+  if (typeof device !== "object" || device === null) return false;
+  const { modelCode, dimensions, ...rest } = device as Record<string, unknown>;
+  if (Object.keys(rest).length > 0) return false;
+  if (typeof modelCode !== "string" || !/^[A-Z0-9][A-Z0-9-]{1,63}$/.test(modelCode)) return false;
+  if (typeof dimensions !== "object" || dimensions === null) return false;
+  const d = dimensions as Record<string, unknown>;
+  const limits: Record<string, number> = { widthMm: 1000, depthMm: 1000, baseHMm: 100, lidHMm: 100 };
+  if (Object.keys(d).length !== 4) return false;
+  return Object.entries(limits).every(([k, max]) => typeof d[k] === "number" && (d[k] as number) > 0 && (d[k] as number) <= max);
+}

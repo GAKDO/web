@@ -23,9 +23,9 @@ beforeEach(() => {
 });
 
 /** 윗면부터 필수 7면을 차례로 찍어 통과시킨다(통과하면 다음 면이 자동으로 열림) */
-async function shootRequired(): Promise<UserEvent> {
+async function shootRequired(rentalId?: string): Promise<UserEvent> {
   const user = userEvent.setup();
-  app = renderApp(`/capture?t=${mockCaptureLink().token}`);
+  app = renderApp(`/capture?t=${mockCaptureLink(rentalId).token}`);
   await user.click(await screen.findByRole("button", { name: /^윗면/ }));
   for (let i = 0; i < 7; i++) {
     await user.click(await screen.findByRole("button", { name: "찍기" }));
@@ -173,4 +173,22 @@ test("찍은 사진이 있으면 앱 안에서 다른 화면으로 갈 때도 �
   expect(confirm).toHaveBeenCalledTimes(2);
   expect(app.router.state.location.pathname).toBe("/my/rentals");
   confirm.mockRestore();
+});
+
+test("렌탈 기종 치수를 읽었으면 세트에 기종·치수(device)를 싣고, 못 읽었으면 빼고 보낸다", async () => {
+  const rental = db.rentals.find((r) => db.report.owners.has(r.rentalId));
+  const modelCode = rental && db.report.timelines.get(rental.rentalId)?.modelCode;
+  const model = db.models.find((m) => m.modelCode === modelCode);
+  if (!rental || !model) throw new Error("고객 렌탈 목 데이터가 없습니다");
+  let user = await shootRequired(rental.rentalId);
+  await user.click(submitButton());
+  await screen.findByText(/수령 사진이 접수되었습니다/);
+  expect(captureDb.sets.at(-1)?.device).toEqual({ modelCode: model.modelCode, dimensions: model.dimensions });
+  app.unmount();
+
+  // 내 렌탈이 아니라 리포트(기종)를 못 읽으면 device 없이 보낸다(서버 기본 기종)
+  user = await shootRequired();
+  await user.click(submitButton());
+  await screen.findByText(/수령 사진이 접수되었습니다/);
+  expect(captureDb.sets.at(-1)?.device).toBeUndefined();
 });
