@@ -16,15 +16,16 @@ export interface OverlayDefect {
  */
 export function PhotoWithDefects({ src, alt, defects }: { src: string; alt: string; defects: OverlayDefect[] }) {
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
-  const [failed, setFailed] = useState(false);
+  // 실패는 그 주소에만 매어 둔다: 사진 주소가 새로 발급되면(만료 전 갱신) 따로 누르지 않아도 새 주소로 다시 읽는다
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  if (failed) {
+  if (failedSrc === src) {
     return (
       <div className="photo photo-missing" role="group" aria-label={alt}>
         <span>사진을 불러오지 못함</span>
         <Button
           onClick={() => {
-            setFailed(false);
+            setFailedSrc(null);
             setAttempt((n) => n + 1);
           }}
         >
@@ -45,7 +46,7 @@ export function PhotoWithDefects({ src, alt, defects }: { src: string; alt: stri
         }}
         onError={() => {
           setSize(null);
-          setFailed(true);
+          setFailedSrc(src);
         }}
       />
       {size && defects.length > 0 && (
