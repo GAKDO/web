@@ -57,6 +57,7 @@ export type CaptureTokenResponse = AuthSchemas["CaptureTokenResponse"];
 export type PhotoSpec = CaptureSchemas["PhotoSpec"];
 export type CaptureSetCreateRequest = CaptureSchemas["CaptureSetCreateRequest"];
 export type CaptureSetCreateResponse = CaptureSchemas["CaptureSetCreateResponse"];
+export type CaptureDevice = CaptureSchemas["CaptureDevice"];
 export type CaptureSetCompleteRequest = CaptureSchemas["CaptureSetCompleteRequest"];
 export type UploadTarget = CaptureSchemas["UploadTarget"];
 export type UploadReissueRequest = CaptureSchemas["UploadReissueRequest"];

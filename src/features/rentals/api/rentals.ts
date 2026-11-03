@@ -6,13 +6,24 @@ import { nextAction } from "../nextAction";
 const RENTALS = ["rentals"] as const;
 const rentalKey = (rentalId: string) => [...RENTALS, "detail", rentalId] as const;
 
-export function useRentals(status?: RentalStatus) {
+export function useRentals(status?: RentalStatus, enabled = true) {
   return useInfiniteQuery({
+    enabled,
     queryKey: [...RENTALS, "list", status ?? "all"],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => unwrap(api.GET("/api/v1/rentals", { params: { query: { status, cursor: pageParam } } })),
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
+}
+
+/**
+ * 렌탈 기기의 시리얼. 렌탈 상세(Rental)에는 시리얼이 없어 목록·등록 화면이 넘긴 값을 쓰고,
+ * 없으면(주소로 바로 들어옴) 렌탈 목록 첫 쪽에서 찾는다. 못 찾으면 undefined.
+ */
+export function useRentalSerial(rentalId: string, hint?: string): string | undefined {
+  const list = useRentals(undefined, !hint);
+  if (hint) return hint;
+  return list.data?.pages.flatMap((p) => p.items).find((r) => r.rentalId === rentalId)?.serial;
 }
 
 /** 렌탈 상세. 봉인 전 시점이 있는 동안 3초마다 다시 읽어 버튼을 맞춘다 */

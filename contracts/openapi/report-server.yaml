@@ -197,6 +197,118 @@ paths:
           $ref: './components/common.yaml#/components/responses/Forbidden'
         '404':
           $ref: './components/common.yaml#/components/responses/NotFound'
+  /api/v1/reports/rentals/{rentalId}/checkpoints/{checkpointId}/seal:
+    parameters:
+      - $ref: '#/components/parameters/RentalId'
+      - name: checkpointId
+        in: path
+        required: true
+        schema:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+    post:
+      tags: [리포트]
+      operationId: sealCheckpointManually
+      summary: 관리자 수동 봉인(시연 우회로)
+      description: |
+        검사 파이프라인(촬영 → 정합 → 등급)이 돌지 못했을 때 관리자가 등급과 사유를 적어 그 시점을 직접 봉인한다(11/2 결정, 시연 우회로).
+        자동 봉인과 같은 해시 체인에 잇고 `trace.record.sealed`를 낸다. 지금까지 받은 사진·진단 해시를 묶고, 수동 봉인이라는 사실과 사유도
+        봉인 내용(payloadHash)에 들어간다. 쓸 때마다 사용 기록(`GET /api/v1/reports/manual-seals`)에 남는다.
+        이미 봉인된 시점은 409 RECORD_ALREADY_SEALED, 앞 시점(출고 → 수령 → 반납)이 봉인되지 않았으면 409 CHECKPOINT_ORDER_VIOLATION. (FR-INT-01)
+        `checkpointType`은 report-server가 이벤트(trace.checkpoint.graded)로 이미 아는 그 시점의 종류와 같아야 하고, 다르면 400 VALIDATION_FAILED
+        (`errors[].field = checkpointType`)로 거절해 잘못된 종류가 체인에 남지 않게 한다. 이벤트를 하나도 받지 못한 시점이면 요청 값을 쓴다.
+        `checkpointId`가 다른 렌탈의 시점이면 404.
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-INT-01]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManualSealRequest'
+            example:
+              checkpointType: RCV
+              grade: A
+              reason: 집 PC가 꺼져 정합을 못 함. 사진 육안 확인 후 봉인
+      responses:
+        '201':
+          description: 봉인된 기록
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChainRecord'
+              example:
+                seq: 2
+                checkpointId: h40b9AN9xMQhXRHrOyJWB
+                checkpointType: RCV
+                payloadHash: c41d2b6f8a0c3e5d7f9b1a3c5e7d9f0b2a4c6e8d0f1b3a5c7e9d1f2b4a6c9a07
+                prevHash: 9b2e4d6f8a0c1e3b5d7f9a1c3e5b7d9f0a2c4e6b8d0f1a3c5e7b9d1f3a5c7e9b
+                signature: ZXhhbXBsZS1lZDI1NTE5LXNpZ25hdHVyZQ==
+                signedAt: '2026-11-12T13:10:00+09:00'
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '409':
+          description: 이미 봉인됨 또는 앞 시점이 봉인되지 않음
+          x-trace-error-codes: [RECORD_ALREADY_SEALED, CHECKPOINT_ORDER_VIOLATION]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 이미 봉인된 시점입니다
+                status: 409
+                code: RECORD_ALREADY_SEALED
+                instance: /api/v1/reports/rentals/Ws0HLv6QRbDILPWOcz5I2/checkpoints/h40b9AN9xMQhXRHrOyJWB/seal
+  /api/v1/reports/manual-seals:
+    get:
+      tags: [리포트]
+      operationId: listManualSeals
+      summary: 수동 봉인 사용 기록
+      description: 수동 봉인을 쓴 기록을 최근 것부터. 누가(관리자 계정 publicId)·언제·어느 시점·왜. (FR-INT-01)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-INT-01]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      parameters:
+        - $ref: './components/common.yaml#/components/parameters/Limit'
+        - $ref: './components/common.yaml#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: 사용 기록
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManualSealPage'
+              example:
+                items:
+                  - rentalId: Ws0HLv6QRbDILPWOcz5I2
+                    checkpointId: h40b9AN9xMQhXRHrOyJWB
+                    checkpointType: RCV
+                    grade: A
+                    seq: 2
+                    reason: 집 PC가 꺼져 정합을 못 함. 사진 육안 확인 후 봉인
+                    sealedBy: Q3mVb8kz1HfT0aLpXw2Nc
+                    sealedAt: '2026-11-12T13:10:00+09:00'
+                nextCursor: null
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
   /api/v1/verify/{verifyToken}:
     parameters:
       - name: verifyToken
@@ -473,6 +585,50 @@ components:
             $ref: '#/components/schemas/VerifyRecord'
         checkedAt:
           $ref: './components/common.yaml#/components/schemas/DateTime'
+    ManualSealRequest:
+      type: object
+      additionalProperties: false
+      required: [checkpointType, grade, reason]
+      properties:
+        checkpointType:
+          $ref: './components/codes.gen.yaml#/components/schemas/RentalCheckpointType'
+        grade:
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionGrade'
+        reason:
+          type: string
+          minLength: 5
+          maxLength: 300
+          description: 수동으로 봉인하는 이유. 개인정보를 적지 않는다
+    ManualSealPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [rentalId, checkpointId, checkpointType, grade, seq, reason, sealedBy, sealedAt]
+            properties:
+              rentalId:
+                $ref: './components/common.yaml#/components/schemas/PublicId'
+              checkpointId:
+                $ref: './components/common.yaml#/components/schemas/PublicId'
+              checkpointType:
+                $ref: './components/codes.gen.yaml#/components/schemas/RentalCheckpointType'
+              grade:
+                $ref: './components/codes.gen.yaml#/components/schemas/InspectionGrade'
+              seq:
+                type: integer
+                minimum: 1
+              reason:
+                type: string
+              sealedBy:
+                $ref: './components/common.yaml#/components/schemas/PublicId'
+                description: 봉인한 관리자 계정 publicId(JWT sub)
+              sealedAt:
+                $ref: './components/common.yaml#/components/schemas/DateTime'
+        nextCursor:
+          type: [string, 'null']
     ReportSearchPage:
       type: object
       required: [items, nextCursor]

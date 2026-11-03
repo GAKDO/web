@@ -4,8 +4,9 @@
 # 0.4.0(2026-11-02): diagnostics에 진단 JSON 값(battery_status·storage_status·skipped_reason·storage_protocol·battery_condition·thermal_state) 추가 (C2).
 # 0.5.0(2026-11-02): capture.face_required.PHONE 추가(7면, KB 제외·SCR1 선택).
 # 0.6.0(2026-11-02): error_code DEVICE_STATUS_TRANSITION_INVALID 추가(폐기 기기는 수리 중으로만 되돌림).
+# 0.7.0(2026-11-02): error_code RECORD_ALREADY_SEALED 추가(관리자 수동 봉인, RP1).
 #   OpenAPI용 enum은 scripts/gen_openapi_codes.py로 만든다. 값은 문자열이어야 한다(OFF·ON·YES·NO는 따옴표).
-version: 0.6.0
+version: 0.7.0
 
 rental:
   status: [OPEN, RETURNED, CLOSED]
@@ -98,3 +99,5 @@ error_code:
   - DIAGNOSTIC_ALREADY_UPLOADED  # 409
   - DIAGNOSTIC_SCHEMA_INVALID    # 422 진단 JSON 형식 오류
   - DEVICE_SERIAL_MISMATCH       # 422 진단 시리얼이 렌탈 기기와 다름
+  # report
+  - RECORD_ALREADY_SEALED        # 409 이미 봉인된 시점을 다시 봉인

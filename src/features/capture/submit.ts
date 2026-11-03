@@ -1,6 +1,6 @@
 import { captureApi, unwrap } from "../../shared/api/client";
 import { putToStorage } from "../../shared/api/storage";
-import type { CaptureFace, CaptureSet, UploadTarget } from "../../shared/api/types";
+import type { CaptureDevice, CaptureFace, CaptureSet, UploadTarget } from "../../shared/api/types";
 import type { CaptureGrant } from "../../shared/auth/captureTokenStore";
 import type { Shot } from "./camera";
 import { PHONE_CAMERA, PHONE_LIGHT } from "./faces";
@@ -21,13 +21,15 @@ export interface UploadSession {
   idempotencyKey: string;
 }
 
-export async function createSession(grant: CaptureGrant, photos: Photo[]): Promise<UploadSession> {
+/** device: 기종·치수(contracts capture #15). 모르면 빼고, capture-server·worker가 기본 기종으로 펼친다 */
+export async function createSession(grant: CaptureGrant, photos: Photo[], device?: CaptureDevice): Promise<UploadSession> {
   const created = await unwrap(
     captureApi.POST("/api/v1/captures/sets", {
       body: {
         rentalId: grant.rentalId,
         checkpointId: grant.checkpointId,
         source: "PHONE",
+        ...(device ? { device } : {}),
         photos: photos.map(({ face, shot }) => ({
           face,
           light: PHONE_LIGHT,

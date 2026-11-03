@@ -24,7 +24,7 @@ test("봉인 전 시점에서 진단 페어링 코드를 만들면 6자리 코�
   await userEvent.setup().click(within(step).getByRole("button", { name: "진단 페어링 코드 만들기" }));
   expect(await within(step).findByLabelText("페어링 코드")).toHaveTextContent(/^\d{6}$/);
   expect(within(step).getByText(/남은 시간 \d분 \d+초/)).toBeInTheDocument();
-  expect(captureDb.pairings).toMatchObject([{ rentalId, checkpointId }]);
+  expect(captureDb.pairings).toMatchObject([{ rentalId, checkpointId, deviceSerial: "C02AIR0002" }]);
 });
 
 test("5분이 지나면 코드를 가리고 새로 만들라고 알린다", async () => {
@@ -56,4 +56,27 @@ test("다시 만들기가 실패해도 아직 유효한 코드는 그대로 보�
   await user.click(within(step).getByRole("button", { name: "페어링 코드 다시 만들기" }));
   expect(await within(step).findByRole("alert")).toBeInTheDocument();
   expect(within(step).getByLabelText("페어링 코드")).toHaveTextContent(first ?? "");
+});
+
+test("목록에서 들어와도 요청에 그 렌탈 기기의 시리얼이 실리고, 시리얼 없는 요청은 400이다", async () => {
+  const { step } = await openRental("OPEN");
+  await userEvent.setup().click(within(step).getByRole("button", { name: "진단 페어링 코드 만들기" }));
+  await within(step).findByLabelText("페어링 코드");
+  expect(captureDb.pairings.at(-1)?.deviceSerial).toBe("C02AIR0002");
+  const admin = db.accounts.find((a) => a.role === "ADMIN");
+  if (!admin) throw new Error("관리자 목 계정이 없습니다");
+  db.accessTokens.set("admin-no-serial", admin);
+  const res = await fetch("http://localhost/api/v1/auth/pairing-codes", {
+    method: "POST",
+    headers: { Authorization: "Bearer admin-no-serial", "Content-Type": "application/json" },
+    body: JSON.stringify({ rentalId: nanoid(), checkpointId: nanoid() }),
+  });
+  expect(res.status).toBe(400);
+});
+
+test("기기 시리얼을 찾지 못하면 코드를 만들 수 없고 이유가 보인다", async () => {
+  server.use(http.get("*/api/v1/rentals", () => HttpResponse.json({ items: [], nextCursor: null })));
+  const { step } = await openRental("OPEN");
+  expect(within(step).getByRole("button", { name: "진단 페어링 코드 만들기" })).toBeDisabled();
+  expect(within(step).getByRole("note")).toHaveTextContent("기기 시리얼");
 });

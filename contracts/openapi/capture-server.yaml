@@ -72,6 +72,13 @@ paths:
               rentalId: Ws0HLv6QRbDILPWOcz5I2
               checkpointId: IPv6mcQOlTkKj6mOecAQt
               source: PHONE
+              device:
+                modelCode: MBA13-M2
+                dimensions:
+                  widthMm: 304.1
+                  depthMm: 215.0
+                  baseHMm: 7.0
+                  lidHMm: 4.0
               photos:
                 - face: TOP
                   light: ROOM
@@ -555,6 +562,45 @@ components:
           description: 사진 목록. (face, light, camera)는 겹치지 않는다. 부스 촬영 목록은 한 대 29장(패스 1 18장 + 패스 2 10장 + SCR1), 80은 여유를 둔 상한
           items:
             $ref: '#/components/schemas/PhotoSpec'
+        device:
+          $ref: '#/components/schemas/CaptureDevice'
+    CaptureDevice:
+      type: object
+      additionalProperties: false
+      required: [modelCode, dimensions]
+      description: >-
+        찍는 기기의 기종과 치수(rental-server device_model 값). 서비스끼리 REST를 부르지 않으므로 rentalId와 같은 방식으로 클라이언트가 옮긴다.
+        폰(고객 촬영 JWT)은 렌탈 기종으로 rental-server `GET /api/v1/device-models/{modelCode}`(CUSTOMER 허용)를 읽어 싣고,
+        부스는 rentalId·checkpointId처럼 관리자 화면(ADMIN)이 고른 기종·치수를 그대로 받아 싣는다(부스는 rental-server를 부르지 않는다).
+        capture-server는 저장했다가 이벤트 trace.capture.uploaded의 device로 싣고, inspect-worker가 이 치수로 표준 좌표(1 px = 0.25 mm)를 만든다.
+        빼면 worker 기본 기종으로 펼치므로 여러 기종을 쓰면 꼭 보낸다. 범위는 이벤트 $defs/DeviceModel과 같다
+      properties:
+        modelCode:
+          $ref: './rental-server.yaml#/components/schemas/ModelCode'
+        dimensions:
+          $ref: '#/components/schemas/CaptureDeviceDimensions'
+    CaptureDeviceDimensions:
+      type: object
+      additionalProperties: false
+      required: [widthMm, depthMm, baseHMm, lidHMm]
+      description: 기종 치수(mm). rental-server ModelDimensions와 같은 뜻이고, 이벤트 $defs/DeviceModel.dimensions와 같은 범위
+      properties:
+        widthMm:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 1000
+        depthMm:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 1000
+        baseHMm:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 100
+        lidHMm:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 100
     UploadTarget:
       type: object
       required: [face, light, camera, method, url, expiresAt]

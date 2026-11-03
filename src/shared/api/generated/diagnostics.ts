@@ -38,7 +38,7 @@ export interface paths {
          * @description 진단 에이전트가 사용자 동의 뒤 진단 JSON을 올린다. checkpointId는 본문이 아니라 AGENT 토큰의 scope에서, rentalId는 토큰의 rentalId 클레임에서 읽는다(이벤트 봉투용).
          *     이전 시점과 비교해 점검 플래그를 만들어 돌려준다. (FR-DIA-05·06)
          *     - 같은 시점에 이미 올렸으면 409 DIAGNOSTIC_ALREADY_UPLOADED.
-         *     - 형식이 진단 JSON Schema와 다르면 422 DIAGNOSTIC_SCHEMA_INVALID, 시리얼이 렌탈 기기와 다르면 422 DEVICE_SERIAL_MISMATCH.
+         *     - 형식이 진단 JSON Schema와 다르면 422 DIAGNOSTIC_SCHEMA_INVALID, `device.serial`이 AGENT JWT의 `deviceSerial` 클레임(렌탈 기기 등록 시리얼)과 다르면 422 DEVICE_SERIAL_MISMATCH.
          *     - `Idempotency-Key`로 한 번만 처리하고, 같은 키로 다시 보내면 처음 응답을 돌려준다.
          */
         post: operations["uploadDiagnosticRun"];
@@ -93,6 +93,8 @@ export interface components {
             /** @description 서버 계산(완충 ÷ 설계 × 100) */
             maxCapacityPct: number | null;
             condition: string | null;
+            /** @description 배터리를 읽지 못했을 때 이유(진단 JSON `battery.skippedReason`). 읽었으면 null. 배터리 없는 기기는 battery 자체가 null */
+            skippedReason: components["schemas"]["DiagnosticsSkippedReason"] | null;
         };
         SsdSummary: {
             percentUsed: number | null;
@@ -383,7 +385,7 @@ export interface components {
          * @description codes.yaml error_code
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
         FieldError: {
             /** @description camelCase 필드 경로 (예 photos[0].sha256) */
             field: string;
@@ -781,7 +783,8 @@ export interface operations {
                      *           "fullChargeCapacity": 3681,
                      *           "capacityUnit": "mAh",
                      *           "maxCapacityPct": 84,
-                     *           "condition": "NORMAL"
+                     *           "condition": "NORMAL",
+                     *           "skippedReason": null
                      *         },
                      *         "ssd": {
                      *           "percentUsed": null,
@@ -818,7 +821,8 @@ export interface operations {
                      *           "fullChargeCapacity": 3996,
                      *           "capacityUnit": "mAh",
                      *           "maxCapacityPct": 91.2,
-                     *           "condition": "NORMAL"
+                     *           "condition": "NORMAL",
+                     *           "skippedReason": null
                      *         },
                      *         "ssd": null,
                      *         "components": [],

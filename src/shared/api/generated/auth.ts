@@ -281,7 +281,7 @@ export interface paths {
         put?: never;
         /**
          * 에이전트 페어링 코드 발급
-         * @description 진단 에이전트가 시점 하나에 붙을 6자리 코드(5분, 해시만 저장). 렌탈과 시점을 함께 정하고, 교환한 AGENT JWT에 둘 다 들어간다. (FR-AUTH-02)
+         * @description 진단 에이전트가 시점 하나에 붙을 6자리 코드(5분, 해시만 저장). 렌탈·시점과 대여 기기의 시리얼(`deviceSerial`, 관리자가 기기 목록에서 고른 등록 시리얼)을 함께 정하고, 교환한 AGENT JWT에 셋 다 들어간다. diagnostics-server는 업로드한 진단 JSON의 `device.serial`을 이 클레임과 대조한다(다르면 422 DEVICE_SERIAL_MISMATCH). (FR-AUTH-02)
          */
         post: operations["createPairingCode"];
         delete?: never;
@@ -301,7 +301,7 @@ export interface paths {
         put?: never;
         /**
          * 페어링 코드 → AGENT JWT
-         * @description 6자리 코드를 AGENT JWT(10분, role AGENT, scope=checkpointId, 클레임 rentalId)로 바꾼다. 코드는 한 번만 쓸 수 있다. diagnostics-server는 이벤트 봉투의 rentalId를 이 클레임에서 읽는다. (FR-AUTH-02)
+         * @description 6자리 코드를 AGENT JWT(10분, role AGENT, scope=checkpointId, 클레임 rentalId·deviceSerial)로 바꾼다. 코드는 한 번만 쓸 수 있다. diagnostics-server는 이벤트 봉투의 rentalId를 이 클레임에서 읽는다. (FR-AUTH-02)
          */
         post: operations["exchangePairingCode"];
         delete?: never;
@@ -426,6 +426,8 @@ export interface components {
         PairingCodeCreateRequest: {
             rentalId: components["schemas"]["PublicId"];
             checkpointId: components["schemas"]["PublicId"];
+            /** @description 대여 기기의 등록 시리얼(rental-server 기기의 serial). 진단 JSON `device.serial`과 같은 형식이며 AGENT JWT의 deviceSerial 클레임이 된다 */
+            deviceSerial: string;
         };
         PairingCodeResponse: {
             code: components["schemas"]["SixDigitCode"];
@@ -443,6 +445,8 @@ export interface components {
             /** @description 페어링 코드를 만들 때 정한 렌탈. JWT의 rentalId 클레임과 같다 */
             rentalId: components["schemas"]["PublicId"];
             checkpointId: components["schemas"]["PublicId"];
+            /** @description 페어링 코드를 만들 때 정한 기기 시리얼. JWT의 deviceSerial 클레임과 같다. 에이전트는 수집한 시리얼과 다르면 올리기 전에 알린다 */
+            deviceSerial: string;
         };
         Jwks: {
             keys: {
@@ -482,7 +486,7 @@ export interface components {
          * @description codes.yaml error_code
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
         FieldError: {
             /** @description camelCase 필드 경로 (예 photos[0].sha256) */
             field: string;
@@ -1310,7 +1314,8 @@ export interface operations {
                 /**
                  * @example {
                  *       "rentalId": "Ws0HLv6QRbDILPWOcz5I2",
-                 *       "checkpointId": "aJ3bYet82WYF8iVlHstT2"
+                 *       "checkpointId": "aJ3bYet82WYF8iVlHstT2",
+                 *       "deviceSerial": "C02XG2JHJGH5"
                  *     }
                  */
                 "application/json": components["schemas"]["PairingCodeCreateRequest"];
@@ -1367,7 +1372,8 @@ export interface operations {
                      *       "tokenType": "Bearer",
                      *       "expiresIn": 600,
                      *       "rentalId": "Ws0HLv6QRbDILPWOcz5I2",
-                     *       "checkpointId": "aJ3bYet82WYF8iVlHstT2"
+                     *       "checkpointId": "aJ3bYet82WYF8iVlHstT2",
+                     *       "deviceSerial": "C02XG2JHJGH5"
                      *     }
                      */
                     "application/json": components["schemas"]["AgentTokenResponse"];

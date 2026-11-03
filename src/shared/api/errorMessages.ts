@@ -33,6 +33,7 @@ const MESSAGES: Record<ErrorCode, string> = {
   DEVICE_NOT_ACTIVE: "이 기기는 렌탈할 수 없는 상태입니다. 사용 가능한 기기를 고르세요.",
   CHECKPOINT_ORDER_VIOLATION: "시점은 출고 → 수령 → 반납 순서로만 시작할 수 있습니다. 최신 상태를 다시 불러왔습니다.",
   RENTAL_NOT_CLOSABLE: "반납 기록이 봉인되기 전에는 종료할 수 없습니다.",
+  RECORD_ALREADY_SEALED: "이미 봉인된 기록입니다.",
   DEVICE_SERIAL_EXISTS: "이미 등록된 시리얼입니다. 시리얼을 다시 확인해 주세요.",
   DEVICE_HAS_OPEN_RENTAL: "진행 중인 렌탈이 있어 상태를 바꿀 수 없습니다. 렌탈을 먼저 종료하세요.",
   DEVICE_STATUS_TRANSITION_INVALID: "폐기한 기기는 바로 사용 가능으로 바꿀 수 없습니다. 먼저 수리 중으로 되돌리세요.",

@@ -52,7 +52,7 @@ export function CapturePage({ grant }: { grant: CaptureGrant }) {
   useLeaveWarning(hasShots);
   useInAppLeaveConfirm(hasShots);
   const minutesLeft = useMinutesLeft(grant.expiresAt);
-  const { faces, loading: facesLoading } = useFaceGuides(grant.rentalId);
+  const { faces, loading: facesLoading, device } = useFaceGuides(grant.rentalId);
   const remaining = faces.filter((f) => f.required && !shots[f.face]).map((f) => f.face);
   const guide = faces.find((f) => f.face === active);
   const expired = minutesLeft <= 0;
@@ -121,6 +121,7 @@ export function CapturePage({ grant }: { grant: CaptureGrant }) {
           </p>
           <SubmitPanel
             grant={grant}
+            device={device}
             shots={shots}
             remaining={remaining}
             onMissing={forget}

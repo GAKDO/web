@@ -103,6 +103,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/rentals/{rentalId}/checkpoints/{checkpointId}/seal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rentalId: components["parameters"]["RentalId"];
+                checkpointId: components["schemas"]["PublicId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 관리자 수동 봉인(시연 우회로)
+         * @description 검사 파이프라인(촬영 → 정합 → 등급)이 돌지 못했을 때 관리자가 등급과 사유를 적어 그 시점을 직접 봉인한다(11/2 결정, 시연 우회로).
+         *     자동 봉인과 같은 해시 체인에 잇고 `trace.record.sealed`를 낸다. 지금까지 받은 사진·진단 해시를 묶고, 수동 봉인이라는 사실과 사유도
+         *     봉인 내용(payloadHash)에 들어간다. 쓸 때마다 사용 기록(`GET /api/v1/reports/manual-seals`)에 남는다.
+         *     이미 봉인된 시점은 409 RECORD_ALREADY_SEALED, 앞 시점(출고 → 수령 → 반납)이 봉인되지 않았으면 409 CHECKPOINT_ORDER_VIOLATION. (FR-INT-01)
+         *     `checkpointType`은 report-server가 이벤트(trace.checkpoint.graded)로 이미 아는 그 시점의 종류와 같아야 하고, 다르면 400 VALIDATION_FAILED
+         *     (`errors[].field = checkpointType`)로 거절해 잘못된 종류가 체인에 남지 않게 한다. 이벤트를 하나도 받지 못한 시점이면 요청 값을 쓴다.
+         *     `checkpointId`가 다른 렌탈의 시점이면 404.
+         */
+        post: operations["sealCheckpointManually"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/manual-seals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 수동 봉인 사용 기록
+         * @description 수동 봉인을 쓴 기록을 최근 것부터. 누가(관리자 계정 publicId)·언제·어느 시점·왜. (FR-INT-01)
+         */
+        get: operations["listManualSeals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/verify/{verifyToken}": {
         parameters: {
             query?: never;
@@ -227,6 +276,26 @@ export interface components {
             records: components["schemas"]["VerifyRecord"][];
             checkedAt: components["schemas"]["DateTime"];
         };
+        ManualSealRequest: {
+            checkpointType: components["schemas"]["RentalCheckpointType"];
+            grade: components["schemas"]["InspectionGrade"];
+            /** @description 수동으로 봉인하는 이유. 개인정보를 적지 않는다 */
+            reason: string;
+        };
+        ManualSealPage: {
+            items: {
+                rentalId: components["schemas"]["PublicId"];
+                checkpointId: components["schemas"]["PublicId"];
+                checkpointType: components["schemas"]["RentalCheckpointType"];
+                grade: components["schemas"]["InspectionGrade"];
+                seq: number;
+                reason: string;
+                /** @description 봉인한 관리자 계정 publicId(JWT sub) */
+                sealedBy: components["schemas"]["PublicId"];
+                sealedAt: components["schemas"]["DateTime"];
+            }[];
+            nextCursor: string | null;
+        };
         ReportSearchPage: {
             items: {
                 rentalId: components["schemas"]["PublicId"];
@@ -293,7 +362,7 @@ export interface components {
          * @description codes.yaml error_code
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
         FieldError: {
             /** @description camelCase 필드 경로 (예 photos[0].sha256) */
             field: string;
@@ -577,6 +646,116 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    sealCheckpointManually: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rentalId: components["parameters"]["RentalId"];
+                checkpointId: components["schemas"]["PublicId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "checkpointType": "RCV",
+                 *       "grade": "A",
+                 *       "reason": "집 PC가 꺼져 정합을 못 함. 사진 육안 확인 후 봉인"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ManualSealRequest"];
+            };
+        };
+        responses: {
+            /** @description 봉인된 기록 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "seq": 2,
+                     *       "checkpointId": "h40b9AN9xMQhXRHrOyJWB",
+                     *       "checkpointType": "RCV",
+                     *       "payloadHash": "c41d2b6f8a0c3e5d7f9b1a3c5e7d9f0b2a4c6e8d0f1b3a5c7e9d1f2b4a6c9a07",
+                     *       "prevHash": "9b2e4d6f8a0c1e3b5d7f9a1c3e5b7d9f0a2c4e6b8d0f1a3c5e7b9d1f3a5c7e9b",
+                     *       "signature": "ZXhhbXBsZS1lZDI1NTE5LXNpZ25hdHVyZQ==",
+                     *       "signedAt": "2026-11-12T13:10:00+09:00"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ChainRecord"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description 이미 봉인됨 또는 앞 시점이 봉인되지 않음 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "이미 봉인된 시점입니다",
+                     *       "status": 409,
+                     *       "code": "RECORD_ALREADY_SEALED",
+                     *       "instance": "/api/v1/reports/rentals/Ws0HLv6QRbDILPWOcz5I2/checkpoints/h40b9AN9xMQhXRHrOyJWB/seal"
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listManualSeals: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                /** @description 이전 응답의 nextCursor. 비우면 처음부터. */
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 사용 기록 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "rentalId": "Ws0HLv6QRbDILPWOcz5I2",
+                     *           "checkpointId": "h40b9AN9xMQhXRHrOyJWB",
+                     *           "checkpointType": "RCV",
+                     *           "grade": "A",
+                     *           "seq": 2,
+                     *           "reason": "집 PC가 꺼져 정합을 못 함. 사진 육안 확인 후 봉인",
+                     *           "sealedBy": "Q3mVb8kz1HfT0aLpXw2Nc",
+                     *           "sealedAt": "2026-11-12T13:10:00+09:00"
+                     *         }
+                     *       ],
+                     *       "nextCursor": null
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ManualSealPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     verifyRecord: {
