@@ -14,6 +14,7 @@ import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { useCloseRental, useRental, useStartCheckpoint } from "../api/rentals";
 import { nextAction } from "../nextAction";
+import { BoothIdsPanel } from "./BoothIdsPanel";
 import { CaptureLinkPanel } from "./CaptureLinkPanel";
 import { PairingCodePanel } from "./PairingCodePanel";
 import { formatDate, RENTAL_STATUS_VARIANT } from "./RentalListPage";
@@ -125,6 +126,8 @@ export function RentalDetailPage() {
           ["종료", formatDateTime(data.endedAt)],
         ]}
       />
+      <SectionTitle>부스에 넣을 ID</SectionTitle>
+      <BoothIdsPanel rental={data} />
       <InspectionHistory rental={data} serial={serial} />
       <SectionTitle>시점 진행</SectionTitle>
       <CheckpointSteps rental={data} serial={serial} onError={setError} />

@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http } from "msw";
@@ -109,4 +110,34 @@ test("상세를 받은 뒤 다시 읽기가 실패해도 시점 단계는 그대
   expect(await screen.findByRole("alert")).toHaveTextContent("잠시 뒤 다시 시도해 주세요.");
   expect(step("출고")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
+});
+
+test("렌탈 상세의 '부스에 넣을 ID'에 기기·렌탈 ID가 보이고, 출고를 시작하면 출고 시점 ID가 생기며 복사 버튼으로 복사된다", async () => {
+  const { u, rentalId } = await openNewRental();
+  const panel = screen.getByRole("region", { name: "부스에 넣을 ID" });
+  const rental = db.rentals.find((r) => r.rentalId === rentalId);
+  expect(within(panel).getByText(rentalId)).toBeInTheDocument();
+  expect(within(panel).getByText(rental?.deviceId ?? "?")).toBeInTheDocument();
+  expect(within(panel).getByText(/출고 시작을 누르면 생깁니다/)).toBeInTheDocument();
+  await u.click(screen.getByRole("button", { name: "출고 시작" }));
+  const checkpointId = await waitFor(() => {
+    const id = db.rentals.find((r) => r.rentalId === rentalId)?.checkpoints[0]?.checkpointId;
+    if (!id) throw new Error("아직 시점 없음");
+    return id;
+  });
+  expect(await within(panel).findByText(checkpointId)).toBeInTheDocument();
+  const write = vi.spyOn(navigator.clipboard, "writeText");
+  await u.click(within(panel).getByRole("button", { name: "출고 시점 ID 복사" }));
+  expect(write).toHaveBeenCalledWith(checkpointId);
+  expect(within(panel).getByRole("button", { name: "출고 시점 ID 복사" })).toHaveTextContent("복사됨");
+  expect(within(panel).getByText("출고 시점 ID를 복사했습니다")).toHaveAttribute("aria-live", "polite");
+});
+
+test("클립보드를 쓸 수 없으면 '부스에 넣을 ID' 복사는 복사됨 대신 직접 복사하라고 알린다", async () => {
+  const { u } = await openNewRental();
+  const panel = screen.getByRole("region", { name: "부스에 넣을 ID" });
+  vi.spyOn(navigator.clipboard, "writeText").mockRejectedValueOnce(new Error("denied"));
+  await u.click(within(panel).getByRole("button", { name: "렌탈 ID 복사" }));
+  expect(await within(panel).findByRole("alert")).toHaveTextContent("직접 복사하세요");
+  expect(within(panel).getByRole("button", { name: "렌탈 ID 복사" })).toHaveTextContent("복사");
 });
