@@ -33,6 +33,13 @@ export function PhotoLightbox({ photos, index, onIndex, onClose }: Props) {
     return () => opener?.focus();
   }, []);
 
+  // 마지막(또는 첫) 사진으로 넘겨 누른 버튼이 꺼지면 초점이 사라져 키가 안 먹을 수 있으니 닫기 버튼으로 옮긴다
+  useEffect(() => {
+    const active = document.activeElement;
+    const lost = active === null || active === document.body || (active instanceof HTMLButtonElement && active.disabled);
+    if (lost) closeRef.current?.focus();
+  }, [index]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Tab") {

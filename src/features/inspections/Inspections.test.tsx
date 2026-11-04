@@ -310,6 +310,13 @@ test("빠른 검사 사진을 누르면 크게 보기 팝업이 열리고, 이�
   expect(close).toHaveFocus();
   await user.tab({ shift: true });
   expect(next).toHaveFocus();
+  // 마지막 사진까지 넘기면 꺼진 다음 버튼 대신 닫기 버튼에 초점이 간다
+  next.focus();
+  for (let i = 0; i < 11; i++) await user.keyboard("{ArrowRight}");
+  expect(screen.getByRole("dialog")).toHaveTextContent("12 / 12");
+  expect(next).toBeDisabled();
+  expect(close).toHaveFocus();
+  for (let i = 0; i < 11; i++) await user.keyboard("{ArrowLeft}");
   await user.click(within(dialog).getByRole("button", { name: "다음 사진 →" }));
   expect(screen.getByRole("dialog")).toHaveAccessibleName("사진 크게 보기: 윗면(덮개) · CAM1 앞 반 · L2 왼쪽 스침광");
   expect(screen.getByRole("dialog")).toHaveTextContent("2 / 12");
