@@ -10,6 +10,7 @@ import { Field, SelectField } from "../../../shared/ui/Field";
 import { useDeviceModels, useDevices } from "../api/devices";
 import { DeviceEditor } from "./DeviceEditor";
 import { StatusMenu } from "./StatusMenu";
+import { DataTable } from "../../../shared/ui/DataTable";
 
 /** 입력이 멈춘 뒤에만 검색한다 */
 function useDebounced(value: string, ms = 250): string {
@@ -50,14 +51,18 @@ export function DeviceListPage() {
   const [search, setSearch] = useState("");
   const q = useDebounced(search.trim());
   const models = useDeviceModels();
-  const devices = useDevices({ modelCode: modelCode || undefined, status: status || undefined, q });
+  const devices = useDevices({
+    modelCode: modelCode || undefined,
+    status: status || undefined,
+    q,
+  });
   const items = devices.data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
     <section>
       <div className="row heading-row">
         <h1>기기 목록</h1>
-        <Link className="button-link" to="/admin/devices/new">
+        <Link className="button-link primary" to="/admin/devices/new">
           기기 등록
         </Link>
       </div>
@@ -88,11 +93,13 @@ export function DeviceListPage() {
       )}
       {devices.isPending && <p>불러오는 중…</p>}
       {devices.isSuccess && items.length === 0 && <p>조건에 맞는 기기가 없습니다.</p>}
-      <ul className="cards" aria-label="기기">
-        {items.map((device) => (
-          <DeviceCard key={device.deviceId} device={device} />
-        ))}
-      </ul>
+      <DataTable cols="minmax(110px, 1fr) 1.5fr 0.7fr 1.1fr 0.8fr 300px" labels={["시리얼", "기종", "OS", "자산번호", "상태", ""]}>
+        <ul className="cards table-list" aria-label="기기">
+          {items.map((device) => (
+            <DeviceCard key={device.deviceId} device={device} />
+          ))}
+        </ul>
+      </DataTable>
       {devices.hasNextPage && (
         <Button busy={devices.isFetchingNextPage} onClick={() => void devices.fetchNextPage()}>
           더 보기

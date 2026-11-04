@@ -8,8 +8,16 @@ import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { SelectField } from "../../../shared/ui/Field";
 import { useDeviceModels } from "../../devices/api/devices";
 import { useRentals } from "../api/rentals";
+import { DataTable } from "../../../shared/ui/DataTable";
 
 export const formatDate = (iso: string) => new Date(iso).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" });
+
+/** 렌탈 상태 배지 색: 진행 중 파랑, 반납됨(종료 대기) 노랑, 종료 회색 */
+const RENTAL_STATUS_CLASS: Record<RentalSummary["status"], string> = {
+  OPEN: "badge badge-info",
+  RETURNED: "badge badge-maintenance",
+  CLOSED: "badge badge-retired",
+};
 
 /** 지금 시점(시작된 시점 중 가장 뒤). 없으면 시작 전, 옛 서버라 값이 안 오면 표시하지 않는다 */
 function currentStep(r: RentalSummary): string | null {
@@ -33,7 +41,7 @@ export function RentalListPage() {
     <section>
       <div className="row heading-row">
         <h1>렌탈 목록</h1>
-        <Link className="button-link" to="/admin/rentals/new">
+        <Link className="button-link primary" to="/admin/rentals/new">
           렌탈 만들기
         </Link>
       </div>
@@ -55,21 +63,23 @@ export function RentalListPage() {
       )}
       {rentals.isPending && <p>불러오는 중…</p>}
       {rentals.isSuccess && items.length === 0 && <p>렌탈이 없습니다.</p>}
-      <ul className="cards" aria-label="렌탈">
-        {items.map((r) => (
-          <li key={r.rentalId} className="card" aria-label={r.serial}>
-            <div className="card-main">
-              <Link to={`/admin/rentals/${r.rentalId}`} state={{ serial: r.serial }}>
-                <strong>{r.serial}</strong>
-              </Link>
-              <span>{modelName(r.modelCode)}</span>
-              <span className="badge">{RENTAL_STATUS_LABEL[r.status]}</span>
-              {currentStep(r) && <span>{currentStep(r)}</span>}
-              <span>만든 날 {formatDate(r.createdAt)}</span>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <DataTable cols="minmax(110px, 1fr) 1.5fr 0.7fr 1.6fr 1fr" labels={["시리얼", "기종", "상태", "지금 시점", "만든 날"]}>
+        <ul className="cards table-list" aria-label="렌탈">
+          {items.map((r) => (
+            <li key={r.rentalId} className="card" aria-label={r.serial}>
+              <div className="card-main">
+                <Link to={`/admin/rentals/${r.rentalId}`} state={{ serial: r.serial }}>
+                  <strong>{r.serial}</strong>
+                </Link>
+                <span>{modelName(r.modelCode)}</span>
+                <span className={RENTAL_STATUS_CLASS[r.status]}>{RENTAL_STATUS_LABEL[r.status]}</span>
+                <span>{currentStep(r)}</span>
+                <span>만든 날 {formatDate(r.createdAt)}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </DataTable>
       {rentals.hasNextPage && (
         <Button busy={rentals.isFetchingNextPage} onClick={() => void rentals.fetchNextPage()}>
           더 보기
