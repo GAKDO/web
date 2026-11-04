@@ -38,8 +38,8 @@ interface MockState {
 const NOW = "2026-11-01T09:00:00Z";
 const dims = { widthMm: 304, depthMm: 215, baseHMm: 11, lidHMm: 6 };
 
-function model(modelCode: string, name: string, manufacturer: string): DeviceModel {
-  return { modelCode, name, manufacturer, formFactor: "CLAMSHELL", spec: null, dimensions: dims, updatedAt: NOW };
+function model(modelCode: string, name: string, manufacturer: string, spec: DeviceModel["spec"] = null): DeviceModel {
+  return { modelCode, name, manufacturer, formFactor: "CLAMSHELL", spec, dimensions: dims, updatedAt: NOW };
 }
 
 export function mockDevice(serial: string, m: DeviceModel, status: DeviceStatus, assetNo: string | null = null): Device {
@@ -60,9 +60,9 @@ export function mockDevice(serial: string, m: DeviceModel, status: DeviceStatus,
 
 function initialState(): MockState {
   const [air, pro, gram] = [
-    model("MBA13-M2", "MacBook Air (M2, 2022)", "Apple"),
+    model("MBA13-M2", "MacBook Air (M2, 2022)", "Apple", { cpu: "Apple M2", ramGb: 8, ssdGb: 256 }),
     model("MBP14-M3", "MacBook Pro 14 (M3, 2023)", "Apple"),
-    model("LG-GRAM16", "LG gram 16 (2024)", "LG"),
+    model("LG-GRAM16", "LG gram 16 (2024)", "LG", { cpu: "Intel Core Ultra 7 155H", ramGb: 16, ssdGb: 512, gpu: "Intel Arc Graphics" }),
   ];
   const devices = [
     mockDevice("C02AIR0001", air, "ACTIVE", "TR-0001"),
