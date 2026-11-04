@@ -2,7 +2,14 @@ import { expect, test } from "vitest";
 import type { Inspection } from "../../../shared/api/types";
 import { INSPECTION_POLL_MS, inspectionPollMs } from "./inspections";
 
-const inspection = (over: Partial<Inspection>): Inspection => ({ checkpointId: "c1", grade: "A", ruleVersion: "grade-rules-v1", reasons: [], defects: [], ...over });
+const inspection = (over: Partial<Inspection>): Inspection => ({
+  checkpointId: "c1",
+  grade: "A",
+  ruleVersion: "grade-rules-v1",
+  reasons: [],
+  defects: [],
+  ...over,
+});
 
 test("검사 결과가 아직 없으면(404 → null) 3초마다 다시 읽는다", () => {
   expect(inspectionPollMs(null)).toBe(INSPECTION_POLL_MS);

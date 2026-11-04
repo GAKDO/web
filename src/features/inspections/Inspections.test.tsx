@@ -25,7 +25,12 @@ function defect(face: Defect["face"], cls: Defect["class"], confidence: number, 
     defectId: nanoid(),
     face,
     class: cls,
-    polygon: [[10, 10], [40, 10], [40, 20], [10, 20]],
+    polygon: [
+      [10, 10],
+      [40, 10],
+      [40, 20],
+      [10, 20],
+    ],
     lengthMm,
     areaMm2: lengthMm === null ? null : 3.1,
     confidence,
@@ -87,8 +92,11 @@ test("등급 B~D면 목록에 문제 있음과 등급이 보이고, 결과 보�
   const verdict = screen.getByRole("status", { name: "판정" });
   expect(verdict).toHaveTextContent("문제 있음 · C등급");
   expect(verdict).toHaveTextContent("찍힘·긁힘 5개 이상");
-  expect(screen.getByText(/판정 규칙 grade-rules-v1/)).toBeInTheDocument();
-  expect(screen.getByRole("heading", { name: "흠집 2개" })).toBeInTheDocument();
+  expect(screen.getAllByText(/grade-rules-v1/).length).toBeGreaterThan(0);
+  expect(within(screen.getByRole("status", { name: "수리 필요 여부" })).getByText(/수리 필요/, { selector: ".verdict-title" })).toHaveTextContent(
+    /^✖ 수리 필요$/,
+  );
+  expect(screen.getByRole("heading", { name: "문제 항목 요약 · 흠집 2개" })).toBeInTheDocument();
   const first = screen.getByRole("listitem", { name: "흠집 1" });
   expect(first).toHaveTextContent("긁힘");
   expect(first).toHaveTextContent("윗면(덮개)");
@@ -104,7 +112,10 @@ test("A 등급 시점의 상세는 문제 없음과 흠집이 없다는 문장�
   renderAsAdmin(`/admin/inspections/${rental?.rentalId}/${out?.checkpointId}`);
   expect(await screen.findByRole("heading", { name: "LGGRAM0001 출고 검사 결과" })).toBeInTheDocument();
   expect(screen.getByRole("status", { name: "판정" })).toHaveTextContent("문제 없음");
-  expect(screen.getByText("흠집이 없습니다.")).toBeInTheDocument();
+  expect(screen.getByText(/발견된 문제 없음/)).toBeInTheDocument();
+  expect(within(screen.getByRole("status", { name: "수리 필요 여부" })).getByText(/수리 필요/, { selector: ".verdict-title" })).toHaveTextContent(
+    /^✔ 수리 필요 없음$/,
+  );
   // 정합 세트라 면 사진(부스 8면)을 보인다
   expect(within(await screen.findByRole("list", { name: "면 사진" })).getAllByRole("listitem")).toHaveLength(8);
 });
@@ -130,7 +141,7 @@ test("빠른 검사(QUICK) 시점의 상세는 면마다 카메라 2 × 조명 3
   });
   db.report.media.set(checkpointId, quickMedia(checkpointId));
   renderAsAdmin(`/admin/inspections/${rentalId}/${checkpointId}`);
-  expect(await screen.findByRole("heading", { name: "흠집 3개" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "문제 항목 요약 · 흠집 3개" })).toBeInTheDocument();
   const first = screen.getByRole("listitem", { name: "흠집 1" });
   expect(first).toHaveTextContent("긁힘");
   expect(first).toHaveTextContent("CAM1 앞 반 · L1 확산");
@@ -219,7 +230,16 @@ test("주소의 시점이 그 렌탈에 없으면 검사 결과를 읽지 않고
 test("새로 고침을 누르면 목록을 다시 읽어 부스가 시작한 시점과 그 판정이 보인다", async () => {
   const device = db.devices.find((d) => d.serial === "LGGRAM0002");
   const now = new Date().toISOString();
-  const rental = { rentalId: nanoid(), deviceId: device?.deviceId ?? "", renterRef: "R-4002", status: "OPEN" as const, startedAt: now, endedAt: null, createdAt: now, checkpoints: [] as Checkpoint[] };
+  const rental = {
+    rentalId: nanoid(),
+    deviceId: device?.deviceId ?? "",
+    renterRef: "R-4002",
+    status: "OPEN" as const,
+    startedAt: now,
+    endedAt: null,
+    createdAt: now,
+    checkpoints: [] as Checkpoint[],
+  };
   db.rentals.push(rental);
   const user = userEvent.setup();
   renderAsAdmin("/admin/inspections");
@@ -262,4 +282,63 @@ test("사진 주소를 못 읽으면 그 칸에만 안내와 다시 시도가 �
   await user.click(within(cell).getByRole("button", { name: "다시 시도" }));
   expect(within(cell).getByRole("img", { name: "윗면(덮개) CAM1 L1 사진" })).toBeInTheDocument();
   expect(cell).not.toHaveTextContent("사진을 불러오지 못함");
+});
+
+test("빠른 검사 사진을 누르면 크게 보기 팝업이 열리고, 이전·다음으로 12장을 넘기고 닫으면 사라진다", async () => {
+  const { rentalId, checkpointId } = addRental("C02AIR0002", "GRADED", {
+    grade: "C",
+    ruleVersion: "grade-rules-v1",
+    reasons: ["긁힘 1개"],
+    defects: [],
+    photoDefects: [quickDefect("TOP", "L1", "CAM1", "scratch", 600, 400, 0.91)],
+  });
+  db.report.media.set(checkpointId, quickMedia(checkpointId));
+  const user = userEvent.setup();
+  renderAsAdmin(`/admin/inspections/${rentalId}/${checkpointId}`);
+  const top = await screen.findByRole("region", { name: "윗면(덮개) 사진" });
+  await user.click(within(top).getByRole("button", { name: "윗면(덮개) CAM1 L1 사진 크게 보기" }));
+  const dialog = screen.getByRole("dialog");
+  expect(dialog).toHaveAccessibleName("사진 크게 보기: 윗면(덮개) · CAM1 앞 반 · L1 확산");
+  expect(dialog).toHaveTextContent("1 / 12");
+  expect(within(dialog).getByRole("button", { name: "← 이전 사진" })).toBeDisabled();
+  // 열린 동안 Tab은 팝업 안에서만 돈다: 마지막(다음 사진)에서 Tab은 처음(닫기)으로, 처음에서 Shift+Tab은 마지막으로
+  const close = within(dialog).getByRole("button", { name: "닫기" });
+  const next = within(dialog).getByRole("button", { name: "다음 사진 →" });
+  expect(close).toHaveFocus();
+  next.focus();
+  await user.tab();
+  expect(close).toHaveFocus();
+  await user.tab({ shift: true });
+  expect(next).toHaveFocus();
+  // 마지막 사진까지 넘기면 꺼진 다음 버튼 대신 닫기 버튼에 초점이 간다
+  next.focus();
+  for (let i = 0; i < 11; i++) await user.keyboard("{ArrowRight}");
+  expect(screen.getByRole("dialog")).toHaveTextContent("12 / 12");
+  expect(next).toBeDisabled();
+  expect(close).toHaveFocus();
+  for (let i = 0; i < 11; i++) await user.keyboard("{ArrowLeft}");
+  await user.click(within(dialog).getByRole("button", { name: "다음 사진 →" }));
+  expect(screen.getByRole("dialog")).toHaveAccessibleName("사진 크게 보기: 윗면(덮개) · CAM1 앞 반 · L2 왼쪽 스침광");
+  expect(screen.getByRole("dialog")).toHaveTextContent("2 / 12");
+  await user.keyboard("{ArrowLeft}");
+  expect(screen.getByRole("dialog")).toHaveTextContent("1 / 12");
+  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "닫기" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});
+
+test("렌탈 상세의 검사 이력에서 상세보기를 누르면 그 검사 결과가 열리고, 렌탈 상세로 돌아갈 수 있다", async () => {
+  const { rentalId } = addRental("C02AIR0002", "GRADED", { grade: "B", ruleVersion: "grade-rules-v1", reasons: ["긁힘 1개"], defects: [] });
+  const user = userEvent.setup();
+  const { router } = renderAsAdmin(`/admin/rentals/${rentalId}`);
+  const history = await screen.findByRole("list", { name: "검사 이력" });
+  const row = within(history).getByRole("listitem", { name: "출고 검사" });
+  expect(await within(row).findByText("문제 있음 · B등급")).toBeInTheDocument();
+  expect(within(row).getByText("수리 필요")).toBeInTheDocument();
+  await user.click(within(row).getByRole("link", { name: "상세보기" }));
+  expect(await screen.findByRole("heading", { name: "C02AIR0002 출고 검사 결과" })).toBeInTheDocument();
+  // B 등급인데 흠집 위치 기록이 비었으면 "문제 없음"이라고 하지 않는다
+  expect(await screen.findByText(/등록된 흠집 위치 없음/)).toBeInTheDocument();
+  expect(screen.queryByText(/발견된 문제 없음/)).not.toBeInTheDocument();
+  await user.click(screen.getAllByRole("link", { name: "← 렌탈 상세로" })[0]);
+  await waitFor(() => expect(router.state.location.pathname).toBe(`/admin/rentals/${rentalId}`));
 });

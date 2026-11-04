@@ -12,10 +12,12 @@ import {
   DEFECT_SOURCE_LABEL,
 } from "../../../shared/codes/labels";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
+import { formatDateTime } from "../../../shared/ui/format";
+import { RENTAL_STATUS_LABEL } from "../../../shared/codes/labels";
 import { useRental } from "../../rentals/api/rentals";
 import { useCheckpointInspection, useCheckpointMedia } from "../api/inspections";
 import { faceGrids, photoDefectsOf, textureOverlays } from "../model/photos";
-import { formatConfidence, formatMm, verdictOf, type Verdict } from "../model/verdict";
+import { formatConfidence, formatMm, repairOf, verdictOf, type Verdict } from "../model/verdict";
 import { PhotoGrid, TextureList } from "./PhotoGrid";
 
 const VERDICT_BOX: Record<Verdict["kind"], string> = {
@@ -26,6 +28,12 @@ const VERDICT_BOX: Record<Verdict["kind"], string> = {
   ungradable: "verdict verdict-unknown",
 };
 const VERDICT_MARK: Record<Verdict["kind"], string> = { ok: "✔", bad: "✖", none: "·", pending: "…", ungradable: "?" };
+
+/** 돌아갈 곳: 목록·렌탈 상세가 링크 state로 넘긴 주소(검색 조건 포함). 없으면 검사 결과 목록 */
+export interface BackTo {
+  path: string;
+  label: string;
+}
 
 /** 흠집 카드 한 줄. 빠른 검사(원본 px)와 정합 세트(표준 좌표·mm) 둘 다 이 모양으로 */
 interface DefectRow {
@@ -96,7 +104,9 @@ const toMessage = (e: unknown) => (e instanceof ApiError ? messageFor(e) : "불�
 /** 한 시점의 검사 결과(spec 006 US2): 판정 상자·근거·흠집 카드·사진 위 흠집 겹쳐 보기 */
 export function InspectionDetailPage() {
   const { rentalId = "", checkpointId = "" } = useParams();
-  const hint = (useLocation().state as { serial?: string } | null)?.serial;
+  const state = useLocation().state as { serial?: string; backTo?: BackTo } | null;
+  const hint = state?.serial;
+  const backTo = state?.backTo;
   const rental = useRental(rentalId);
   const checkpoint = rental.data?.checkpoints.find((c) => c.checkpointId === checkpointId) ?? null;
   // 이 렌탈의 시점일 때만 검사 결과를 읽는다. 다른 렌탈의 시점 주소를 넣어도 그 결과가 이 렌탈 아래 보이지 않는다
@@ -117,7 +127,7 @@ export function InspectionDetailPage() {
             if (checkpoint) void inspection.refetch();
           }}
         />
-        <Link to="/admin/inspections">검사 결과 목록으로</Link>
+        <Link to={backTo?.path ?? "/admin/inspections"}>{backTo?.label ?? "검사 결과 목록으로"}</Link>
       </section>
     );
   }
@@ -128,46 +138,99 @@ export function InspectionDetailPage() {
   const photoDefects = photoDefectsOf(data);
   const rows = photoDefects.length > 0 ? photoDefects.map(fromPhotoDefect) : (data?.defects ?? []).map(fromDefect);
 
+  const repair = repairOf(verdict);
+  const back: BackTo = backTo ?? { path: "/admin/inspections", label: "검사 결과 목록으로" };
+
   return (
-    <section>
+    <section className="inspection-detail">
+      <p>
+        <Link to={back.path}>← {back.label}</Link>
+      </p>
+      {/* ① 검사 식별 정보와 검사 시각 */}
       <h1>{title}</h1>
       {checkpoint && (
         <p className="muted">
-          시점 상태 {CHECKPOINT_STATUS_LABEL[checkpoint.status]}
+          검사 시각 {formatDateTime(checkpoint.occurredAt)} · 시점 상태 {CHECKPOINT_STATUS_LABEL[checkpoint.status]}
           {data?.ruleVersion && ` · 판정 규칙 ${data.ruleVersion}`}
         </p>
       )}
-      <div className={VERDICT_BOX[verdict.kind]} role="status" aria-label="판정">
-        <p className="verdict-title">
-          {VERDICT_MARK[verdict.kind]} {verdict.label}
-        </p>
-        {verdict.kind === "pending" && <p>부스 사진이 올라오고 등급이 매겨지면 여기에 보입니다.</p>}
-        {verdict.kind === "none" && <p>이 렌탈에 그런 시점이 없습니다.</p>}
-        {data?.reasons.map((reason) => <p key={reason}>{reason}</p>)}
-      </div>
+
+      {/* ② 문제 항목 요약 */}
       {data && (
-        <>
-          <h2>흠집 {rows.length}개</h2>
-          {photoDefects.length > 0 && <p className="muted">사진마다 따로 센 수입니다. 조명만 다른 사진에 겹친 같은 흠집은 등급을 매길 때 하나로 봅니다.</p>}
+        <section aria-labelledby="summary-title">
+          <h2 id="summary-title">문제 항목 요약 · 흠집 {rows.length}개</h2>
           {rows.length === 0 ? (
-            <p>흠집이 없습니다.</p>
+            // 흠집 목록이 비어도 등급이 B~D일 수 있다(근거만 있음). "문제 없음"은 A 등급일 때만 쓴다
+            <p className="empty-note">{verdict.kind === "ok" ? "✔ 발견된 문제 없음" : "등록된 흠집 위치 없음 · 판정 근거는 아래 최종 판정을 봐 주세요"}</p>
           ) : (
-            <ul className="cards" aria-label="흠집">
-              {rows.map((row, i) => (
-                <DefectCard key={row.id} row={row} index={i} />
-              ))}
-            </ul>
+            <>
+              {photoDefects.length > 0 && <p className="muted">사진마다 따로 센 수입니다. 조명만 다른 사진에 겹친 같은 흠집은 등급을 매길 때 하나로 봅니다.</p>}
+              <ul className="cards" aria-label="흠집">
+                {rows.map((row, i) => (
+                  <DefectCard key={row.id} row={row} index={i} />
+                ))}
+              </ul>
+            </>
           )}
-        </>
+        </section>
       )}
+
+      {/* ③ 최종 판정과 수리 필요 여부(따로 보인다) */}
+      <h2>최종 판정</h2>
+      <div className="verdict-pair">
+        <div className={VERDICT_BOX[verdict.kind]} role="status" aria-label="판정">
+          <p className="muted">판정</p>
+          <p className="verdict-title">
+            {VERDICT_MARK[verdict.kind]} {verdict.label}
+          </p>
+          {verdict.kind === "pending" && <p>부스 사진이 올라오고 등급이 매겨지면 여기에 보입니다.</p>}
+          {verdict.kind === "none" && <p>이 렌탈에 그런 시점이 없습니다.</p>}
+          {data?.reasons.map((reason) => (
+            <p key={reason}>{reason}</p>
+          ))}
+        </div>
+        <div
+          className={repair.needed === null ? "verdict verdict-unknown" : repair.needed ? "verdict verdict-bad" : "verdict verdict-ok"}
+          role="status"
+          aria-label="수리 필요 여부"
+        >
+          <p className="muted">수리 필요 여부</p>
+          <p className="verdict-title">
+            {repair.needed === null ? "…" : repair.needed ? "✖" : "✔"} {repair.label}
+          </p>
+          <p className="muted">등급 A는 수리 필요 없음, B~D는 수리 필요(서버 등급 기준)</p>
+        </div>
+      </div>
+
+      {/* ④ 기본 정보 */}
+      <h2>기본 정보</h2>
+      <dl className="info-list info-box">
+        <dt>기기 시리얼</dt>
+        <dd>{serial || "—"}</dd>
+        <dt>렌탈 참조번호</dt>
+        <dd>{rental.data?.renterRef ?? "—"}</dd>
+        <dt>렌탈 상태</dt>
+        <dd>{rental.data ? RENTAL_STATUS_LABEL[rental.data.status] : "—"}</dd>
+        <dt>검사 시점</dt>
+        <dd>{checkpoint ? `${CHECKPOINT_TYPE_LABEL[checkpoint.type]} · ${CHECKPOINT_STATUS_LABEL[checkpoint.status]}` : "없음"}</dd>
+        <dt>검사 시각</dt>
+        <dd>{checkpoint ? formatDateTime(checkpoint.occurredAt) : "—"}</dd>
+        <dt>판정 규칙</dt>
+        <dd>{data?.ruleVersion ?? "—"}</dd>
+      </dl>
+
+      {/* ⑤ 검사 사진 */}
       {checkpoint && (
         <>
-          <h2>사진</h2>
+          <h2>검사 사진</h2>
           <Photos checkpointId={checkpointId} inspection={data} />
         </>
       )}
       <p>
-        <Link to="/admin/inspections">검사 결과 목록으로</Link> · <Link to={`/admin/rentals/${rentalId}`} state={{ serial }}>렌탈 상세</Link>
+        <Link to={back.path}>← {back.label}</Link> ·{" "}
+        <Link to={`/admin/rentals/${rentalId}`} state={{ serial }}>
+          렌탈 상세
+        </Link>
       </p>
     </section>
   );

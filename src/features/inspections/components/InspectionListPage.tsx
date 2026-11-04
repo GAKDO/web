@@ -10,6 +10,10 @@ import { useRentals } from "../../rentals/api/rentals";
 import { INSPECTIONS } from "../api/inspections";
 import { VerdictBadge } from "./VerdictBadge";
 import { DataTable } from "../../../shared/ui/DataTable";
+import { formatDateTime } from "../../../shared/ui/format";
+
+/** 상세에서 이 목록으로 돌아올 곳 */
+const LIST_BACK = { path: "/admin/inspections", label: "검사 결과 목록으로" };
 
 /**
  * 검사 결과 목록(spec 006 US1). 전용 API가 없어 렌탈 목록(최근 것부터)의 지금 시점으로 기기별 최근 검사를 보인다.
@@ -42,13 +46,14 @@ export function InspectionListPage() {
       )}
       {rentals.isPending && <p>불러오는 중…</p>}
       {rentals.isSuccess && items.length === 0 && <p>검사할 렌탈이 없습니다. 렌탈을 먼저 만들어 주세요.</p>}
-      <DataTable cols="minmax(110px, 1fr) 1.6fr 1.2fr 1.3fr 120px" labels={["시리얼", "기종", "지금 시점", "판정", ""]}>
+      <DataTable cols="1.1fr minmax(110px, 1fr) 1.4fr 1.1fr 1.3fr 120px" labels={["검사 시각", "시리얼", "기기명", "지금 시점", "판정", ""]}>
         <ul className="cards table-list" aria-label="검사 결과">
           {items.map((r) => {
             const checkpoint = r.currentCheckpoint ?? null;
             return (
               <li key={r.rentalId} className="card" aria-label={r.serial}>
                 <div className="card-main">
+                  <span>{checkpoint ? formatDateTime(checkpoint.occurredAt) : "—"}</span>
                   <strong>{r.serial}</strong>
                   <span>{modelName(r.modelCode)}</span>
                   <span>{checkpoint ? `${CHECKPOINT_TYPE_LABEL[checkpoint.type]} · ${CHECKPOINT_STATUS_LABEL[checkpoint.status]}` : "시점 없음"}</span>
@@ -56,7 +61,11 @@ export function InspectionListPage() {
                 </div>
                 <div className="row">
                   {checkpoint ? (
-                    <Link className="button-link" to={`/admin/inspections/${r.rentalId}/${checkpoint.checkpointId}`} state={{ serial: r.serial }}>
+                    <Link
+                      className="button-link"
+                      to={`/admin/inspections/${r.rentalId}/${checkpoint.checkpointId}`}
+                      state={{ serial: r.serial, backTo: LIST_BACK }}
+                    >
                       결과 보기
                     </Link>
                   ) : (

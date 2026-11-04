@@ -1,11 +1,34 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { CAPTURE_CAMERA_LABEL, CAPTURE_FACE_LABEL, CAPTURE_LIGHT_LABEL, DEFECT_CLASS_LABEL } from "../../../shared/codes/labels";
 import type { FaceGrid, TextureOverlay } from "../model/photos";
 import { formatConfidence } from "../model/verdict";
+import { PhotoLightbox, type LightboxPhoto } from "./PhotoLightbox";
 import { PhotoWithDefects } from "./PhotoWithDefects";
+import type { PhotoDefect } from "../../../shared/api/types";
 
-/** 빠른 검사(QUICK): 면마다 카메라 2(행) × 조명 3(열) 원본 사진 격자(11/3 A 답변), 사진 위에 그 사진의 흠집 */
+const overlayOf = (defects: PhotoDefect[]) =>
+  defects.map((d) => ({ id: d.defectId, title: `${DEFECT_CLASS_LABEL[d.class]} ${formatConfidence(d.confidence)}`, polygon: d.polygon }));
+
+/**
+ * 빠른 검사(QUICK): 면마다 카메라 2(행) × 조명 3(열) 원본 사진 격자(11/3 A 답변), 사진 위에 그 사진의 흠집.
+ * 12장을 모두 보이고(접지 않음) 칸마다 촬영 부위 이름을 붙인다. 사진을 누르면 크게 보기 팝업에서 차례로 넘긴다
+ */
 export function PhotoGrid({ grids }: { grids: FaceGrid[] }) {
+  const [open, setOpen] = useState<number | null>(null);
+  const shots: LightboxPhoto[] = grids.flatMap((grid) =>
+    grid.cells.flatMap((cell) =>
+      cell.photo
+        ? [
+            {
+              key: `${cell.face}:${cell.camera}:${cell.light}`,
+              name: `${CAPTURE_FACE_LABEL[cell.face]} · ${CAPTURE_CAMERA_LABEL[cell.camera]} · ${CAPTURE_LIGHT_LABEL[cell.light]}`,
+              src: cell.photo.url,
+              defects: overlayOf(cell.defects),
+            },
+          ]
+        : [],
+    ),
+  );
   return (
     <>
       {grids.map((grid) => (
@@ -16,19 +39,19 @@ export function PhotoGrid({ grids }: { grids: FaceGrid[] }) {
           <ul className="photo-grid" style={{ "--cols": grid.lights.length } as CSSProperties}>
             {grid.cells.map((cell) => {
               const name = `${CAPTURE_FACE_LABEL[cell.face]} ${cell.camera} ${cell.light}`;
+              const shot = shots.findIndex((p) => p.key === `${cell.face}:${cell.camera}:${cell.light}`);
               return (
                 <li key={`${cell.camera}:${cell.light}`} aria-label={name}>
                   {cell.photo ? (
-                    <PhotoWithDefects
-                      src={cell.photo.url}
-                      alt={`${name} 사진`}
-                      defects={cell.defects.map((d) => ({ id: d.defectId, title: `${DEFECT_CLASS_LABEL[d.class]} ${formatConfidence(d.confidence)}`, polygon: d.polygon }))}
-                    />
+                    <PhotoWithDefects src={cell.photo.url} alt={`${name} 사진`} defects={overlayOf(cell.defects)} onOpen={() => setOpen(shot)} />
                   ) : (
                     <div className="photo photo-missing">사진 없음</div>
                   )}
-                  <p className="muted">
-                    {CAPTURE_CAMERA_LABEL[cell.camera]} · {CAPTURE_LIGHT_LABEL[cell.light]} · 흠집 {cell.defects.length}개
+                  <p className="photo-caption">
+                    <strong>{CAPTURE_FACE_LABEL[cell.face]}</strong>
+                    <span className="muted">
+                      {CAPTURE_CAMERA_LABEL[cell.camera]} · {CAPTURE_LIGHT_LABEL[cell.light]} · 흠집 {cell.defects.length}개
+                    </span>
                   </p>
                 </li>
               );
@@ -36,6 +59,7 @@ export function PhotoGrid({ grids }: { grids: FaceGrid[] }) {
           </ul>
         </section>
       ))}
+      {open !== null && <PhotoLightbox photos={shots} index={open} onIndex={setOpen} onClose={() => setOpen(null)} />}
     </>
   );
 }

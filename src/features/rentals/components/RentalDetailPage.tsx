@@ -13,6 +13,8 @@ import { nextAction } from "../nextAction";
 import { CaptureLinkPanel } from "./CaptureLinkPanel";
 import { PairingCodePanel } from "./PairingCodePanel";
 import { formatDate } from "./RentalListPage";
+import { InspectionHistory } from "../../inspections/components/InspectionHistory";
+import { formatDateTime } from "../../../shared/ui/format";
 
 const STEPS: CheckpointType[] = ["OUT", "RCV", "RET"];
 const BEFORE: Record<CheckpointType, string> = { OUT: "출고를", RCV: "수령을", RET: "반납을" };
@@ -48,7 +50,12 @@ function CheckpointSteps({ rental, serial, onError }: { rental: Rental; serial?:
                 )}
                 {/* 진단 에이전트는 시점마다 붙는다. 봉인 전(OPEN)에만 코드를 만든다. MVP 배포에서는 보관(숨김) */}
                 {checkpoint.status === "OPEN" && !isArchived("diagnostics") && (
-                  <PairingCodePanel key={`${rental.rentalId}:${checkpoint.checkpointId}`} rentalId={rental.rentalId} checkpointId={checkpoint.checkpointId} deviceSerial={serial} />
+                  <PairingCodePanel
+                    key={`${rental.rentalId}:${checkpoint.checkpointId}`}
+                    rentalId={rental.rentalId}
+                    checkpointId={checkpoint.checkpointId}
+                    deviceSerial={serial}
+                  />
                 )}
               </>
             ) : (
@@ -91,13 +98,28 @@ export function RentalDetailPage() {
   const serial = data.serial || hint;
 
   return (
-    <section className="narrow">
+    <section className="rental-detail">
       <h1>렌탈 {serial ?? ""}</h1>
       <p>
         대여자 참조 번호 {data.renterRef} · <span className="badge">{RENTAL_STATUS_LABEL[data.status]}</span> · 만든 날 {formatDate(data.createdAt)}
       </p>
       {rental.isError && <ErrorBanner message={toMessage(rental.error)} onRetry={() => void rental.refetch()} />}
       {error && <ErrorBanner message={error} />}
+      <h2>렌탈 기본 정보</h2>
+      <dl className="info-list info-box">
+        <dt>대여자 참조 번호</dt>
+        <dd>{data.renterRef}</dd>
+        <dt>기기 시리얼</dt>
+        <dd>{serial ?? "—"}</dd>
+        <dt>현재 상태</dt>
+        <dd>{RENTAL_STATUS_LABEL[data.status]}</dd>
+        <dt>시작</dt>
+        <dd>{formatDateTime(data.startedAt)}</dd>
+        <dt>종료</dt>
+        <dd>{formatDateTime(data.endedAt)}</dd>
+      </dl>
+      <InspectionHistory rental={data} serial={serial} />
+      <h2>시점 진행</h2>
       <CheckpointSteps rental={data} serial={serial} onError={setError} />
       {/* 3D 리포트(WE3)는 MVP 배포에서 보관(숨김) */}
       {data.checkpoints.length > 0 && !isArchived("report") && (
