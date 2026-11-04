@@ -118,13 +118,13 @@ export function ModelEditPage() {
     if (!body) return;
     // PUT은 있으면 덮어쓰므로, 새로 등록할 때는 이미 있는 코드인지 먼저 본다
     if (!editing && list.data?.some((m) => m.modelCode === values.modelCode)) {
-      setErrors({ modelCode: "이미 있는 기종 코드입니다. 기종 목록에서 고치기를 눌러 주세요." });
+      setErrors({ modelCode: "이미 있는 기종 코드입니다. 기종 목록에서 수정을 눌러 주세요." });
       return;
     }
     save.mutate(
       { modelCode: values.modelCode, body },
       {
-        onSuccess: () => navigate("/admin/models"),
+        onSuccess: () => navigate("/admin/models", { state: { notice: editing ? "기종을 수정했습니다." : "기종을 등록했습니다." } }),
         onError: (e) => setError(e instanceof ApiError ? messageFor(e) : "저장하지 못했습니다."),
       },
     );
@@ -134,7 +134,7 @@ export function ModelEditPage() {
   if (editing && existing.isError) {
     return (
       <section className="narrow">
-        <h1>기종 고치기</h1>
+        <h1>기종 수정</h1>
         <ErrorBanner
           message={existing.error instanceof ApiError ? messageFor(existing.error) : "기종을 불러오지 못했습니다."}
           onRetry={() => void existing.refetch()}
@@ -154,7 +154,7 @@ export function ModelEditPage() {
 
   return (
     <section className="narrow">
-      <h1>{editing ? "기종 고치기" : "기종 등록"}</h1>
+      <h1>{editing ? "기종 수정" : "기종 등록"}</h1>
       {error && <ErrorBanner message={error} />}
       <form onSubmit={submit} noValidate>
         <Field
@@ -194,7 +194,7 @@ export function ModelEditPage() {
           </Link>
           {/* 새로 등록할 때는 코드 중복을 보려고 기종 목록을 받은 뒤에 저장을 켠다 */}
           <Button type="submit" busy={save.isPending} disabled={!editing && !list.isSuccess}>
-            저장
+            {editing ? "수정 저장" : "등록"}
           </Button>
         </div>
       </form>

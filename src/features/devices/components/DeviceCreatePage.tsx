@@ -32,7 +32,7 @@ export function DeviceCreatePage() {
       ...(assetNo.trim() ? { assetNo: assetNo.trim() } : {}),
     };
     create.mutate(body, {
-      onSuccess: () => navigate("/admin/devices"),
+      onSuccess: () => navigate("/admin/devices", { state: { notice: "기기를 등록했습니다." } }),
       onError: (e) => setError(e instanceof ApiError ? messageFor(e) : "등록하지 못했습니다."),
     });
   }

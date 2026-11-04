@@ -30,10 +30,11 @@ test("새 기종을 등록하면 목록에 보이고 기기 등록 화면에서 
   await user.type(screen.getByLabelText("제조사(선택)"), "Apple");
   await fillDims(user);
   await user.type(screen.getByLabelText("메모리(GB)"), "16");
-  await user.click(screen.getByRole("button", { name: "저장" }));
+  await user.click(screen.getByRole("button", { name: "등록" }));
 
   expect(await screen.findByRole("listitem", { name: "MBA15-M3" })).toBeInTheDocument();
   expect(router.state.location.pathname).toBe("/admin/models");
+  expect(screen.getByRole("status")).toHaveTextContent("기종을 등록했습니다.");
   const saved = db.models.find((m) => m.modelCode === "MBA15-M3");
   expect(saved?.dimensions).toEqual({ widthMm: 357.7, depthMm: 248.2, baseHMm: 10.5, lidHMm: 6.4 });
   expect(saved?.spec).toEqual({ ramGb: 16 });
@@ -49,16 +50,16 @@ test("이미 있는 기종 코드로 새로 등록하면 덮어쓰지 않고 고
   await user.type(screen.getByLabelText("기종 코드"), "MBA13-M2");
   await user.type(screen.getByLabelText("이름"), "덮어쓰기");
   await fillDims(user);
-  await waitFor(() => expect(screen.getByRole("button", { name: "저장" })).toBeEnabled());
-  await user.click(screen.getByRole("button", { name: "저장" }));
-  expect(await screen.findByText("이미 있는 기종 코드입니다. 기종 목록에서 고치기를 눌러 주세요.")).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByRole("button", { name: "등록" })).toBeEnabled());
+  await user.click(screen.getByRole("button", { name: "등록" }));
+  expect(await screen.findByText("이미 있는 기종 코드입니다. 기종 목록에서 수정을 눌러 주세요.")).toBeInTheDocument();
   expect(db.models.find((m) => m.modelCode === "MBA13-M2")?.name).toBe("MacBook Air (M2, 2022)");
 });
 
 test("기종을 고치면 지금 값이 채워져 있고, 바꾼 치수와 이름이 저장되며 기기 목록 이름도 바뀐다", async () => {
   const user = userEvent.setup();
   const { router } = renderAsAdmin("/admin/models/MBA13-M2/edit");
-  await screen.findByRole("heading", { name: "기종 고치기" });
+  await screen.findByRole("heading", { name: "기종 수정" });
   expect(await screen.findByDisplayValue("MacBook Air (M2, 2022)")).toBeInTheDocument();
   expect(screen.getByLabelText("기종 코드")).toHaveAttribute("readonly");
   const lid = screen.getByLabelText("덮개 두께(mm)");
@@ -67,8 +68,9 @@ test("기종을 고치면 지금 값이 채워져 있고, 바꾼 치수와 이�
   const name = screen.getByLabelText("이름");
   await user.clear(name);
   await user.type(name, "MacBook Air 13 (M2)");
-  await user.click(screen.getByRole("button", { name: "저장" }));
+  await user.click(screen.getByRole("button", { name: "수정 저장" }));
   await waitFor(() => expect(router.state.location.pathname).toBe("/admin/models"));
+  expect(await screen.findByRole("status")).toHaveTextContent("기종을 수정했습니다.");
   const saved = db.models.find((m) => m.modelCode === "MBA13-M2");
   expect(saved?.dimensions.lidHMm).toBe(4.3);
   expect(db.devices.filter((d) => d.modelCode === "MBA13-M2").every((d) => d.modelName === "MacBook Air 13 (M2)")).toBe(true);
@@ -77,7 +79,7 @@ test("기종을 고치면 지금 값이 채워져 있고, 바꾼 치수와 이�
 test("기종 코드가 NEW여도 고치기 화면이 열린다(새로 등록 경로와 겹치지 않음)", async () => {
   db.models.push({ ...db.models[0], modelCode: "NEW", name: "새 기종 코드" });
   renderAsAdmin("/admin/models/NEW/edit");
-  expect(await screen.findByRole("heading", { name: "기종 고치기" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "기종 수정" })).toBeInTheDocument();
   expect(await screen.findByDisplayValue("새 기종 코드")).toBeInTheDocument();
 });
 

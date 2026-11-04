@@ -110,6 +110,28 @@ button[type="submit"]:hover:not(:disabled), .primary:hover:not(:disabled) { back
 .danger { color: #fff; background: var(--danger); border-color: var(--danger); }
 .danger:hover:not(:disabled) { background: #912018; }
 .editor { border-top: 1px solid var(--border); padding-top: 8px; }
+.badge-info { color: var(--info); background: var(--info-soft); }
+.button-link.primary { color: #fff; background: var(--brand); border-color: var(--brand); font-weight: 600; }
+.button-link.primary:hover { background: var(--brand-hover); }
+.toast { position: fixed; right: 16px; bottom: 16px; z-index: 20; display: flex; gap: 8px; align-items: center; max-width: calc(100vw - 32px); padding: 8px 8px 8px 16px; border: 1px solid var(--ok); border-radius: var(--radius-lg); background: var(--ok-soft); color: var(--ok); font-weight: 600; box-shadow: 0 4px 16px rgb(16 24 40 / 12%); }
+.toast button { min-height: 36px; padding: 0 10px; border: 0; background: none; color: inherit; font-size: 1.2rem; }
+.detail-panel { grid-column: 1 / -1; display: grid; gap: 8px; padding: 12px; border-radius: var(--radius); background: var(--bg); }
+.info-list { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 0; }
+.info-list dt { color: var(--text-muted); }
+.info-list dd { margin: 0; }
+/* 목록 표(DataTable): 375px은 카드, 768px 이상은 머리 줄 + 한 줄씩 같은 열 */
+.table-head { display: none; }
+@media (min-width: 768px) {
+  .table-head { display: grid; grid-template-columns: var(--cols); gap: 12px; padding: 10px 16px; border: 1px solid var(--border); border-bottom: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--bg); font-size: 0.85rem; font-weight: 700; color: var(--text-muted); }
+  .table-list { gap: 0; border: 1px solid var(--border); border-radius: 0 0 var(--radius-lg) var(--radius-lg); overflow: hidden; }
+  .table-list .card { grid-template-columns: var(--cols); gap: 12px; min-height: 56px; padding: 6px 16px; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
+  .table-list .card:first-child { border-top: 0; }
+  .table-list .card:hover { background: #fafbfc; }
+  .table-list .card-main { display: contents; }
+  .table-list .card-main > * { min-width: 0; overflow-wrap: anywhere; }
+  .table-list .card-main > .badge { justify-self: start; }
+  .table-list .card > .row { justify-content: flex-end; flex-wrap: nowrap; }
+}
 /* 768px 이상: 거르기는 한 줄, 기기 카드는 표처럼 한 줄 */
 @media (min-width: 768px) {
   .filters { grid-template-columns: 1fr 1fr 2fr; }

@@ -28,7 +28,7 @@ export function RentalCreatePage() {
     create.mutate(
       { deviceId, renterRef: renterRef.trim() },
       {
-        onSuccess: (rental) => navigate(`/admin/rentals/${rental.rentalId}`, { state: { serial: picked?.serial } }),
+        onSuccess: (rental) => navigate(`/admin/rentals/${rental.rentalId}`, { state: { serial: picked?.serial, notice: "렌탈을 만들었습니다." } }),
         onError: (e) => setError(e instanceof ApiError ? e : networkError()),
       },
     );
