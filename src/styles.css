@@ -81,6 +81,8 @@ a { color: var(--info); }
   .login-brand-slogan { font-size: 2rem; }
 }
 @media (min-width: 1600px) {
+  /* 아주 넓은 화면에서 표가 왼쪽 1200px에 몰려 오른쪽이 텅 비지 않게 넓힌다 */
+  .admin-main { max-width: 1600px; }
   .login-card { max-width: 420px; padding: 32px; }
   .login-brand-text, .login-art { max-width: 520px; }
 }
@@ -129,9 +131,10 @@ button[type="submit"]:hover:not(:disabled), .primary:hover:not(:disabled) { back
 .info-list { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 0; }
 .info-list dt { color: var(--text-muted); }
 .info-list dd { margin: 0; }
-/* 목록 표(DataTable): 375px은 카드, 768px 이상은 머리 줄 + 한 줄씩 같은 열 */
+/* 목록 표(DataTable): 1100px 미만은 카드, 이상은 머리 줄 + 한 줄씩 같은 열.
+   768px에서는 사이드바(220px)를 빼면 본문이 500px 남짓이라 6열 표가 글자 단위로 끊겨 카드로 둔다 */
 .table-head { display: none; }
-@media (min-width: 768px) {
+@media (min-width: 1100px) {
   .table-head { display: grid; grid-template-columns: var(--cols); gap: 12px; padding: 10px 16px; border: 1px solid var(--border); border-bottom: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--bg); font-size: 0.85rem; font-weight: 700; color: var(--text-muted); }
   .table-list { gap: 0; border: 1px solid var(--border); border-radius: 0 0 var(--radius-lg) var(--radius-lg); overflow: hidden; }
   .table-list .card { grid-template-columns: var(--cols); gap: 12px; min-height: 56px; padding: 6px 16px; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
