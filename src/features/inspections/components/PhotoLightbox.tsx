@@ -22,6 +22,7 @@ interface Props {
  */
 export function PhotoLightbox({ photos, index, onIndex, onClose }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const photo = photos[index];
   const hasPrev = index > 0;
   const hasNext = index < photos.length - 1;
@@ -34,7 +35,21 @@ export function PhotoLightbox({ photos, index, onIndex, onClose }: Props) {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Tab") {
+        // 열린 동안 Tab·Shift+Tab 초점이 팝업 밖(가려진 화면)으로 나가지 않게 한다
+        const items = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>("button:not([disabled]), a[href]") ?? []);
+        if (items.length === 0) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        const inside = dialogRef.current?.contains(document.activeElement) ?? false;
+        if (e.shiftKey && (document.activeElement === first || !inside)) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+          e.preventDefault();
+          first.focus();
+        }
+      } else if (e.key === "Escape") onClose();
       else if (e.key === "ArrowLeft" && hasPrev) onIndex(index - 1);
       else if (e.key === "ArrowRight" && hasNext) onIndex(index + 1);
     }
@@ -45,6 +60,7 @@ export function PhotoLightbox({ photos, index, onIndex, onClose }: Props) {
   if (!photo) return null;
   return (
     <div
+      ref={dialogRef}
       className="lightbox"
       role="dialog"
       aria-modal="true"

@@ -160,7 +160,8 @@ export function InspectionDetailPage() {
         <section aria-labelledby="summary-title">
           <h2 id="summary-title">문제 항목 요약 · 흠집 {rows.length}개</h2>
           {rows.length === 0 ? (
-            <p className="empty-note">✔ 발견된 문제 없음</p>
+            // 흠집 목록이 비어도 등급이 B~D일 수 있다(근거만 있음). "문제 없음"은 A 등급일 때만 쓴다
+            <p className="empty-note">{verdict.kind === "ok" ? "✔ 발견된 문제 없음" : "등록된 흠집 위치 없음 · 판정 근거는 아래 최종 판정을 봐 주세요"}</p>
           ) : (
             <>
               {photoDefects.length > 0 && <p className="muted">사진마다 따로 센 수입니다. 조명만 다른 사진에 겹친 같은 흠집은 등급을 매길 때 하나로 봅니다.</p>}
