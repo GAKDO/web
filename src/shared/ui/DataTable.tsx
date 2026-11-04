@@ -10,7 +10,7 @@ interface DataTableProps {
 }
 
 /**
- * 목록 카드를 768px 이상에서 표처럼 보이게 하는 틀(11/4 목업).
+ * 목록 카드를 1100px 이상에서 표처럼 보이게 하는 틀(11/4 목업).
  * 목록(ul·li) 구조는 그대로 두고 CSS만 바꾼다. 머리 줄은 보이는 글자만이라 화면 읽기에서는 숨긴다
  */
 export function DataTable({ cols, labels, children }: DataTableProps) {
