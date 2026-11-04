@@ -9,8 +9,9 @@ import { SelectField } from "../../../shared/ui/Field";
 import { useDeviceModels } from "../../devices/api/devices";
 import { useRentals } from "../api/rentals";
 import { DataTable } from "../../../shared/ui/DataTable";
+import { formatDate } from "../../../shared/ui/format";
 
-export const formatDate = (iso: string) => new Date(iso).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" });
+export { formatDate };
 
 /** 렌탈 상태 배지 색: 진행 중 파랑, 반납됨(종료 대기) 노랑, 종료 회색 */
 const RENTAL_STATUS_CLASS: Record<RentalSummary["status"], string> = {

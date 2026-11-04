@@ -12,6 +12,11 @@ async function openList() {
 
 const shownSerials = () => within(screen.getByRole("list", { name: "기기" })).getAllByRole("listitem").map((li) => li.getAttribute("aria-label"));
 const card = (serial: string) => screen.getByRole("listitem", { name: serial });
+/** 상세보기를 눌러 그 기기의 기본 정보·상태 바꾸기·고치기를 펼친다 */
+async function openDetail(user: ReturnType<typeof userEvent.setup>, serial: string) {
+  await user.click(within(card(serial)).getByRole("button", { name: "상세보기" }));
+  return card(serial);
+}
 
 test("기종을 고르면 그 기종의 기기만 보인다", async () => {
   const user = await openList();
@@ -36,12 +41,14 @@ test("검색 칸에 시리얼이나 자산번호 일부를 넣으면 맞는 기�
 
 test("사용 가능 기기를 수리 중으로 바꾸면 목록의 상태가 바로 바뀐다", async () => {
   const user = await openList();
+  await openDetail(user, "C02AIR0002");
   await user.click(within(card("C02AIR0002")).getByRole("button", { name: "수리 중으로" }));
   await waitFor(() => expect(within(card("C02AIR0002")).getByText("수리 중")).toBeInTheDocument());
 });
 
 test("진행 중인 렌탈이 있는 기기를 수리 중으로 바꾸면 사람이 읽는 문장이 보이고 상태는 그대로다", async () => {
   const user = await openList();
+  await openDetail(user, "C02AIR0001");
   await user.click(within(card("C02AIR0001")).getByRole("button", { name: "수리 중으로" }));
   expect(await within(card("C02AIR0001")).findByRole("alert")).toHaveTextContent(
     "진행 중인 렌탈이 있어 상태를 바꿀 수 없습니다. 렌탈을 먼저 종료하세요.",
@@ -51,6 +58,7 @@ test("진행 중인 렌탈이 있는 기기를 수리 중으로 바꾸면 사람
 
 test("폐기로 바꾸기를 누르면 확인 창이 먼저 뜨고, 폐기 뒤에도 그 기기는 목록(폐기 거르기)에 남는다", async () => {
   const user = await openList();
+  await openDetail(user, "LGGRAM0003");
   await user.click(within(card("LGGRAM0003")).getByRole("button", { name: "폐기" }));
   const dialog = await screen.findByRole("alertdialog");
   expect(db.devices.find((d) => d.serial === "LGGRAM0003")?.status).toBe("ACTIVE");
@@ -62,8 +70,8 @@ test("폐기로 바꾸기를 누르면 확인 창이 먼저 뜨고, 폐기 뒤�
 
 test("폐기 기기의 상태 메뉴는 수리 중으로 되돌리기만 고를 수 있고, 확인 창 뒤 수리 중으로 바뀐다", async () => {
   const user = await openList();
-  const retired = card("C02PRO0002");
-  expect(within(retired).getAllByRole("button").map((b) => b.textContent)).toEqual(["수리 중으로 되돌리기", "고치기"]);
+  const retired = await openDetail(user, "C02PRO0002");
+  expect(within(retired).getAllByRole("button").map((b) => b.textContent)).toEqual(["닫기", "수리 중으로 되돌리기", "고치기"]);
   await user.click(within(retired).getByRole("button", { name: "수리 중으로 되돌리기" }));
   await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "수리 중으로 되돌리기" }));
   await waitFor(() => expect(within(card("C02PRO0002")).getByText("수리 중")).toBeInTheDocument());
@@ -73,6 +81,7 @@ test("그사이 다른 관리자가 폐기한 기기를 사용 가능으로 바�
   const user = await openList();
   const stale = db.devices.find((d) => d.serial === "LGGRAM0002");
   if (stale) stale.status = "RETIRED";
+  await openDetail(user, "LGGRAM0002");
   await user.click(within(card("LGGRAM0002")).getByRole("button", { name: "사용 가능으로" }));
   expect(await within(card("LGGRAM0002")).findByRole("alert")).toHaveTextContent(
     "폐기한 기기는 바로 사용 가능으로 바꿀 수 없습니다. 먼저 수리 중으로 되돌리세요.",
@@ -82,6 +91,7 @@ test("그사이 다른 관리자가 폐기한 기기를 사용 가능으로 바�
 
 test("기기 정보에서 색상·자산번호·OS를 고치면 저장되고, 시리얼·기종은 고칠 수 없게 보인다", async () => {
   const user = await openList();
+  await openDetail(user, "LGGRAM0002");
   await user.click(within(card("LGGRAM0002")).getByRole("button", { name: "고치기" }));
   const form = screen.getByRole("form", { name: "LGGRAM0002 고치기" });
   expect(within(form).getByLabelText("시리얼")).toBeDisabled();
@@ -89,7 +99,7 @@ test("기기 정보에서 색상·자산번호·OS를 고치면 저장되고, �
   await user.type(within(form).getByLabelText("색상"), "실버");
   await user.type(within(form).getByLabelText("자산번호"), "TR-0202");
   await user.click(within(form).getByRole("button", { name: "저장" }));
-  await waitFor(() => expect(within(card("LGGRAM0002")).getByText("자산번호 TR-0202")).toBeInTheDocument());
+  await waitFor(() => expect(within(card("LGGRAM0002")).getByText("TR-0202")).toBeInTheDocument());
   expect(db.devices.find((d) => d.serial === "LGGRAM0002")).toMatchObject({ color: "실버", assetNo: "TR-0202" });
 });
 
@@ -99,4 +109,17 @@ test("결과가 많으면 더 보기로 다음 쪽을 불러온다", async () =>
   expect(shownSerials()).toHaveLength(20);
   await user.click(screen.getByRole("button", { name: "더 보기" }));
   await waitFor(() => expect(shownSerials()).toHaveLength(28));
+});
+
+test("목록 한 줄에는 기기명·시리얼번호·상태·등록일이 보이고, 상세보기를 누르면 같은 화면에 기본 정보가 펼쳐진다", async () => {
+  const user = await openList();
+  const row = card("LGGRAM0001");
+  expect(within(row).getByText("LG gram 16 (2024)")).toBeInTheDocument();
+  expect(within(row).getByText("사용 가능")).toBeInTheDocument();
+  expect(within(row).queryByText("TR-0201")).not.toBeInTheDocument();
+  await openDetail(user, "LGGRAM0001");
+  expect(within(row).getByText("TR-0201")).toBeInTheDocument();
+  expect(within(row).getByRole("button", { name: "닫기" })).toHaveAttribute("aria-expanded", "true");
+  await user.click(within(row).getByRole("button", { name: "닫기" }));
+  expect(within(row).queryByText("TR-0201")).not.toBeInTheDocument();
 });

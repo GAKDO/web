@@ -11,6 +11,7 @@ import { useDeviceModels, useDevices } from "../api/devices";
 import { DeviceEditor } from "./DeviceEditor";
 import { StatusMenu } from "./StatusMenu";
 import { DataTable } from "../../../shared/ui/DataTable";
+import { formatDate } from "../../../shared/ui/format";
 
 /** 입력이 멈춘 뒤에만 검색한다 */
 function useDebounced(value: string, ms = 250): string {
@@ -23,22 +24,47 @@ function useDebounced(value: string, ms = 250): string {
 }
 
 function DeviceCard({ device }: { device: Device }) {
+  const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const panelId = `device-${device.deviceId}-detail`;
   return (
     <li className="card" aria-label={device.serial}>
       <div className="card-main">
-        <strong>{device.serial}</strong>
         <span>{device.modelName}</span>
-        <span>{DEVICE_OS_LABEL[device.os]}</span>
-        <span>자산번호 {device.assetNo ?? "없음"}</span>
+        <strong>{device.serial}</strong>
         <span className={`badge badge-${device.status.toLowerCase()}`}>{DEVICE_STATUS_LABEL[device.status]}</span>
+        <span>{formatDate(device.createdAt)}</span>
       </div>
-      {editing ? (
-        <DeviceEditor device={device} onDone={() => setEditing(false)} />
-      ) : (
-        <div className="row">
-          <StatusMenu device={device} />
-          <Button onClick={() => setEditing(true)}>고치기</Button>
+      <div className="row">
+        <Button aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((v) => !v)}>
+          {open ? "닫기" : "상세보기"}
+        </Button>
+      </div>
+      {/* 상세보기: 별도 페이지 없이 같은 줄 아래에 기본 정보와 상태 바꾸기·고치기를 펼친다 */}
+      {open && (
+        <div id={panelId} className="detail-panel">
+          {editing ? (
+            <DeviceEditor device={device} onDone={() => setEditing(false)} />
+          ) : (
+            <>
+              <dl className="info-list">
+                <dt>OS</dt>
+                <dd>{DEVICE_OS_LABEL[device.os]}</dd>
+                <dt>색상</dt>
+                <dd>{device.color ?? "없음"}</dd>
+                <dt>자산번호</dt>
+                <dd>{device.assetNo ?? "없음"}</dd>
+                <dt>등록일</dt>
+                <dd>{formatDate(device.createdAt)}</dd>
+                <dt>고친 날</dt>
+                <dd>{formatDate(device.updatedAt)}</dd>
+              </dl>
+              <div className="row">
+                <StatusMenu device={device} />
+                <Button onClick={() => setEditing(true)}>고치기</Button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </li>
@@ -93,7 +119,7 @@ export function DeviceListPage() {
       )}
       {devices.isPending && <p>불러오는 중…</p>}
       {devices.isSuccess && items.length === 0 && <p>조건에 맞는 기기가 없습니다.</p>}
-      <DataTable cols="minmax(110px, 1fr) 1.5fr 0.7fr 1.1fr 0.8fr 300px" labels={["시리얼", "기종", "OS", "자산번호", "상태", ""]}>
+      <DataTable cols="1.6fr minmax(110px, 1fr) 0.8fr 0.9fr 120px" labels={["기기명", "시리얼번호", "상태", "등록일", ""]}>
         <ul className="cards table-list" aria-label="기기">
           {items.map((device) => (
             <DeviceCard key={device.deviceId} device={device} />

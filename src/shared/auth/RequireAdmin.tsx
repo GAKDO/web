@@ -1,4 +1,5 @@
 import { Navigate, NavLink, Outlet } from "react-router-dom";
+import { FlashNotice } from "../ui/FlashNotice";
 import { useAuth } from "./AuthProvider";
 import { NavIcon } from "../ui/NavIcon";
 import { isArchived } from "../config/features";
@@ -45,6 +46,7 @@ export function RequireAdmin() {
         </button>
       </header>
       <main className="page admin-main">
+        <FlashNotice />
         <Outlet />
       </main>
     </div>

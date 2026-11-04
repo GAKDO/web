@@ -37,7 +37,7 @@ export function ModelListPage() {
               </div>
               <div className="row">
                 <Link className="button-link" to={`/admin/models/${encodeURIComponent(m.modelCode)}/edit`}>
-                  고치기
+                  수정
                 </Link>
               </div>
             </li>
