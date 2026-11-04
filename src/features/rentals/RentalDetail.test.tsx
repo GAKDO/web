@@ -141,3 +141,37 @@ test("클립보드를 쓸 수 없으면 '부스에 넣을 ID' 복사는 복사�
   expect(await within(panel).findByRole("alert")).toHaveTextContent("직접 복사하세요");
   expect(within(panel).getByRole("button", { name: "렌탈 ID 복사" })).toHaveTextContent("복사");
 });
+
+test("출고를 시작하기 전에는 부스 코드 발급이 없고, 시작하면 발급한 6자리와 남은 시간이 보인다", async () => {
+  const { u } = await openNewRental();
+  const panel = screen.getByRole("region", { name: "부스에 넣을 ID" });
+  expect(within(panel).queryByRole("button", { name: "부스 코드 발급" })).not.toBeInTheDocument();
+  await u.click(screen.getByRole("button", { name: "출고 시작" }));
+  await u.click(await within(panel).findByRole("button", { name: "부스 코드 발급" }));
+  const box = within(panel).getByRole("group", { name: "부스 코드" });
+  expect(await within(box).findByLabelText("부스 코드 6자리")).toHaveTextContent(/^\d{6}$/);
+  expect(within(box).getByText(/출고 촬영용 · 한 번만 쓸 수 있어요 · 남은 시간 \d+분 \d+초/)).toBeInTheDocument();
+  expect(within(box).getByRole("button", { name: "부스 코드 다시 발급" })).toBeInTheDocument();
+});
+
+test("출고를 찍은 뒤(촬영됨)에는 부스 코드를 발급할 수 없다", async () => {
+  const device = db.devices.find((d) => d.serial === "C02AIR0002");
+  const rentalId = nanoid();
+  const now = new Date().toISOString();
+  db.rentals.push({
+    rentalId, deviceId: device?.deviceId ?? "", renterRef: "R-2002", status: "OPEN", startedAt: now, endedAt: null, createdAt: now,
+    checkpoints: [{ checkpointId: nanoid(), type: "OUT", status: "CAPTURED", occurredAt: now }],
+  });
+  renderAsAdmin(`/admin/rentals/${rentalId}`);
+  const panel = await screen.findByRole("region", { name: "부스에 넣을 ID" });
+  expect(within(panel).queryByRole("group", { name: "부스 코드" })).not.toBeInTheDocument();
+});
+
+test("부스 코드 발급이 거절되면 서버가 알려 준 이유를 보인다", async () => {
+  const { u } = await openNewRental();
+  await u.click(screen.getByRole("button", { name: "출고 시작" }));
+  server.use(http.post("*/api/v1/rentals/:rentalId/booth-code", () => problem(409, "CHECKPOINT_ORDER_VIOLATION", "시점 순서가 맞지 않습니다", "출고 시점을 먼저 시작하세요.")));
+  const panel = screen.getByRole("region", { name: "부스에 넣을 ID" });
+  await u.click(await within(panel).findByRole("button", { name: "부스 코드 발급" }));
+  expect(await within(panel).findByRole("alert")).toHaveTextContent("출고 시점을 먼저 시작하세요.");
+});

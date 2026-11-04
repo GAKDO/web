@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { Rental } from "../../../shared/api/types";
 import { CHECKPOINT_TYPE_LABEL } from "../../../shared/codes/labels";
 import { Button } from "../../../shared/ui/Button";
+import { BoothCodePanel } from "./BoothCodePanel";
 
 /** 한 줄: 이름 · 21자 ID · 복사. 복사가 실제로 된 때만 "복사됨"을 보인다(권한 거부·클립보드 없는 브라우저) */
 function IdRow({ name, value, hint }: { name: string; value: string; hint: string }) {
@@ -42,10 +43,14 @@ function IdRow({ name, value, hint }: { name: string; value: string; hint: strin
  */
 export function BoothIdsPanel({ rental }: { rental: Rental }) {
   const started = rental.checkpoints;
+  // 부스 코드는 지금 시점(시작된 시점 중 가장 뒤)이 아직 안 찍혔을 때만 발급할 수 있다(계약 issueBoothCode)
+  const current = started.at(-1);
+  const canIssue = rental.status === "OPEN" && current?.status === "OPEN";
   return (
     <section aria-label="부스에 넣을 ID" className="rounded-xl border bg-card p-5 shadow-xs">
+      {canIssue && current && <BoothCodePanel key={current.checkpointId} rentalId={rental.rentalId} checkpoint={current} />}
       <p className="mt-0 mb-3 text-sm text-muted-foreground">
-        부스 <b>빠른 검사</b> 목록에서 이 기기를 누르면 아래 ID가 자동으로 채워집니다. 부스의 <b>출고</b> 탭에 직접 넣을 때만 복사해 쓰세요.
+        부스 <b>빠른 검사</b> 목록에서 이 기기를 눌러도 아래 ID가 자동으로 채워집니다. 부스의 <b>출고</b> 탭에 직접 넣을 때만 복사해 쓰세요.
       </p>
       <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm">
         <IdRow name="기기 ID" value={rental.deviceId} hint="시리얼 번호가 아니라 서버가 붙인 21자 ID입니다." />

@@ -102,6 +102,23 @@ export const rentalHandlers = [
     return HttpResponse.json(checkpoint, { status: 201 });
   }),
 
+  // 부스 6자리 코드(contracts issueBoothCode). 목은 발급만 흉내 낸다(부스 조회는 부스 레포 몫)
+  http.post("*/api/v1/rentals/:rentalId/booth-code", ({ request, params }) => {
+    const no = denied(request);
+    if (no) return no;
+    const rental = db.rentals.find((r) => r.rentalId === params.rentalId);
+    if (!rental) return problem(404, "NOT_FOUND", "렌탈이 없습니다");
+    const current = rental.checkpoints.at(-1);
+    if (rental.status !== "OPEN" || current?.status !== "OPEN") {
+      return problem(409, "CHECKPOINT_ORDER_VIOLATION", "시점 순서가 맞지 않습니다", "출고 시점을 먼저 시작하세요.");
+    }
+    const code = String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
+    return HttpResponse.json(
+      { code, expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(), checkpointId: current.checkpointId, checkpointType: current.type },
+      { status: 201 },
+    );
+  }),
+
   http.post("*/api/v1/rentals/:rentalId/close", ({ request, params }) => {
     const no = denied(request);
     if (no) return no;

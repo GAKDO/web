@@ -36,6 +36,7 @@ export type RentalSummary = RentalSchemas["RentalSummary"];
 export type RentalCreateRequest = RentalSchemas["RentalCreateRequest"];
 export type RentalPage = RentalSchemas["RentalPage"];
 export type Checkpoint = RentalSchemas["Checkpoint"];
+export type BoothCodeResponse = RentalSchemas["BoothCodeResponse"];
 
 export type DeviceStatus = RentalSchemas["DeviceStatus"];
 export type DeviceOs = RentalSchemas["DeviceOs"];
