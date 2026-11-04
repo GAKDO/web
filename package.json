@@ -12,6 +12,7 @@
     "gen:api": "openapi-typescript contracts/openapi/auth-server.yaml -o src/shared/api/generated/auth.ts && openapi-typescript contracts/openapi/rental-server.yaml -o src/shared/api/generated/rental.ts && openapi-typescript contracts/openapi/capture-server.yaml -o src/shared/api/generated/capture.ts && openapi-typescript contracts/openapi/report-server.yaml -o src/shared/api/generated/report.ts && openapi-typescript contracts/openapi/diagnostics-server.yaml -o src/shared/api/generated/diagnostics.ts"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "5.2.8",
     "@microsoft/fetch-event-source": "^2.0.1",
     "@radix-ui/react-slot": "1.3.3",
     "@react-three/drei": "^9.122.0",
@@ -22,6 +23,7 @@
     "clsx": "2.1.1",
     "lucide-react": "1.43.0",
     "openapi-fetch": "^0.17.0",
+    "pretendard": "1.3.9",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

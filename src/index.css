@@ -1,4 +1,6 @@
-/* 화면 스타일 시작점: Tailwind CSS 4 + shadcn/ui 디자인 변수(11/4 목업 색).
+/* 화면 스타일 시작점: Tailwind CSS 4 + shadcn/ui 디자인 변수.
+   디자인 방향은 ui-ux-pro-max(디자인 도구)의 업무용 관리 화면 추천을 따랐다:
+   Minimalism & Swiss + Data-Dense Dashboard, 글꼴 Inter(숫자·영문) + Pretendard(한글), 어두운 왼쪽 메뉴, 브랜드 빨강은 포인트만.
    층 순서: 보관 화면용 옛 CSS(legacy)는 Tailwind 기본(base) 뒤, 부품·유틸리티 앞이라 새 부품 모양을 덮지 않는다 */
 @layer theme, base, legacy, components, utilities;
 @import "tailwindcss";
@@ -13,7 +15,7 @@
   --brand: #c8161d;
   --brand-hover: #a51218;
   --brand-soft: #fdeced;
-  --background: #f6f7f9;
+  --background: #f7f7f8;
   --foreground: #18181b;
   --card: #ffffff;
   --card-foreground: #18181b;
@@ -38,12 +40,16 @@
   --border: #e4e4e7;
   --input: #d4d4d8;
   --ring: var(--brand);
-  --sidebar: #ffffff;
+  /* 어두운 왼쪽 메뉴 */
+  --sidebar: #0b0b0f;
+  --sidebar-foreground: #a1a1aa;
+  --sidebar-active: #ffffff;
+  --sidebar-border: #1f1f26;
   --sidebar-width: 15rem;
 }
 
 @theme inline {
-  --font-sans: Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  --font-sans: "Inter Variable", "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -77,6 +83,9 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-border: var(--sidebar-border);
 }
 
 @layer base {
@@ -86,6 +95,16 @@
   html {
     @apply font-sans antialiased;
     line-height: 1.5;
+    /* Inter 숫자를 같은 폭으로(표의 시각·시리얼이 줄마다 맞음) */
+    font-feature-settings: "cv11", "ss01";
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.005em;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
   }
   body {
     @apply bg-background text-foreground;

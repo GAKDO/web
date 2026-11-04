@@ -11,6 +11,7 @@ import { useDeviceModels } from "../../devices/api/devices";
 import { useRentals } from "../../rentals/api/rentals";
 import { INSPECTIONS } from "../api/inspections";
 import { VerdictBadge } from "./VerdictBadge";
+import { VerdictSummary } from "./VerdictSummary";
 import { DataActions, DataCells, DataRow, DataTable } from "../../../shared/ui/DataTable";
 import { PageHeader } from "../../../shared/ui/PageHeader";
 import { formatDateTime } from "../../../shared/ui/format";
@@ -53,8 +54,9 @@ export function InspectionListPage() {
         />
       )}
       {rentals.isPending && <p className="text-muted-foreground">불러오는 중…</p>}
+      {items.length > 0 && <VerdictSummary items={items} hasMore={!!rentals.hasNextPage} />}
       {rentals.isSuccess && items.length === 0 && <p className="text-muted-foreground">검사할 렌탈이 없습니다. 렌탈을 먼저 만들어 주세요.</p>}
-      <DataTable cols="1.1fr minmax(110px, 1fr) 1.4fr 1.1fr 1.3fr 120px" labels={["검사 시각", "시리얼", "기기명", "지금 시점", "판정", ""]} label="검사 결과">
+      <DataTable cols="minmax(150px, 1.2fr) minmax(110px, 1fr) 1.4fr 1.1fr 1.3fr 110px" labels={["검사 시각", "시리얼", "기기명", "지금 시점", "판정", ""]} label="검사 결과">
         {items.map((r) => {
           const checkpoint = r.currentCheckpoint ?? null;
           return (
