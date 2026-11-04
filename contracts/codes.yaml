@@ -100,7 +100,7 @@ error_code:
   - PILOT_ALIAS_EXISTS           # 409
   - NOT_TEST_DATA                # 409 시험 데이터(시리얼 TEST-)가 아닌 렌탈을 지우려 함
   - BOOTH_CODE_INVALID           # 400 부스 코드 틀림
-  - BOOTH_CODE_EXPIRED           # 410 부스 코드 만료·사용됨·시점이 이미 찍힘
+  - BOOTH_CODE_EXPIRED           # 410 부스 코드 만료·사용됨·다시 발급해 무효·시점이 이미 찍힘
   # capture
   - CAPTURE_FACES_MISSING        # 409 빠진 면
   - CAPTURE_HASH_MISMATCH        # 409 올린 사진의 해시가 다름

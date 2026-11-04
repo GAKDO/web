@@ -135,7 +135,8 @@ export interface paths {
         /**
          * 부스 코드 → 기기·렌탈·시점 ID
          * @description 부스 태블릿이 6자리 코드를 넣어 촬영할 기기·렌탈·시점을 받는다. 코드는 한 번만 쓸 수 있다(성공하면 바로 못 씀).
-         *     - 만료(10분)·이미 사용·그 사이 시점이 찍혀 OPEN이 아니면 410 BOOTH_CODE_EXPIRED.
+         *     - 만료(10분)·이미 사용·같은 렌탈에 다시 발급해 무효가 됨·그 사이 시점이 찍혀 OPEN이 아니면 410 BOOTH_CODE_EXPIRED.
+         *       발급한 적 없는 코드만 400 BOOTH_CODE_INVALID(실패 한도에 셈).
          *     - 대입 공격 방지: 모든 부스를 합쳐 틀린 코드가 1분에 30번을 넘으면 다음 1분 동안 429 RATE_LIMITED(Retry-After).
          */
         post: operations["redeemBoothCode"];
@@ -1015,7 +1016,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description 코드 만료·이미 사용됨·시점이 이미 찍힘 */
+            /** @description 코드 만료·이미 사용됨·다시 발급해 무효·시점이 이미 찍힘 */
             410: {
                 headers: {
                     [name: string]: unknown;
