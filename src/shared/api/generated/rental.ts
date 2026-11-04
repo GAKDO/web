@@ -33,7 +33,7 @@ export interface paths {
         };
         /**
          * 렌탈 목록
-         * @description ADMIN은 전체, CUSTOMER는 rentals 클레임에 있는 내 렌탈만 보인다. 최근 생성 순. 항목마다 지금 시점(currentCheckpoint)을 준다. (FR-USR-03)
+         * @description ADMIN은 전체, CUSTOMER는 rentals 클레임에 있는 내 렌탈만 보인다. 최근 생성 순. 항목마다 지금 시점(currentCheckpoint)을 준다. (FR-USR-03) BOOTH(11/3 추가)는 부스 태블릿의 "검사 기다리는 기기" 목록용으로 진행 중(OPEN) 렌탈만 보인다. status를 무엇으로 보내든 OPEN으로 거른다. 부스는 currentCheckpoint가 OPEN인 항목을 고르고 그 checkpointId로 세트를 만든다(빌린 노트북이라 스티커·QR 없이 목록에서 탭).
          */
         get: operations["listRentals"];
         put?: never;
@@ -174,7 +174,7 @@ export interface paths {
         };
         /**
          * 기종 목록
-         * @description 기기 등록 화면의 선택 목록. 기종 수가 적어 페이지 없이 전부 준다. (FR-RNT-03)
+         * @description 기기 등록 화면의 선택 목록이자 관리자 기종 목록. 기종 수가 적어 페이지 없이 전부 주고, 정렬·검색은 화면에서 한다. 항목마다 기준 사양 `spec`을 함께 준다. (FR-RNT-03)
          */
         get: operations["listDeviceModels"];
         put?: never;
@@ -318,12 +318,16 @@ export interface components {
             name: string;
             manufacturer: string | null;
             formFactor: components["schemas"]["DeviceFormFactor"];
+            /** @description 기준 사양(선택 필드, 1.0.0 뒤 추가). 목록에서 기준 사양을 한눈에 보려고 넣는다. 서버는 언제나 보내고, 사양이 없는 기종은 null */
+            spec?: components["schemas"]["ModelSpec"] | null;
         };
         /** @description 기준 사양(진단 비교용) */
         ModelSpec: {
             cpu?: string;
             ramGb?: number;
             ssdGb?: number;
+            /** @description 그래픽(선택). 외장 GPU가 있는 Windows 노트북 등, 예 "NVIDIA GeForce RTX 4060 Laptop". 내장 그래픽만 있으면 비워 둔다 */
+            gpu?: string;
         };
         /** @description 3D 트윈 치수(mm) */
         ModelDimensions: {
@@ -1018,7 +1022,24 @@ export interface operations {
                      *           "modelCode": "MBA13-M2",
                      *           "name": "MacBook Air (M2, 2022)",
                      *           "manufacturer": "Apple",
-                     *           "formFactor": "CLAMSHELL"
+                     *           "formFactor": "CLAMSHELL",
+                     *           "spec": {
+                     *             "cpu": "Apple M2",
+                     *             "ramGb": 8,
+                     *             "ssdGb": 256
+                     *           }
+                     *         },
+                     *         {
+                     *           "modelCode": "GRAM16-2024",
+                     *           "name": "LG 그램 16 (2024)",
+                     *           "manufacturer": "LG",
+                     *           "formFactor": "CLAMSHELL",
+                     *           "spec": {
+                     *             "cpu": "Intel Core Ultra 7 155H",
+                     *             "ramGb": 16,
+                     *             "ssdGb": 512,
+                     *             "gpu": "Intel Arc Graphics"
+                     *           }
                      *         }
                      *       ]
                      *     }

@@ -67,7 +67,7 @@ export const deviceHandlers = [
   http.get("*/api/v1/device-models", ({ request }) => {
     const no = denied(request);
     if (no) return no;
-    const items = db.models.map(({ modelCode, name, manufacturer, formFactor }) => ({ modelCode, name, manufacturer, formFactor }));
+    const items = db.models.map(({ modelCode, name, manufacturer, formFactor, spec }) => ({ modelCode, name, manufacturer, formFactor, spec }));
     return HttpResponse.json({ items });
   }),
 
@@ -84,7 +84,10 @@ export const deviceHandlers = [
     const nameOk = typeof body.name === "string" && body.name.trim().length > 0 && body.name.length <= 128;
     const manufacturerOk = body.manufacturer === undefined || (typeof body.manufacturer === "string" && body.manufacturer.length <= 64);
     const dimsOk = !!d && [d.widthMm, d.depthMm, d.baseHMm, d.lidHMm].every((n) => typeof n === "number" && n > 0);
-    const specOk = !body.spec || [body.spec.ramGb, body.spec.ssdGb].every((n) => n === undefined || (Number.isInteger(n) && n >= 1));
+    const specOk =
+      !body.spec ||
+      ([body.spec.ramGb, body.spec.ssdGb].every((n) => n === undefined || (Number.isInteger(n) && n >= 1)) &&
+        (body.spec.gpu === undefined || (typeof body.spec.gpu === "string" && body.spec.gpu.length <= 128)));
     if (!nameOk || !manufacturerOk || body.formFactor !== "CLAMSHELL" || !dimsOk || !specOk) {
       return problem(400, "VALIDATION_FAILED", "입력값 오류", "이름·형태·치수(0 초과)·사양을 확인해 주세요.");
     }

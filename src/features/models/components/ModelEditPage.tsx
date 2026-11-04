@@ -24,6 +24,7 @@ interface FormValues {
   cpu: string;
   ramGb: string;
   ssdGb: string;
+  gpu: string;
   widthMm: string;
   depthMm: string;
   baseHMm: string;
@@ -40,6 +41,7 @@ const EMPTY: FormValues = {
   cpu: "",
   ramGb: "",
   ssdGb: "",
+  gpu: "",
   widthMm: "",
   depthMm: "",
   baseHMm: "",
@@ -55,6 +57,7 @@ function fromModel(m: DeviceModel): FormValues {
     cpu: m.spec?.cpu ?? "",
     ramGb: m.spec?.ramGb?.toString() ?? "",
     ssdGb: m.spec?.ssdGb?.toString() ?? "",
+    gpu: m.spec?.gpu ?? "",
     widthMm: String(m.dimensions.widthMm),
     depthMm: String(m.dimensions.depthMm),
     baseHMm: String(m.dimensions.baseHMm),
@@ -75,6 +78,7 @@ export function toRequest(v: FormValues): { body?: DeviceModelUpsertRequest; err
   }
   const spec: NonNullable<DeviceModelUpsertRequest["spec"]> = {};
   if (v.cpu.trim()) spec.cpu = v.cpu.trim();
+  if (v.gpu.trim()) spec.gpu = v.gpu.trim();
   for (const key of ["ramGb", "ssdGb"] as const) {
     if (!v[key].trim()) continue;
     const n = Number(v[key]);
@@ -188,6 +192,8 @@ export function ModelEditPage() {
           <Field label="CPU" maxLength={64} placeholder="Apple M2" {...field("cpu")} />
           <Field label="메모리(GB)" inputMode="numeric" {...field("ramGb")} />
           <Field label="저장 공간(GB)" inputMode="numeric" {...field("ssdGb")} />
+          {/* Windows 노트북의 외장 그래픽. 내장 그래픽만 있으면 비워 둔다(계약 ModelSpec.gpu, 최대 128자) */}
+          <Field label="GPU" maxLength={128} placeholder="NVIDIA GeForce RTX 4060 Laptop" {...field("gpu")} />
         </FormGroup>
         <FormActions>
           <Link className={buttonVariants({ variant: "outline" })} to="/admin/models">
