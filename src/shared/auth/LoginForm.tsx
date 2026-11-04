@@ -43,7 +43,7 @@ export function LoginForm({ onLogin, initialEmail = "" }: Props) {
         error={error}
         onChange={(e) => setPassword(e.target.value)}
       />
-      <Button type="submit" busy={busy} disabled={!email || !password}>
+      <Button type="submit" className="mt-2 w-full" busy={busy} disabled={!email || !password}>
         로그인
       </Button>
     </form>

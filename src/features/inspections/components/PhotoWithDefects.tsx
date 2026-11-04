@@ -1,6 +1,11 @@
+import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { Button } from "../../../shared/ui/Button";
 import { polygonPoints } from "../model/photos";
+
+/** 사진 칸 공통 모양과 사진이 없을 때의 빈 칸(4:3) */
+const PHOTO = "relative block overflow-hidden rounded-md bg-muted leading-none";
+export const PHOTO_MISSING = cn(PHOTO, "flex aspect-[4/3] flex-col items-center justify-center gap-2 p-2 text-center text-sm leading-snug text-muted-foreground");
 
 export interface OverlayDefect {
   id: string;
@@ -22,9 +27,10 @@ export function PhotoWithDefects({ src, alt, defects, onOpen }: { src: string; a
   const [attempt, setAttempt] = useState(0);
   if (failedSrc === src) {
     return (
-      <div className="photo photo-missing" role="group" aria-label={alt}>
+      <div className={PHOTO_MISSING} role="group" aria-label={alt}>
         <span>사진을 불러오지 못함</span>
         <Button
+          size="sm"
           onClick={() => {
             setFailedSrc(null);
             setAttempt((n) => n + 1);
@@ -39,6 +45,7 @@ export function PhotoWithDefects({ src, alt, defects, onOpen }: { src: string; a
     <>
       <img
         key={attempt}
+        className="block h-auto w-full"
         src={src}
         alt={alt}
         onLoad={(e) => {
@@ -52,7 +59,7 @@ export function PhotoWithDefects({ src, alt, defects, onOpen }: { src: string; a
       />
       {size && defects.length > 0 && (
         <svg
-          className="photo-overlay"
+          className="pointer-events-none absolute inset-0 size-full [&_polygon]:fill-destructive/25 [&_polygon]:stroke-destructive [&_polygon]:stroke-2"
           viewBox={`0 0 ${size.width} ${size.height}`}
           preserveAspectRatio="none"
           role="img"
@@ -69,13 +76,16 @@ export function PhotoWithDefects({ src, alt, defects, onOpen }: { src: string; a
   );
   if (onOpen) {
     return (
-      <button type="button" className="photo photo-button" aria-label={`${alt} 크게 보기`} onClick={onOpen}>
+      <button
+        type="button"
+        className={cn(PHOTO, "w-full cursor-zoom-in border-0 p-0 ring-offset-2 transition hover:opacity-90 focus-visible:ring-[3px] focus-visible:ring-ring")}
+        aria-label={`${alt} 크게 보기`} onClick={onOpen}>
         {body}
       </button>
     );
   }
   return (
-    <a className="photo" href={src} target="_blank" rel="noopener noreferrer">
+    <a className={cn(PHOTO, "mx-auto w-[min(100%,calc(62vh*4/3))]")} href={src} target="_blank" rel="noopener noreferrer">
       {body}
     </a>
   );

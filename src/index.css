@@ -1,0 +1,97 @@
+/* 화면 스타일 시작점: Tailwind CSS 4 + shadcn/ui 디자인 변수(11/4 목업 색).
+   층 순서: 보관 화면용 옛 CSS(legacy)는 Tailwind 기본(base) 뒤, 부품·유틸리티 앞이라 새 부품 모양을 덮지 않는다 */
+@layer theme, base, legacy, components, utilities;
+@import "tailwindcss";
+@import "./legacy.css" layer(legacy);
+
+/* 목록 표 모양은 왼쪽 메뉴(220px)를 빼고도 6칸이 들어가는 1100px부터(768px에서는 한 글자씩 줄이 바뀜) */
+@custom-variant table (@media (width >= 1100px));
+
+:root {
+  --radius: 0.625rem;
+  /* 브랜드 빨강(목업) */
+  --brand: #c8161d;
+  --brand-hover: #a51218;
+  --brand-soft: #fdeced;
+  --background: #f6f7f9;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+  --primary: var(--brand);
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #5b6270;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #b42318;
+  --destructive-soft: #fdecea;
+  --success: #1a7f37;
+  --success-soft: #e7f6ec;
+  --warning: #b54708;
+  --warning-soft: #fff4d6;
+  --info: #1d4ed8;
+  --info-soft: #e8efff;
+  --border: #e4e4e7;
+  --input: #d4d4d8;
+  --ring: var(--brand);
+  --sidebar: #ffffff;
+  --sidebar-width: 15rem;
+}
+
+@theme inline {
+  --font-sans: Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans antialiased;
+    line-height: 1.5;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}

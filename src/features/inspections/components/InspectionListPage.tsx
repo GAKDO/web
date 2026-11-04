@@ -1,4 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { RefreshCw } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ApiError } from "../../../shared/api/problem";
 import { messageFor } from "../../../shared/api/errorMessages";
@@ -9,7 +11,8 @@ import { useDeviceModels } from "../../devices/api/devices";
 import { useRentals } from "../../rentals/api/rentals";
 import { INSPECTIONS } from "../api/inspections";
 import { VerdictBadge } from "./VerdictBadge";
-import { DataTable } from "../../../shared/ui/DataTable";
+import { DataActions, DataCells, DataRow, DataTable } from "../../../shared/ui/DataTable";
+import { PageHeader } from "../../../shared/ui/PageHeader";
 import { formatDateTime } from "../../../shared/ui/format";
 
 /** 상세에서 이 목록으로 돌아올 곳 */
@@ -33,51 +36,54 @@ export function InspectionListPage() {
 
   return (
     <section>
-      <h1>검사 결과</h1>
-      <div className="row">
-        <p className="muted">기기(렌탈)마다 지금 시점의 판정입니다. 문제 있음은 등급 B~D, 문제 없음은 A입니다. 열어 두면 저절로 갱신됩니다.</p>
-        <Button onClick={refresh}>새로 고침</Button>
-      </div>
+      <PageHeader
+        title="검사 결과"
+        description="기기(렌탈)마다 지금 시점의 판정입니다. 문제 있음은 등급 B~D, 문제 없음은 A입니다. 열어 두면 저절로 갱신됩니다."
+        actions={
+          <Button onClick={refresh}>
+            <RefreshCw aria-hidden="true" />
+            새로 고침
+          </Button>
+        }
+      />
       {rentals.isError && (
         <ErrorBanner
           message={rentals.error instanceof ApiError ? messageFor(rentals.error) : "목록을 불러오지 못했습니다."}
           onRetry={() => void rentals.refetch()}
         />
       )}
-      {rentals.isPending && <p>불러오는 중…</p>}
-      {rentals.isSuccess && items.length === 0 && <p>검사할 렌탈이 없습니다. 렌탈을 먼저 만들어 주세요.</p>}
-      <DataTable cols="1.1fr minmax(110px, 1fr) 1.4fr 1.1fr 1.3fr 120px" labels={["검사 시각", "시리얼", "기기명", "지금 시점", "판정", ""]}>
-        <ul className="cards table-list" aria-label="검사 결과">
-          {items.map((r) => {
-            const checkpoint = r.currentCheckpoint ?? null;
-            return (
-              <li key={r.rentalId} className="card" aria-label={r.serial}>
-                <div className="card-main">
-                  <span>{checkpoint ? formatDateTime(checkpoint.occurredAt) : "—"}</span>
-                  <strong>{r.serial}</strong>
-                  <span>{modelName(r.modelCode)}</span>
-                  <span>{checkpoint ? `${CHECKPOINT_TYPE_LABEL[checkpoint.type]} · ${CHECKPOINT_STATUS_LABEL[checkpoint.status]}` : "시점 없음"}</span>
-                  <VerdictBadge checkpoint={checkpoint} />
-                </div>
-                <div className="row">
-                  {checkpoint ? (
-                    <Link
-                      className="button-link"
-                      to={`/admin/inspections/${r.rentalId}/${checkpoint.checkpointId}`}
-                      state={{ serial: r.serial, backTo: LIST_BACK }}
-                    >
-                      결과 보기
-                    </Link>
-                  ) : (
-                    <Link className="button-link" to={`/admin/rentals/${r.rentalId}`} state={{ serial: r.serial }}>
-                      렌탈 열기
-                    </Link>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+      {rentals.isPending && <p className="text-muted-foreground">불러오는 중…</p>}
+      {rentals.isSuccess && items.length === 0 && <p className="text-muted-foreground">검사할 렌탈이 없습니다. 렌탈을 먼저 만들어 주세요.</p>}
+      <DataTable cols="1.1fr minmax(110px, 1fr) 1.4fr 1.1fr 1.3fr 120px" labels={["검사 시각", "시리얼", "기기명", "지금 시점", "판정", ""]} label="검사 결과">
+        {items.map((r) => {
+          const checkpoint = r.currentCheckpoint ?? null;
+          return (
+            <DataRow key={r.rentalId} label={r.serial}>
+              <DataCells>
+                <span className="text-muted-foreground tabular-nums">{checkpoint ? formatDateTime(checkpoint.occurredAt) : "—"}</span>
+                <strong>{r.serial}</strong>
+                <span>{modelName(r.modelCode)}</span>
+                <span>{checkpoint ? `${CHECKPOINT_TYPE_LABEL[checkpoint.type]} · ${CHECKPOINT_STATUS_LABEL[checkpoint.status]}` : "시점 없음"}</span>
+                <VerdictBadge checkpoint={checkpoint} />
+              </DataCells>
+              <DataActions>
+                {checkpoint ? (
+                  <Link
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                    to={`/admin/inspections/${r.rentalId}/${checkpoint.checkpointId}`}
+                    state={{ serial: r.serial, backTo: LIST_BACK }}
+                  >
+                    결과 보기
+                  </Link>
+                ) : (
+                  <Link className={buttonVariants({ variant: "outline", size: "sm" })} to={`/admin/rentals/${r.rentalId}`} state={{ serial: r.serial }}>
+                    렌탈 열기
+                  </Link>
+                )}
+              </DataActions>
+            </DataRow>
+          );
+        })}
       </DataTable>
       {rentals.hasNextPage && (
         <Button busy={rentals.isFetchingNextPage} onClick={() => void rentals.fetchNextPage()}>

@@ -72,7 +72,7 @@ export function stopCamera(stream: MediaStream | null): void {
   stream?.getTracks().forEach((t) => t.stop());
 }
 
-/** 뷰파인더 비율(가로 4 : 세로 3). styles.css `.viewfinder`와 같아야 한다 */
+/** 뷰파인더 비율(가로 4 : 세로 3). legacy.css `.viewfinder`와 같아야 한다 */
 export const VIEWFINDER_ASPECT = 4 / 3;
 
 /** 화면(object-fit: cover)에 보이는 가운데 4:3 부분만 고른다 */

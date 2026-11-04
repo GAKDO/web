@@ -1,3 +1,5 @@
+import { Button as UiButton } from "@/components/ui/button";
+import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { PhotoWithDefects, type OverlayDefect } from "./PhotoWithDefects";
 
@@ -68,32 +70,33 @@ export function PhotoLightbox({ photos, index, onIndex, onClose }: Props) {
   return (
     <div
       ref={dialogRef}
-      className="lightbox"
+      className="fixed inset-0 z-30 grid place-items-center bg-zinc-950/75 p-4 backdrop-blur-[2px]"
       role="dialog"
       aria-modal="true"
       aria-label={`사진 크게 보기: ${photo.name}`}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="lightbox-body">
-        <div className="lightbox-head">
-          <p>
+      <div className="grid max-h-[calc(100svh-2rem)] w-[min(960px,100%)] gap-3 overflow-auto rounded-xl bg-card p-4 shadow-2xl">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="m-0 flex-1 text-sm">
             <strong>{photo.name}</strong> · 흠집 {photo.defects.length}개
           </p>
-          <span className="muted">
+          <span className="text-sm text-muted-foreground tabular-nums">
             {index + 1} / {photos.length}
           </span>
-          <button ref={closeRef} type="button" onClick={onClose}>
+          <UiButton ref={closeRef} type="button" variant="outline" size="sm" onClick={onClose}>
+            <X aria-hidden="true" />
             닫기
-          </button>
+          </UiButton>
         </div>
         <PhotoWithDefects src={photo.src} alt={`${photo.name} 큰 사진`} defects={photo.defects} />
-        <div className="row lightbox-nav">
-          <button type="button" disabled={!hasPrev} onClick={() => onIndex(index - 1)}>
+        <div className="flex justify-between gap-2">
+          <UiButton type="button" variant="outline" disabled={!hasPrev} onClick={() => onIndex(index - 1)}>
             ← 이전 사진
-          </button>
-          <button type="button" disabled={!hasNext} onClick={() => onIndex(index + 1)}>
+          </UiButton>
+          <UiButton type="button" variant="outline" disabled={!hasNext} onClick={() => onIndex(index + 1)}>
             다음 사진 →
-          </button>
+          </UiButton>
         </div>
       </div>
     </div>

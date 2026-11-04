@@ -42,8 +42,8 @@ export function StatusMenu({ device }: { device: Device }) {
   }
 
   return (
-    <div className="status-menu">
-      <div className="row">
+    <div>
+      <div className="flex flex-wrap gap-2">
         {MOVES[device.status].map((move) => (
           <Button
             key={move.to}
@@ -65,7 +65,7 @@ export function StatusMenu({ device }: { device: Device }) {
         />
       )}
       {error && (
-        <p className="field-error" role="alert">
+        <p className="mt-2 mb-0 text-sm text-destructive" role="alert">
           {error}
         </p>
       )}
