@@ -1,6 +1,6 @@
 import { Navigate, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "./AuthProvider";
-import { Button } from "../ui/Button";
+import { NavIcon } from "../ui/NavIcon";
 import { isArchived } from "../config/features";
 import { pilotDashboardUrl } from "../config/pilotDashboard";
 
@@ -13,13 +13,25 @@ export function RequireAdmin() {
   if (status === "anonymous" || role !== "ADMIN") return <Navigate to="/admin/login" replace />;
   return (
     <div className="admin">
-      <header className="admin-header">
-        <strong>TRACE 관리</strong>
+      <header className="admin-side">
+        <strong className="brand">TRACE</strong>
         <nav aria-label="관리 메뉴">
-          <NavLink to="/admin/inspections">검사 결과</NavLink>
-          <NavLink to="/admin/devices">기기</NavLink>
-          <NavLink to="/admin/models">기종</NavLink>
-          <NavLink to="/admin/rentals">렌탈</NavLink>
+          <NavLink to="/admin/inspections">
+            <NavIcon name="inspections" />
+            검사 결과
+          </NavLink>
+          <NavLink to="/admin/devices">
+            <NavIcon name="devices" />
+            기기
+          </NavLink>
+          <NavLink to="/admin/models">
+            <NavIcon name="models" />
+            기종
+          </NavLink>
+          <NavLink to="/admin/rentals">
+            <NavIcon name="rentals" />
+            렌탈
+          </NavLink>
           {/* 파일럿 추이는 학교 Grafana에 있어 새 탭으로 연다(FR-PIL-02) */}
           {pilotUrl && (
             <a href={pilotUrl} target="_blank" rel="noopener noreferrer">
@@ -27,9 +39,12 @@ export function RequireAdmin() {
             </a>
           )}
         </nav>
-        <Button onClick={() => logout()}>로그아웃</Button>
+        <button type="button" className="logout" onClick={() => logout()}>
+          <NavIcon name="logout" />
+          로그아웃
+        </button>
       </header>
-      <main className="page">
+      <main className="page admin-main">
         <Outlet />
       </main>
     </div>
