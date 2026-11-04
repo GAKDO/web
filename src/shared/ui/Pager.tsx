@@ -9,7 +9,8 @@ interface InfiniteLike<T> {
   data?: { pages: { items: T[] }[] };
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
-  fetchNextPage: () => Promise<unknown>;
+  isFetchNextPageError: boolean;
+  fetchNextPage: () => Promise<{ isError: boolean }>;
 }
 
 /**
@@ -21,7 +22,9 @@ interface InfiniteLike<T> {
 export function usePaged<T>(query: InfiniteLike<T>, resetKey = "") {
   // 지금 쪽은 주소(?page=2)에 둔다. 상세를 열었다가 목록으로 돌아와도(뒤로 가기·목록 링크) 그 쪽이 그대로 보인다
   const [params, setParams] = useSearchParams();
-  const page = Math.max(0, (Number(params.get("page")) || 1) - 1);
+  // 1 이상 정수만 쪽으로 본다(?page=0·-1·1.5·abc는 1쪽)
+  const raw = Number(params.get("page"));
+  const page = Number.isInteger(raw) && raw >= 1 ? raw - 1 : 0;
   const setPage = useCallback(
     (to: number) =>
       setParams(
@@ -44,16 +47,18 @@ export function usePaged<T>(query: InfiniteLike<T>, resetKey = "") {
   }, [resetKey, setPage]);
   const pages = query.data?.pages ?? [];
   const loaded = pages.length;
-  const { hasNextPage, isFetchingNextPage, fetchNextPage } = query;
-  // 주소의 쪽까지 아직 읽지 않았으면(새로 열었거나 캐시가 비었으면) 그 쪽까지 차례로 읽는다
+  const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } = query;
+  // 주소의 쪽까지 아직 읽지 않았으면(새로 열었거나 캐시가 비었으면) 그 쪽까지 차례로 읽는다. 읽기에 실패하면 멈춘다(같은 쪽을 계속 다시 부르지 않게)
   useEffect(() => {
-    if (loaded > 0 && page >= loaded && hasNextPage && !isFetchingNextPage) void fetchNextPage();
-  }, [loaded, page, hasNextPage, isFetchingNextPage, fetchNextPage]);
+    if (loaded > 0 && page >= loaded && hasNextPage && !isFetchingNextPage && !isFetchNextPageError) void fetchNextPage();
+  }, [loaded, page, hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage]);
   const current = Math.min(page, Math.max(loaded - 1, 0));
   const go = async (to: number) => {
     if (to >= loaded) {
       if (!hasNextPage) return;
-      await fetchNextPage();
+      // 다음 쪽을 못 읽었으면 쪽을 옮기지 않는다(빈 쪽이 보이지 않게)
+      const result = await fetchNextPage();
+      if (result.isError) return;
     }
     setPage(to);
   };

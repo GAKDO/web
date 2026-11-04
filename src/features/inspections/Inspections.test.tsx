@@ -225,6 +225,13 @@ test("2쪽에서 결과를 열었다가 목록 링크로 돌아오면 2쪽이 �
   expect(screen.queryByRole("listitem", { name: "C02AIR0003" })).not.toBeInTheDocument();
 });
 
+test("주소의 쪽 값이 1 이상 정수가 아니면(?page=1.5) 1쪽을 보인다", async () => {
+  for (let i = 0; i < 20; i += 1) addRental("C02AIR0003", "OPEN");
+  renderAsAdmin("/admin/inspections?page=1.5");
+  expect(await screen.findByRole("button", { name: "1쪽" })).toHaveAttribute("aria-current", "page");
+  expect(screen.getAllByRole("listitem", { name: "C02AIR0003" })).toHaveLength(20);
+});
+
 test("주소의 시점이 그 렌탈에 없으면 검사 결과를 읽지 않고 검사 전으로 보인다(다른 렌탈의 결과가 섞이지 않음)", async () => {
   // 검사 결과를 읽으면 500이 나게 두어, 읽지 않았음을 오류 없음으로 확인한다
   server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/inspection", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
