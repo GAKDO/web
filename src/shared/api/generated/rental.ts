@@ -65,7 +65,11 @@ export interface paths {
         get: operations["getRental"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 시험 렌탈 지우기
+         * @description 시험 데이터 전용. 기기 시리얼이 `TEST-`로 시작하는 렌탈만 지운다(아니면 409 NOT_TEST_DATA). 렌탈 상태와 관계없이 렌탈·시점을 지우고, 그 기기에 남은 렌탈·파일럿 참가가 없으면 기기도 지운다(같은 시리얼로 다시 등록할 수 있게). 시점마다 trace.checkpoint.purged를 내서 capture-server(세트·사진·흠집·등급)·report-server(기록 체인·리포트)· diagnostics-server(진단)가 자기 데이터를 지운다. 실제 렌탈 기록(봉인된 증거)은 지울 수 없다. (11/4 민서 요청)
+         */
+        delete: operations["deleteTestRental"];
         options?: never;
         head?: never;
         patch?: never;
@@ -88,6 +92,54 @@ export interface paths {
          *     OUT을 시작하면 렌탈 startedAt이 채워진다. (FR-RNT-02)
          */
         post: operations["startCheckpoint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rentals/{rentalId}/booth-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rentalId: components["parameters"]["RentalId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 부스 코드 발급
+         * @description 부스 태블릿에 넣을 6자리 숫자 코드. 부스가 코드를 넣으면 기기·렌탈·시점 ID가 채워져 21자 ID 세 개를 손으로 옮기지 않는다(11/4 민서 요청).
+         *     - 코드는 렌탈의 지금 시점(시작된 시점 중 가장 뒤)에 묶이고, 그 시점이 아직 안 찍힌(OPEN) 상태여야 한다. 없으면 409 CHECKPOINT_ORDER_VIOLATION.
+         *     - 진행 중(OPEN) 렌탈만. 10분 동안 한 번만 쓸 수 있고, 서버는 SHA-256 해시만 저장한다.
+         *     - 같은 렌탈에 다시 발급하면 앞서 발급한 안 쓴 코드는 바로 못 쓴다.
+         */
+        post: operations["issueBoothCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rentals/booth-codes/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 부스 코드 → 기기·렌탈·시점 ID
+         * @description 부스 태블릿이 6자리 코드를 넣어 촬영할 기기·렌탈·시점을 받는다. 코드는 한 번만 쓸 수 있다(성공하면 바로 못 씀).
+         *     - 만료(10분)·이미 사용·같은 렌탈에 다시 발급해 무효가 됨·그 사이 시점이 찍혀 OPEN이 아니면 410 BOOTH_CODE_EXPIRED.
+         *       발급한 적 없는 코드만 400 BOOTH_CODE_INVALID(실패 한도에 셈).
+         *     - 대입 공격 방지: 모든 부스를 합쳐 틀린 코드가 1분에 30번을 넘으면 다음 1분 동안 429 RATE_LIMITED(Retry-After).
+         */
+        post: operations["redeemBoothCode"];
         delete?: never;
         options?: never;
         head?: never;
@@ -282,6 +334,25 @@ export interface components {
             items: components["schemas"]["RentalSummary"][];
             nextCursor: string | null;
         };
+        BoothCodeResponse: {
+            code: components["schemas"]["BoothCode"];
+            expiresAt: components["schemas"]["DateTime"];
+            checkpointId: components["schemas"]["PublicId"];
+            checkpointType: components["schemas"]["RentalCheckpointType"];
+        };
+        /** @description 부스 코드 6자리 숫자 */
+        BoothCode: string;
+        BoothCodeRedeemRequest: {
+            code: components["schemas"]["BoothCode"];
+        };
+        BoothCodeTarget: {
+            rentalId: components["schemas"]["PublicId"];
+            deviceId: components["schemas"]["PublicId"];
+            serial: string;
+            modelCode: components["schemas"]["ModelCode"];
+            checkpointId: components["schemas"]["PublicId"];
+            checkpointType: components["schemas"]["RentalCheckpointType"];
+        };
         DeviceCreateRequest: {
             serial: string;
             modelCode: components["schemas"]["ModelCode"];
@@ -405,7 +476,7 @@ export interface components {
          * @description codes.yaml error_code
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "NOT_TEST_DATA" | "BOOTH_CODE_INVALID" | "BOOTH_CODE_EXPIRED" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
         FieldError: {
             /** @description camelCase 필드 경로 (예 photos[0].sha256) */
             field: string;
@@ -519,6 +590,24 @@ export interface components {
                  *       "title": "찾을 수 없습니다",
                  *       "status": 404,
                  *       "code": "NOT_FOUND"
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description 요청 제한 초과 (IP당 분당 10회, RATE_LIMITED) */
+        TooManyRequests: {
+            headers: {
+                /** @description 다시 시도할 수 있을 때까지 초 */
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "title": "요청이 너무 많습니다",
+                 *       "status": 429,
+                 *       "code": "RATE_LIMITED"
                  *     }
                  */
                 "application/problem+json": components["schemas"]["Problem"];
@@ -722,6 +811,46 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    deleteTestRental: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rentalId: components["parameters"]["RentalId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 지움 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description 시험 데이터가 아님 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "시험 데이터만 지울 수 있습니다",
+                     *       "status": 409,
+                     *       "code": "NOT_TEST_DATA",
+                     *       "detail": "기기 시리얼이 TEST-로 시작하는 렌탈만 지울 수 있습니다."
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     startCheckpoint: {
         parameters: {
             query?: never;
@@ -780,6 +909,130 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+        };
+    };
+    issueBoothCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rentalId: components["parameters"]["RentalId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 발급됨 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "code": "305718",
+                     *       "expiresAt": "2026-11-12T09:10:00+09:00",
+                     *       "checkpointId": "aJ3bYet82WYF8iVlHstT2",
+                     *       "checkpointType": "OUT"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BoothCodeResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description 진행 중 렌탈이 아니거나 찍을 시점이 없음 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "시점 순서가 맞지 않습니다",
+                     *       "status": 409,
+                     *       "code": "CHECKPOINT_ORDER_VIOLATION",
+                     *       "detail": "출고 시점을 먼저 시작하세요."
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    redeemBoothCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "code": "305718"
+                 *     }
+                 */
+                "application/json": components["schemas"]["BoothCodeRedeemRequest"];
+            };
+        };
+        responses: {
+            /** @description 코드가 맞음 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "rentalId": "Ws0HLv6QRbDILPWOcz5I2",
+                     *       "deviceId": "aAXQFO2Vz6ZTFbPctC2dq",
+                     *       "serial": "C02XG2JHJGH5",
+                     *       "modelCode": "MBA13-M2",
+                     *       "checkpointId": "aJ3bYet82WYF8iVlHstT2",
+                     *       "checkpointType": "OUT"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BoothCodeTarget"];
+                };
+            };
+            /** @description 코드 틀림 또는 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "부스 코드가 맞지 않습니다",
+                     *       "status": 400,
+                     *       "code": "BOOTH_CODE_INVALID"
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description 코드 만료·이미 사용됨·다시 발급해 무효·시점이 이미 찍힘 */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "부스 코드가 만료되었습니다",
+                     *       "status": 410,
+                     *       "code": "BOOTH_CODE_EXPIRED"
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
         };
     };
     closeRental: {

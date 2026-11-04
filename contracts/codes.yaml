@@ -6,6 +6,8 @@
 # 0.6.0(2026-11-02): error_code DEVICE_STATUS_TRANSITION_INVALID 추가(폐기 기기는 수리 중으로만 되돌림).
 # 0.7.0(2026-11-02): error_code RECORD_ALREADY_SEALED 추가(관리자 수동 봉인, RP1).
 # 1.0.0(2026-11-03): 계약 고정. 값은 0.7.0과 같고, 이후로는 값 추가만 한다(이름 변경·삭제 없음).
+# Unreleased(2026-11-04): error_code NOT_TEST_DATA 추가(시험 렌탈 지우기). 값 추가만.
+# Unreleased(2026-11-04): error_code BOOTH_CODE_INVALID·BOOTH_CODE_EXPIRED 추가(부스 6자리 코드). 값 추가만.
 # Unreleased(2026-11-03): capture.profile·face_required_quick 추가(부스 위·아래 2면 빠른 검사, MVP). 값 추가만.
 #   OpenAPI용 enum은 scripts/gen_openapi_codes.py로 만든다. 값은 문자열이어야 한다(OFF·ON·YES·NO는 따옴표).
 version: 1.0.0
@@ -96,6 +98,9 @@ error_code:
   - DEVICE_HAS_OPEN_RENTAL       # 409 진행 중 렌탈이 있는데 수리 중·폐기로 바꿈
   - DEVICE_STATUS_TRANSITION_INVALID  # 409 폐기 기기를 사용 가능으로 바로 바꿈(수리 중을 거쳐야 함)
   - PILOT_ALIAS_EXISTS           # 409
+  - NOT_TEST_DATA                # 409 시험 데이터(시리얼 TEST-)가 아닌 렌탈을 지우려 함
+  - BOOTH_CODE_INVALID           # 400 부스 코드 틀림
+  - BOOTH_CODE_EXPIRED           # 410 부스 코드 만료·사용됨·다시 발급해 무효·시점이 이미 찍힘
   # capture
   - CAPTURE_FACES_MISSING        # 409 빠진 면
   - CAPTURE_HASH_MISMATCH        # 409 올린 사진의 해시가 다름
