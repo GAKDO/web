@@ -24,14 +24,12 @@
   --radius-lg: 10px;
   --gap: 12px;
   --side-width: 220px;
-  font-family: Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
-  line-height: 1.5;
-  color: var(--text);
 }
 .page h1 { font-size: 1.5rem; margin: 0 0 16px; }
 .page h2 { font-size: 1.15rem; margin: 24px 0 8px; }
 .page a { color: var(--info); }
-.page { max-width: 1200px; margin: 0 auto; padding: 16px; }
+/* 보관 화면만 옛 글꼴·줄 간격·글자색을 쓴다(:root에 두면 새 화면 글꼴까지 덮음) */
+.page { max-width: 1200px; margin: 0 auto; padding: 16px; font-family: Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif; line-height: 1.5; color: var(--text); }
 .login { max-width: 420px; }
 
 /* 입력칸·버튼 */

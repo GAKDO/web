@@ -31,6 +31,7 @@ export function VerdictSummary({ items, hasMore }: { items: RentalSummary[]; has
     else if (kind === "bad") bad += 1;
     else if (kind === "pending") waiting += 1;
   });
+  const other = items.length - ok - bad - waiting;
   const tiles: Tile[] = [
     { label: "검사 대상", count: items.length, icon: ListChecks, tone: "text-foreground bg-muted" },
     { label: "문제 없음", count: ok, icon: CircleCheck, tone: "text-success bg-success-soft" },
@@ -53,7 +54,9 @@ export function VerdictSummary({ items, hasMore }: { items: RentalSummary[]; has
         ))}
       </ul>
       <p className="mt-2 mb-0 text-xs text-muted-foreground">
-        지금 불러온 {items.length}건 기준{hasMore ? " · 목록이 더 있습니다(아래 더 보기)" : ""}
+        지금 불러온 {items.length}건 기준
+        {other > 0 ? ` · 검사 전·판정 불가·읽지 못함 ${other}건은 위 칸에 넣지 않았습니다` : ""}
+        {hasMore ? " · 목록이 더 있습니다(아래 더 보기)" : ""}
       </p>
     </section>
   );
