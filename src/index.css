@@ -148,6 +148,8 @@
     *, *::before, *::after {
       transition-duration: 0.01ms !important;
       animation-duration: 0.01ms !important;
+      /* 무한 반복(검사 막대 등)도 한 번만 돌고 멈춘다 */
+      animation-iteration-count: 1 !important;
     }
   }
   body {

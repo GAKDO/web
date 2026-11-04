@@ -29,7 +29,7 @@ const ACTIVE =
   "bg-white/10 text-sidebar-active hover:bg-white/10 after:absolute after:inset-y-2 after:-left-3 after:w-[3px] after:rounded-full after:bg-brand";
 // 폰(767px 이하) 아래 탭 한 칸: 엄지로 닿는 아래쪽에 메뉴 4개를 고르게 놓는다(가로로 밀지 않음)
 const TAB =
-  "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-zinc-500 no-underline transition-colors duration-200 active:scale-95 motion-reduce:transform-none";
+  "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-zinc-500 no-underline transition-[color,scale] duration-200 active:scale-95 motion-reduce:scale-none";
 const TAB_ACTIVE =
   "text-foreground before:absolute before:top-0 before:h-0.5 before:w-8 before:rounded-full before:bg-brand";
 

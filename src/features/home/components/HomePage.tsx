@@ -66,7 +66,7 @@ export function HomePage() {
           {STEPS.map(({ icon: Icon, title, text }, i) => (
             <li
               key={title}
-              className="stagger group animate-enter rounded-2xl border bg-card p-5 shadow-xs transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lg motion-reduce:transform-none"
+              className="stagger group animate-enter rounded-2xl border bg-card p-5 shadow-xs transition-[translate,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lg motion-reduce:translate-none"
               style={{ "--i": i + 4 } as CSSProperties}
             >
               <span aria-hidden="true" className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand transition-colors duration-200 group-hover:bg-brand group-hover:text-white">

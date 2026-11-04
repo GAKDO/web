@@ -213,6 +213,18 @@ test("렌탈이 20건 넘으면 다음 쪽으로 넘겨 보고, 요약 카드는
   expect(screen.getByRole("button", { name: "다음 쪽" })).toBeDisabled();
 });
 
+test("2쪽에서 결과를 열었다가 목록 링크로 돌아오면 2쪽이 그대로 보인다", async () => {
+  for (let i = 0; i < 20; i += 1) addRental("C02AIR0003", "OPEN");
+  const user = userEvent.setup();
+  renderAsAdmin("/admin/inspections");
+  await user.click(await screen.findByRole("button", { name: "다음 쪽" }));
+  const row = (await screen.findAllByRole("listitem", { name: "C02PRO0001" }))[0];
+  await user.click(within(row).getByRole("link", { name: "결과 보기" }));
+  await user.click((await screen.findAllByRole("link", { name: /검사 결과 목록으로/ }))[0]);
+  expect(await screen.findByRole("button", { name: "2쪽" })).toHaveAttribute("aria-current", "page");
+  expect(screen.queryByRole("listitem", { name: "C02AIR0003" })).not.toBeInTheDocument();
+});
+
 test("주소의 시점이 그 렌탈에 없으면 검사 결과를 읽지 않고 검사 전으로 보인다(다른 렌탈의 결과가 섞이지 않음)", async () => {
   // 검사 결과를 읽으면 500이 나게 두어, 읽지 않았음을 오류 없음으로 확인한다
   server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/inspection", () => problem(500, "INTERNAL_ERROR", "서버 오류")));

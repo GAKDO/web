@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,18 +16,44 @@ interface InfiniteLike<T> {
  * 커서 목록(계약: nextCursor만 있고 전체 건수는 없음)을 한 쪽씩 보이게 한다.
  * 이어 붙이던 "더 보기"는 폰에서 스크롤이 끝없이 길어져, 지금 쪽만 그리고 이전·다음으로 넘긴다.
  * 이미 읽은 쪽은 번호로 바로 가고, 마지막으로 읽은 쪽에서 다음을 누르면 그때 다음 쪽을 읽는다.
- * resetKey(거르기 조건)가 바뀌면 1쪽으로 돌아간다
+ * resetKey(거르기 조건)가 바뀌면 1쪽으로 돌아간다. 지금 쪽은 주소 ?page=N에 남는다
  */
 export function usePaged<T>(query: InfiniteLike<T>, resetKey = "") {
-  const [page, setPage] = useState(0);
+  // 지금 쪽은 주소(?page=2)에 둔다. 상세를 열었다가 목록으로 돌아와도(뒤로 가기·목록 링크) 그 쪽이 그대로 보인다
+  const [params, setParams] = useSearchParams();
+  const page = Math.max(0, (Number(params.get("page")) || 1) - 1);
+  const setPage = useCallback(
+    (to: number) =>
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (to > 0) next.set("page", String(to + 1));
+          else next.delete("page");
+          return next;
+        },
+        { replace: true },
+      ),
+    [setParams],
+  );
+  // 거르기 조건이 바뀌면 1쪽으로(처음 열 때는 주소의 쪽을 지킨다)
+  const lastKey = useRef(resetKey);
+  useEffect(() => {
+    if (lastKey.current === resetKey) return;
+    lastKey.current = resetKey;
+    setPage(0);
+  }, [resetKey, setPage]);
   const pages = query.data?.pages ?? [];
-  useEffect(() => setPage(0), [resetKey]);
   const loaded = pages.length;
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = query;
+  // 주소의 쪽까지 아직 읽지 않았으면(새로 열었거나 캐시가 비었으면) 그 쪽까지 차례로 읽는다
+  useEffect(() => {
+    if (loaded > 0 && page >= loaded && hasNextPage && !isFetchingNextPage) void fetchNextPage();
+  }, [loaded, page, hasNextPage, isFetchingNextPage, fetchNextPage]);
   const current = Math.min(page, Math.max(loaded - 1, 0));
   const go = async (to: number) => {
     if (to >= loaded) {
-      if (!query.hasNextPage) return;
-      await query.fetchNextPage();
+      if (!hasNextPage) return;
+      await fetchNextPage();
     }
     setPage(to);
   };
@@ -35,8 +62,8 @@ export function usePaged<T>(query: InfiniteLike<T>, resetKey = "") {
     page: current,
     loaded,
     canPrev: current > 0,
-    canNext: current < loaded - 1 || query.hasNextPage,
-    busy: query.isFetchingNextPage,
+    canNext: current < loaded - 1 || hasNextPage,
+    busy: isFetchingNextPage,
     go,
   };
 }

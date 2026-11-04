@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ApiError } from "../../../shared/api/problem";
 import { messageFor } from "../../../shared/api/errorMessages";
 import { CHECKPOINT_STATUS_LABEL, CHECKPOINT_TYPE_LABEL } from "../../../shared/codes/labels";
@@ -17,8 +17,6 @@ import { PageHeader } from "../../../shared/ui/PageHeader";
 import { Pager, usePaged } from "../../../shared/ui/Pager";
 import { formatDateTime } from "../../../shared/ui/format";
 
-/** 상세에서 이 목록으로 돌아올 곳 */
-const LIST_BACK = { path: "/admin/inspections", label: "검사 결과 목록으로" };
 
 /**
  * 검사 결과 목록(spec 006 US1). 전용 API가 없어 렌탈 목록(최근 것부터)의 지금 시점으로 기기별 최근 검사를 보인다.
@@ -31,6 +29,9 @@ export function InspectionListPage() {
   const models = useDeviceModels();
   const modelName = (code: string) => models.data?.find((m) => m.modelCode === code)?.name ?? code;
   const paged = usePaged(rentals);
+  // 상세에서 목록 링크로 돌아오면 보던 쪽(?page=N)으로
+  const { search } = useLocation();
+  const listBack = { path: `/admin/inspections${search}`, label: "검사 결과 목록으로" };
   const items = paged.items;
   const refresh = () => {
     void rentals.refetch();
@@ -75,7 +76,7 @@ export function InspectionListPage() {
                   <Link
                     className={buttonVariants({ variant: "outline", size: "sm" })}
                     to={`/admin/inspections/${r.rentalId}/${checkpoint.checkpointId}`}
-                    state={{ serial: r.serial, backTo: LIST_BACK }}
+                    state={{ serial: r.serial, backTo: listBack }}
                   >
                     결과 보기
                   </Link>

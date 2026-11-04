@@ -39,15 +39,26 @@ export function PhotoGrid({ grids }: { grids: FaceGrid[] }) {
     <>
       {mobile && grids.length > 1 && (
         <div role="tablist" aria-label="사진 면" className="sticky top-14 z-10 -mx-4 mb-1 flex gap-1 bg-background/95 px-4 py-2 backdrop-blur">
-          {grids.map((g) => (
+          {grids.map((g, i) => (
             <button
               key={g.face}
               type="button"
               role="tab"
+              id={`face-tab-${g.face}`}
+              aria-controls={`face-panel-${g.face}`}
               aria-selected={g.face === face}
+              tabIndex={g.face === face ? 0 : -1}
               onClick={() => setFace(g.face)}
+              onKeyDown={(e) => {
+                // 좌우 방향키로 옆 면으로(끝에서는 반대쪽 끝으로)
+                if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+                e.preventDefault();
+                const next = grids[(i + (e.key === "ArrowRight" ? 1 : grids.length - 1)) % grids.length];
+                setFace(next.face);
+                document.getElementById(`face-tab-${next.face}`)?.focus();
+              }}
               className={cn(
-                "flex min-h-10 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border text-sm font-medium transition-all duration-200 active:scale-[0.97]",
+                "flex min-h-10 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border text-sm font-medium transition-[color,background-color,border-color,box-shadow,scale] duration-200 active:scale-[0.97] motion-reduce:scale-none",
                 g.face === face ? "border-foreground bg-foreground text-background shadow-sm" : "bg-card text-muted-foreground",
               )}
             >
@@ -58,7 +69,13 @@ export function PhotoGrid({ grids }: { grids: FaceGrid[] }) {
         </div>
       )}
       {shown.map((grid) => (
-        <section key={grid.face} aria-label={`${CAPTURE_FACE_LABEL[grid.face]} 사진`} className="animate-enter">
+        <section
+          key={grid.face}
+          id={`face-panel-${grid.face}`}
+          {...(mobile && grids.length > 1 ? { role: "tabpanel", "aria-labelledby": `face-tab-${grid.face}` } : {})}
+          aria-label={`${CAPTURE_FACE_LABEL[grid.face]} 사진`}
+          className="animate-enter"
+        >
           <h3 className="mt-4 mb-2 text-base font-semibold">
             {CAPTURE_FACE_LABEL[grid.face]} · 흠집 {grid.defectCount}개
           </h3>
