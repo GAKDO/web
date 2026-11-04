@@ -63,7 +63,7 @@ export function PhotoGrid({ grids }: { grids: FaceGrid[] }) {
               )}
             >
               {CAPTURE_FACE_LABEL[g.face]}
-              <span className={cn("rounded-full px-1.5 text-[11px] font-bold", g.defectCount > 0 ? "bg-destructive text-white" : "bg-muted text-muted-foreground")}>{g.defectCount}</span>
+              <span className={cn("rounded-full px-1.5 text-[0.6875rem] font-bold", g.defectCount > 0 ? "bg-destructive text-white" : "bg-muted text-muted-foreground")}>{g.defectCount}</span>
             </button>
           ))}
         </div>
@@ -79,7 +79,11 @@ export function PhotoGrid({ grids }: { grids: FaceGrid[] }) {
           <h3 className="mt-4 mb-2 text-base font-semibold">
             {CAPTURE_FACE_LABEL[grid.face]} · 흠집 {grid.defectCount}개
           </h3>
-          <ul className="m-0 mb-4 grid list-none grid-cols-[repeat(var(--cols,3),minmax(0,1fr))] gap-2 p-0 md:gap-3" style={{ "--cols": grid.lights.length } as CSSProperties}>
+          {/* 넓은 모니터(1880px 이상)에서는 카메라 두 줄을 한 줄로 이어 사진이 지나치게 커지지 않게 한다 */}
+          <ul
+            className="m-0 mb-4 grid list-none grid-cols-[repeat(var(--cols,3),minmax(0,1fr))] gap-2 p-0 md:gap-3 min-[1880px]:grid-cols-[repeat(var(--cols-wide,6),minmax(0,1fr))]"
+            style={{ "--cols": grid.lights.length, "--cols-wide": Math.min(grid.cells.length, 6) } as CSSProperties}
+          >
             {grid.cells.map((cell) => {
               const name = `${CAPTURE_FACE_LABEL[cell.face]} ${cell.camera} ${cell.light}`;
               const shot = shots.findIndex((p) => p.key === `${cell.face}:${cell.camera}:${cell.light}`);
@@ -90,7 +94,7 @@ export function PhotoGrid({ grids }: { grids: FaceGrid[] }) {
                   ) : (
                     <div className={PHOTO_MISSING}>사진 없음</div>
                   )}
-                  <p className="mt-1 mb-0 grid text-[13px] leading-snug">
+                  <p className="mt-1 mb-0 grid text-[0.8125rem] leading-snug">
                     {!(mobile && grids.length > 1) && <strong>{CAPTURE_FACE_LABEL[cell.face]}</strong>}
                     <span className="text-muted-foreground">
                       {CAPTURE_CAMERA_LABEL[cell.camera]} · {CAPTURE_LIGHT_LABEL[cell.light]} · 흠집 {cell.defects.length}개
@@ -118,7 +122,7 @@ export function TextureList({ overlays }: { overlays: TextureOverlay[] }) {
             alt={`${CAPTURE_FACE_LABEL[o.face]} 사진`}
             defects={o.defects.map((d) => ({ id: d.defectId, title: `${DEFECT_CLASS_LABEL[d.class]} ${formatConfidence(d.confidence)}`, polygon: d.polygon }))}
           />
-          <p className="mt-1 mb-0 text-[13px] text-muted-foreground">
+          <p className="mt-1 mb-0 text-[0.8125rem] text-muted-foreground">
             {CAPTURE_FACE_LABEL[o.face]} · 흠집 {o.defects.length}개
           </p>
         </li>

@@ -47,7 +47,7 @@ export function VerdictSummary({ items, hasMore }: { items: RentalSummary[]; has
               <Icon className="size-5" />
             </span>
             <span className="grid min-w-0">
-              <span className="text-[11px] whitespace-nowrap text-muted-foreground md:text-[13px]">{label}</span>
+              <span className="text-[0.6875rem] whitespace-nowrap text-muted-foreground md:text-[0.8125rem]">{label}</span>
               <strong className={cn("text-xl leading-tight font-bold tracking-tight md:text-2xl md:text-foreground", tone.split(" ")[0])}>{count}</strong>
             </span>
           </li>

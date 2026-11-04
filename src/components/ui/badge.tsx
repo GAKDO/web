@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 // shadcn/ui Badge + 상태 색(성공·경고·정보). 색만으로 뜻을 전하지 않도록 늘 글자와 같이 쓴다
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[13px] font-semibold [&>svg]:pointer-events-none [&>svg]:size-3",
+  "inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[0.8125rem] font-semibold [&>svg]:pointer-events-none [&>svg]:size-3",
   {
     variants: {
       variant: {

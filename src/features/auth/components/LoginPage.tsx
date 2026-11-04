@@ -31,22 +31,22 @@ export function LoginPage() {
           aria-hidden="true"
           className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(255_255_255/0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgb(255_255_255/0.05)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_at_center,black_35%,transparent_80%)]"
         />
-        <div aria-hidden="true" className="absolute -top-24 -left-24 -z-10 size-[420px] rounded-full bg-brand/35 blur-[120px]" />
-        <div className="mx-auto w-full max-w-[460px] min-[1600px]:max-w-[540px]">
+        <div aria-hidden="true" className="absolute -top-24 -left-24 -z-10 size-[26.25rem] rounded-full bg-brand/35 blur-[120px]" />
+        <div className="mx-auto w-full max-w-[30rem]">
           <span className="inline-flex animate-enter items-center gap-3">
             <span aria-hidden="true" className="grid size-10 place-items-center rounded-xl bg-brand text-lg font-black shadow-[0_0_32px_-4px_var(--brand)]">
               T
             </span>
             <span className="text-2xl font-bold tracking-[0.14em]">TRACE</span>
           </span>
-          <p className="stagger mt-6 mb-3 animate-enter text-[26px] leading-tight font-bold tracking-tight md:mt-10 md:text-[40px]" style={{ "--i": 1 } as CSSProperties}>
+          <p className="stagger mt-6 mb-3 animate-enter text-[1.625rem] leading-tight font-bold tracking-tight md:mt-10 md:text-[2.5rem]" style={{ "--i": 1 } as CSSProperties}>
             노트북 상태를
             <br />
             <span className="bg-gradient-to-r from-brand to-[#ff5a5f] bg-clip-text text-transparent">투명하게</span>, 정확하게
           </p>
           <p className="m-0 text-zinc-400">렌탈 기기 검사 · 관리 시스템</p>
           {/* 검사 막대가 노트북을 훑는 그림(장식). 폰에서는 입력칸이 먼저 보이게 뺀다 */}
-          <ScanVisual className="mt-8 hidden max-w-[380px] md:block" />
+          <ScanVisual className="mt-8 hidden aspect-[16/9] md:block" />
           <ol className="m-0 mt-8 hidden list-none gap-3 p-0 md:grid">
             {STEPS.map(({ icon: Icon, text }, i) => (
               <li
@@ -55,7 +55,7 @@ export function LoginPage() {
                 style={{ "--i": i + 2 } as CSSProperties}
               >
                 <span aria-hidden="true" className="grid size-9 place-items-center rounded-lg bg-white/10 text-white">
-                  <Icon className="size-[18px]" />
+                  <Icon className="size-[1.125rem]" />
                 </span>
                 <span className="text-sm text-zinc-300">
                   <span className="mr-2 font-semibold text-white tabular-nums">0{i + 1}</span>
@@ -66,8 +66,14 @@ export function LoginPage() {
           </ol>
         </div>
       </section>
-      <main className="flex flex-col items-center justify-center gap-4 px-4 py-8">
-        <Card className="w-full max-w-[400px] animate-enter [animation-delay:120ms] gap-5 py-7 shadow-[0_8px_40px_-12px_rgb(16_24_40/0.18)] min-[1600px]:max-w-[440px]">
+      <main className="relative isolate flex flex-col items-center justify-start gap-4 overflow-hidden px-4 py-6 md:justify-center md:py-8">
+        {/* 장식: 넓은 화면에서 입력 쪽이 텅 비어 보이지 않게 옅은 점 무늬와 빨간 빛(읽는 내용 없음) */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 hidden bg-[radial-gradient(rgb(16_24_40/0.07)_1px,transparent_1px)] bg-[size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_70%)] md:block"
+        />
+        <div aria-hidden="true" className="absolute top-1/2 left-1/2 -z-10 hidden size-[32rem] -translate-1/2 rounded-full bg-brand/[0.06] blur-[120px] md:block" />
+        <Card className="w-full max-w-[26rem] animate-enter [animation-delay:120ms] gap-5 py-7 shadow-[0_8px_40px_-12px_rgb(16_24_40/0.18)]">
           <CardHeader className="px-7">
             <h1 className="m-0 text-2xl font-bold tracking-tight">관리자 로그인</h1>
             <CardDescription>관리자 계정 이메일과 비밀번호를 넣어 주세요.</CardDescription>
