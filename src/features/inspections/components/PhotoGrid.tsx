@@ -82,7 +82,7 @@ export function PhotoGrid({ grids }: { grids: FaceGrid[] }) {
           {/* 넓은 모니터(1880px 이상)에서는 카메라 두 줄을 한 줄로 이어 사진이 지나치게 커지지 않게 한다 */}
           <ul
             className="m-0 mb-4 grid list-none grid-cols-[repeat(var(--cols,3),minmax(0,1fr))] gap-2 p-0 md:gap-3 min-[1880px]:grid-cols-[repeat(var(--cols-wide,6),minmax(0,1fr))]"
-            style={{ "--cols": grid.lights.length, "--cols-wide": grid.cells.length } as CSSProperties}
+            style={{ "--cols": grid.lights.length, "--cols-wide": Math.min(grid.cells.length, 6) } as CSSProperties}
           >
             {grid.cells.map((cell) => {
               const name = `${CAPTURE_FACE_LABEL[cell.face]} ${cell.camera} ${cell.light}`;
