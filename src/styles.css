@@ -49,7 +49,7 @@ a { color: var(--info); }
 .nav-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 @media (min-width: 768px) {
   .admin { display: grid; grid-template-columns: var(--side-width) minmax(0, 1fr); }
-  .admin-side { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; align-items: stretch; padding: 20px 12px; border-bottom: 0; border-right: 1px solid var(--border); }
+  .admin-side { position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; align-items: stretch; padding: 20px 12px; border-bottom: 0; border-right: 1px solid var(--border); }
   .admin-side .brand { padding: 0 12px 16px; }
   .admin-side nav { flex-direction: column; flex-wrap: nowrap; }
   .admin-side nav a, .admin-side .logout { gap: 8px; padding: 0 12px; }
@@ -79,7 +79,7 @@ a { color: var(--info); }
 .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: var(--gap); }
 .field label { font-size: 0.9rem; font-weight: 600; }
 .field input, .field select, .field textarea { padding: 10px; font: inherit; font-size: 16px; color: inherit; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); width: 100%; }
-.field input:focus, .field select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.field input:focus, .field select:focus { outline: 2px solid transparent; outline-offset: 0; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
 .field input[aria-invalid="true"] { border-color: var(--danger); }
 .field-error, .error-banner { color: var(--danger); }
 .field-error { margin: 0; font-size: 0.9rem; }
