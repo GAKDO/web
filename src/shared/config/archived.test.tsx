@@ -65,6 +65,14 @@ test("수령·반납 시점을 보관해도 이미 시작한 수령 시점은 �
   expect(screen.queryByRole("listitem", { name: "반납" })).not.toBeInTheDocument();
 });
 
+test("폰 촬영만 보관한 시연 배포(11/6)에서는 수령이 열려 있으면 부스 빠른 검사로 찍으라는 안내가 보이고 반납 단계도 보인다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "phoneCapture,diagnostics,report,account,pilot");
+  const receipt = await openRentalWithOpenReceipt();
+  expect(within(receipt).getByText(/부스 빠른 검사 목록에서/)).toBeInTheDocument();
+  expect(screen.getByRole("listitem", { name: "반납" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "렌탈 종료" })).toBeInTheDocument();
+});
+
 test("리포트를 보관하면 고객 내 렌탈 목록에서도 리포트 보기 링크가 사라지고 렌탈 카드는 그대로 보인다", async () => {
   vi.stubEnv("VITE_ARCHIVED_FEATURES", "report");
   renderAsCustomer("/my/rentals");

@@ -53,6 +53,10 @@ function CheckpointSteps({ rental, serial, onError }: { rental: Rental; serial?:
                 {type === "RCV" && checkpoint.status === "OPEN" && !isArchived("phoneCapture") && (
                   <CaptureLinkPanel rentalId={rental.rentalId} checkpointId={checkpoint.checkpointId} />
                 )}
+                {/* 수령·반납도 부스 빠른 검사로 찍는다(11/4, capture가 시점 종류를 앞 시점 수로 정함). 폰 촬영을 숨긴 배포에서만 안내 */}
+                {type !== "OUT" && checkpoint.status === "OPEN" && isArchived("phoneCapture") && (
+                  <small className="text-muted-foreground">부스 빠른 검사 목록에서 이 기기를 누르거나 위 부스 코드를 넣어 찍으세요</small>
+                )}
                 {/* 진단 에이전트는 시점마다 붙는다. 봉인 전(OPEN)에만 코드를 만든다. MVP 배포에서는 보관(숨김) */}
                 {checkpoint.status === "OPEN" && !isArchived("diagnostics") && (
                   <PairingCodePanel
