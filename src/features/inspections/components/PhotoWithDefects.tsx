@@ -20,7 +20,20 @@ export interface OverlayDefect {
  * onOpen이 있으면 누를 때 크게 보기 팝업을 열고, 없으면(팝업 안) 원본을 새 탭에 연다.
  * 사진 주소(사전 서명 URL)를 못 읽으면 깨진 그림 대신 안내와 다시 시도를 보인다
  */
-export function PhotoWithDefects({ src, alt, defects, onOpen }: { src: string; alt: string; defects: OverlayDefect[]; onOpen?: () => void }) {
+export function PhotoWithDefects({
+  src,
+  alt,
+  defects,
+  onOpen,
+  large = false,
+}: {
+  src: string;
+  alt: string;
+  defects: OverlayDefect[];
+  onOpen?: () => void;
+  /** 크게 보기 팝업 안: 낮은 화면에서도 사진 전체가 보이게 폭을 화면 높이에 맞춰 묶는다 */
+  large?: boolean;
+}) {
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   // 실패는 그 주소에만 매어 둔다: 사진 주소가 새로 발급되면(만료 전 갱신) 따로 누르지 않아도 새 주소로 다시 읽는다
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
@@ -85,7 +98,7 @@ export function PhotoWithDefects({ src, alt, defects, onOpen }: { src: string; a
     );
   }
   return (
-    <a className={cn(PHOTO, "mx-auto w-[min(100%,calc(62vh*4/3))]")} href={src} target="_blank" rel="noopener noreferrer">
+    <a className={cn(PHOTO, large && "mx-auto w-[min(100%,calc(62vh*4/3))]")} href={src} target="_blank" rel="noopener noreferrer">
       {body}
     </a>
   );

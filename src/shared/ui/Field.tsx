@@ -37,14 +37,15 @@ interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
 /** 레이블이 붙은 선택 칸 */
 export function SelectField({ label, error, children, className, ...select }: SelectFieldProps) {
   const id = useId();
+  const errorId = `${id}-error`;
   return (
     <div className={cn(WRAP, className)}>
       <Label htmlFor={id}>{label}</Label>
-      <NativeSelect id={id} aria-invalid={error ? true : undefined} {...select}>
+      <NativeSelect id={id} aria-invalid={error ? true : undefined} aria-describedby={error ? errorId : undefined} {...select}>
         {children}
       </NativeSelect>
       {error && (
-        <p className={ERROR} role="alert">
+        <p id={errorId} className={ERROR} role="alert">
           {error}
         </p>
       )}

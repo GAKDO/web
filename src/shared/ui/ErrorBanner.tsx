@@ -14,7 +14,7 @@ export function ErrorBanner({ message, onRetry, children }: ErrorBannerProps) {
   return (
     <Alert variant="destructive" role="alert" className="mb-4">
       <CircleAlert aria-hidden="true" />
-      <AlertDescription className="flex flex-wrap items-center gap-x-3 gap-y-2 text-destructive">
+      <AlertDescription className="flex flex-wrap items-center gap-x-3 gap-y-2 text-destructive [&_a]:font-semibold [&_a]:text-destructive [&_a]:underline [&_a]:underline-offset-4">
         <span className="font-medium">{message}</span>
         {children}
         {onRetry && (

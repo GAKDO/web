@@ -89,7 +89,7 @@ export function PhotoLightbox({ photos, index, onIndex, onClose }: Props) {
             닫기
           </UiButton>
         </div>
-        <PhotoWithDefects src={photo.src} alt={`${photo.name} 큰 사진`} defects={photo.defects} />
+        <PhotoWithDefects large src={photo.src} alt={`${photo.name} 큰 사진`} defects={photo.defects} />
         <div className="flex justify-between gap-2">
           <UiButton type="button" variant="outline" disabled={!hasPrev} onClick={() => onIndex(index - 1)}>
             ← 이전 사진
