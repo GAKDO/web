@@ -1,42 +1,92 @@
+import type { CSSProperties } from "react";
 import { Navigate } from "react-router-dom";
+import { Camera, ScanSearch, ShieldCheck } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { useAuth } from "../../../shared/auth/AuthProvider";
 import { LoginForm } from "../../../shared/auth/LoginForm";
 import { LOGIN_NOTICE } from "../../../shared/auth/loginNotice";
+import { ScanVisual } from "../../../shared/ui/ScanVisual";
 
+// 왼쪽 면에 적는 세 단계(MVP 흐름: 부스 촬영 → 흠집 판정 → 결과 확인). 장식이라 읽는 내용만 짧게
+const STEPS = [
+  { icon: Camera, text: "부스에서 윗면·바닥 12장 촬영" },
+  { icon: ScanSearch, text: "흠집을 찾아 등급 판정" },
+  { icon: ShieldCheck, text: "관리자 화면에서 결과 확인" },
+];
+
+/**
+ * 관리자 로그인: 768px 이상은 왼쪽 어두운 브랜드 면 + 오른쪽 입력, 375px은 위아래.
+ * 디자인 도구(ui-ux-pro-max) 추천대로 장식은 격자 무늬와 빨간 빛 하나만 두고, 2560px에서도 양쪽 내용 폭을 묶어 비지 않게 한다
+ */
 export function LoginPage() {
   const { status, role, notice, login } = useAuth();
 
   if (status === "authenticated" && role === "ADMIN") return <Navigate to="/admin/devices" replace />;
 
   return (
-    <div className="login-split">
-      <section className="login-brand" aria-label="TRACE 소개">
-        <div className="login-brand-text">
-          <p className="login-brand-name">TRACE</p>
-          <p className="login-brand-slogan">
+    <div className="grid min-h-svh grid-rows-[auto_1fr] bg-background md:grid-cols-[1.1fr_1fr] md:grid-rows-none">
+      <section aria-label="TRACE 소개" className="relative isolate flex flex-col justify-center overflow-hidden bg-sidebar px-5 py-8 text-white md:px-12 md:py-12">
+        {/* 장식: 격자 무늬 + 빨간 빛(읽는 내용 없음) */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(255_255_255/0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgb(255_255_255/0.05)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_at_center,black_35%,transparent_80%)]"
+        />
+        <div aria-hidden="true" className="absolute -top-24 -left-24 -z-10 size-[420px] rounded-full bg-brand/35 blur-[120px]" />
+        <div className="mx-auto w-full max-w-[460px] min-[1600px]:max-w-[540px]">
+          <span className="inline-flex animate-enter items-center gap-3">
+            <span aria-hidden="true" className="grid size-10 place-items-center rounded-xl bg-brand text-lg font-black shadow-[0_0_32px_-4px_var(--brand)]">
+              T
+            </span>
+            <span className="text-2xl font-bold tracking-[0.14em]">TRACE</span>
+          </span>
+          <p className="stagger mt-6 mb-3 animate-enter text-[26px] leading-tight font-bold tracking-tight md:mt-10 md:text-[40px]" style={{ "--i": 1 } as CSSProperties}>
             노트북 상태를
             <br />
-            투명하게, 정확하게
+            <span className="bg-gradient-to-r from-brand to-[#ff5a5f] bg-clip-text text-transparent">투명하게</span>, 정확하게
           </p>
-          <p className="login-brand-sub">렌탈 기기 검사 · 관리 시스템</p>
+          <p className="m-0 text-zinc-400">렌탈 기기 검사 · 관리 시스템</p>
+          {/* 검사 막대가 노트북을 훑는 그림(장식). 폰에서는 입력칸이 먼저 보이게 뺀다 */}
+          <ScanVisual className="mt-8 hidden max-w-[380px] md:block" />
+          <ol className="m-0 mt-8 hidden list-none gap-3 p-0 md:grid">
+            {STEPS.map(({ icon: Icon, text }, i) => (
+              <li
+                key={text}
+                className="stagger flex animate-enter items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 backdrop-blur-sm transition-colors duration-200 hover:border-white/20 hover:bg-white/[0.06]"
+                style={{ "--i": i + 2 } as CSSProperties}
+              >
+                <span aria-hidden="true" className="grid size-9 place-items-center rounded-lg bg-white/10 text-white">
+                  <Icon className="size-[18px]" />
+                </span>
+                <span className="text-sm text-zinc-300">
+                  <span className="mr-2 font-semibold text-white tabular-nums">0{i + 1}</span>
+                  {text}
+                </span>
+              </li>
+            ))}
+          </ol>
         </div>
-        {/* 사진 파일 대신 선으로 그린 노트북(넓은 화면의 빈 공간을 채움, 읽는 내용은 없음) */}
-        <svg className="login-art" viewBox="0 0 320 200" aria-hidden="true" focusable="false">
-          <rect x="60" y="20" width="200" height="130" rx="8" />
-          <rect x="74" y="34" width="172" height="102" rx="3" className="login-art-screen" />
-          <path d="M30 160h260l-14 20H44z" />
-          <path d="M138 160h44" className="login-art-notch" />
-          <path d="M96 84l24 24 48-48" className="login-art-check" />
-        </svg>
       </section>
-      <main className="login-pane">
-        <div className="login-card">
-          <h1>관리자 로그인</h1>
-          {status === "authenticated" && role !== "ADMIN" && <p role="status">{LOGIN_NOTICE.notAdmin}</p>}
-          {notice && <p role="status">{LOGIN_NOTICE[notice]}</p>}
-          <LoginForm onLogin={(email, password) => login(email, password)} />
-        </div>
-        <p className="login-foot">TRACE Rental Management System</p>
+      <main className="flex flex-col items-center justify-center gap-4 px-4 py-8">
+        <Card className="w-full max-w-[400px] animate-enter [animation-delay:120ms] gap-5 py-7 shadow-[0_8px_40px_-12px_rgb(16_24_40/0.18)] min-[1600px]:max-w-[440px]">
+          <CardHeader className="px-7">
+            <h1 className="m-0 text-2xl font-bold tracking-tight">관리자 로그인</h1>
+            <CardDescription>관리자 계정 이메일과 비밀번호를 넣어 주세요.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-2 px-7">
+            {status === "authenticated" && role !== "ADMIN" && (
+              <p role="status" className="m-0 text-sm text-warning">
+                {LOGIN_NOTICE.notAdmin}
+              </p>
+            )}
+            {notice && (
+              <p role="status" className="m-0 text-sm text-warning">
+                {LOGIN_NOTICE[notice]}
+              </p>
+            )}
+            <LoginForm onLogin={(email, password) => login(email, password)} />
+          </CardContent>
+        </Card>
+        <p className="m-0 text-xs text-muted-foreground">TRACE Rental Management System</p>
       </main>
     </div>
   );

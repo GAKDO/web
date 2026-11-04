@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { api, ApiError, unwrap } from "../../../shared/api/client";
 import type { CheckpointMedia, Inspection } from "../../../shared/api/types";
 import { mediaRefreshMs } from "../../report/api/report";
@@ -19,9 +19,9 @@ export function inspectionPollMs(inspection: Inspection | null | undefined): num
   return inspection.grade === null && inspection.reasons.length === 0 ? INSPECTION_POLL_MS : false;
 }
 
-/** 한 시점의 검사 결과. 아직 없으면(404) 오류가 아니라 null(판정 대기). 404는 다시 시도하지 않고 기다리는 동안만 주기적으로 다시 읽는다 */
-export function useCheckpointInspection(checkpointId: string | undefined) {
-  return useQuery<Inspection | null>({
+/** 한 시점의 검사 결과 읽기 설정. 목록 줄·요약 카드·상세가 같은 키를 써서 한 번만 읽는다 */
+export function inspectionQuery(checkpointId: string | undefined) {
+  return queryOptions<Inspection | null>({
     queryKey: [...INSPECTIONS, checkpointId],
     queryFn: async () => {
       try {
@@ -35,6 +35,11 @@ export function useCheckpointInspection(checkpointId: string | undefined) {
     retry: false,
     refetchInterval: (query) => (query.state.status === "success" ? inspectionPollMs(query.state.data) : false),
   });
+}
+
+/** 한 시점의 검사 결과. 아직 없으면(404) 오류가 아니라 null(판정 대기). 404는 다시 시도하지 않고 기다리는 동안만 주기적으로 다시 읽는다 */
+export function useCheckpointInspection(checkpointId: string | undefined) {
+  return useQuery(inspectionQuery(checkpointId));
 }
 
 /** 한 시점의 사진 보기 주소(원본 사진·면 사진). 아직 없으면(404) null이고 판정처럼 3초마다 다시 읽는다. 주소는 만료 전에 새로 받는다 */

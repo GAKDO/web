@@ -1,3 +1,6 @@
+import { PageHeader } from "../../../shared/ui/PageHeader";
+import { FormActions, FormCard, FormGroup } from "../../../shared/ui/FormCard";
+import { buttonVariants } from "@/components/ui/button";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { DeviceFormFactor, DeviceModel, DeviceModelUpsertRequest } from "../../../shared/api/types";
@@ -130,16 +133,16 @@ export function ModelEditPage() {
     );
   }
 
-  if (editing && existing.isPending) return <p>불러오는 중…</p>;
+  if (editing && existing.isPending) return <p className="text-muted-foreground">불러오는 중…</p>;
   if (editing && existing.isError) {
     return (
-      <section className="narrow">
-        <h1>기종 수정</h1>
+      <section className="max-w-xl">
+        <PageHeader title="기종 수정" />
         <ErrorBanner
           message={existing.error instanceof ApiError ? messageFor(existing.error) : "기종을 불러오지 못했습니다."}
           onRetry={() => void existing.refetch()}
         />
-        <Link className="button-link" to="/admin/models">
+        <Link className={buttonVariants({ variant: "outline" })} to="/admin/models">
           기종 목록으로
         </Link>
       </section>
@@ -153,10 +156,10 @@ export function ModelEditPage() {
   });
 
   return (
-    <section className="narrow">
-      <h1>{editing ? "기종 수정" : "기종 등록"}</h1>
+    <section className="max-w-2xl">
+      <PageHeader title={editing ? "기종 수정" : "기종 등록"} description="3D 리포트와 촬영 윤곽이 이 치수를 씁니다." />
       {error && <ErrorBanner message={error} />}
-      <form onSubmit={submit} noValidate>
+      <FormCard onSubmit={submit}>
         <Field
           label="기종 코드"
           required
@@ -175,29 +178,27 @@ export function ModelEditPage() {
             </option>
           ))}
         </SelectField>
-        <fieldset>
-          <legend>치수(mm) — 3D 리포트와 촬영 윤곽이 씁니다</legend>
+        <FormGroup legend="치수(mm) — 3D 리포트와 촬영 윤곽이 씁니다">
           <Field label="가로(mm)" required inputMode="decimal" {...field("widthMm")} />
           <Field label="세로(mm)" required inputMode="decimal" {...field("depthMm")} />
           <Field label="본체 두께(mm)" required inputMode="decimal" {...field("baseHMm")} />
           <Field label="덮개 두께(mm)" required inputMode="decimal" {...field("lidHMm")} />
-        </fieldset>
-        <fieldset>
-          <legend>기준 사양(선택) — 진단 비교에 씁니다</legend>
+        </FormGroup>
+        <FormGroup legend="기준 사양(선택) — 진단 비교에 씁니다">
           <Field label="CPU" maxLength={64} placeholder="Apple M2" {...field("cpu")} />
           <Field label="메모리(GB)" inputMode="numeric" {...field("ramGb")} />
           <Field label="저장 공간(GB)" inputMode="numeric" {...field("ssdGb")} />
-        </fieldset>
-        <div className="row">
-          <Link className="button-link" to="/admin/models">
+        </FormGroup>
+        <FormActions>
+          <Link className={buttonVariants({ variant: "outline" })} to="/admin/models">
             취소
           </Link>
           {/* 새로 등록할 때는 코드 중복을 보려고 기종 목록을 받은 뒤에 저장을 켠다 */}
           <Button type="submit" busy={save.isPending} disabled={!editing && !list.isSuccess}>
             {editing ? "수정 저장" : "등록"}
           </Button>
-        </div>
-      </form>
+        </FormActions>
+      </FormCard>
     </section>
   );
 }

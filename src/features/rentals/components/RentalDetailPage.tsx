@@ -1,3 +1,7 @@
+import { PageHeader, SectionTitle } from "../../../shared/ui/PageHeader";
+import { InfoList } from "../../../shared/ui/InfoList";
+import { Badge } from "@/components/ui/badge";
+import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import type { CheckpointType, Rental } from "../../../shared/api/types";
@@ -12,7 +16,7 @@ import { useCloseRental, useRental, useStartCheckpoint } from "../api/rentals";
 import { nextAction } from "../nextAction";
 import { CaptureLinkPanel } from "./CaptureLinkPanel";
 import { PairingCodePanel } from "./PairingCodePanel";
-import { formatDate } from "./RentalListPage";
+import { formatDate, RENTAL_STATUS_VARIANT } from "./RentalListPage";
 import { InspectionHistory } from "../../inspections/components/InspectionHistory";
 import { formatDateTime } from "../../../shared/ui/format";
 
@@ -34,16 +38,16 @@ function CheckpointSteps({ rental, serial, onError }: { rental: Rental; serial?:
   // MVP(11/3, A 답변)는 렌탈당 출고 검사 1번이라 수령·반납 시작 버튼을 숨긴다. 이미 시작한 시점은 그대로 보인다
   const steps = STEPS.filter((type) => type === "OUT" || !isArchived("laterCheckpoints") || rental.checkpoints.some((c) => c.type === type));
   return (
-    <ol className="steps" aria-label="시점">
+    <ol className="m-0 grid list-none gap-2 p-0" aria-label="시점">
       {steps.map((type) => {
         const checkpoint = rental.checkpoints.find((c) => c.type === type);
         const isNext = action.kind === "start" && action.type === type;
         return (
-          <li key={type} className="card" aria-label={CHECKPOINT_TYPE_LABEL[type]}>
-            <strong>{CHECKPOINT_TYPE_LABEL[type]}</strong>
+          <li key={type} className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-4 shadow-xs" aria-label={CHECKPOINT_TYPE_LABEL[type]}>
+            <strong className="min-w-12">{CHECKPOINT_TYPE_LABEL[type]}</strong>
             {checkpoint ? (
               <>
-                <span className={`badge${checkpoint.status === "SEALED" ? "" : " badge-maintenance"}`}>{CHECKPOINT_STATUS_LABEL[checkpoint.status]}</span>
+                <Badge variant={checkpoint.status === "SEALED" ? "success" : "warning"}>{CHECKPOINT_STATUS_LABEL[checkpoint.status]}</Badge>
                 {/* 수령은 고객이 폰으로 찍는다. 시점을 시작한 뒤 촬영 전(OPEN)에만 QR을 만든다(WE2 US1). MVP 배포에서는 보관(숨김) */}
                 {type === "RCV" && checkpoint.status === "OPEN" && !isArchived("phoneCapture") && (
                   <CaptureLinkPanel rentalId={rental.rentalId} checkpointId={checkpoint.checkpointId} />
@@ -70,7 +74,7 @@ function CheckpointSteps({ rental, serial, onError }: { rental: Rental; serial?:
                 >
                   {CHECKPOINT_TYPE_LABEL[type]} 시작
                 </Button>
-                {!isNext && rental.status !== "CLOSED" && <small>{reason(type, action)}</small>}
+                {!isNext && rental.status !== "CLOSED" && <small className="text-muted-foreground">{reason(type, action)}</small>}
               </>
             )}
           </li>
@@ -88,7 +92,7 @@ export function RentalDetailPage() {
   const [asking, setAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (rental.isPending) return <p>불러오는 중…</p>;
+  if (rental.isPending) return <p className="text-muted-foreground">불러오는 중…</p>;
   // 이미 받은 상세가 있으면 다시 읽기(3초 폴링)가 실패해도 화면을 지우지 않는다
   const data = rental.data;
   if (!data) return <ErrorBanner message={toMessage(rental.error)} onRetry={() => void rental.refetch()} />;
@@ -98,43 +102,55 @@ export function RentalDetailPage() {
   const serial = data.serial || hint;
 
   return (
-    <section className="rental-detail">
-      <h1>렌탈 {serial ?? ""}</h1>
-      <p>
-        대여자 참조 번호 {data.renterRef} · <span className="badge">{RENTAL_STATUS_LABEL[data.status]}</span> · 만든 날 {formatDate(data.createdAt)}
-      </p>
+    <section>
+      <PageHeader
+        title={`렌탈 ${serial ?? ""}`}
+        description={
+          <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+            대여자 참조 번호 {data.renterRef} · <Badge variant={RENTAL_STATUS_VARIANT[data.status]}>{RENTAL_STATUS_LABEL[data.status]}</Badge> · 만든 날{" "}
+            {formatDate(data.createdAt)}
+          </span>
+        }
+      />
       {rental.isError && <ErrorBanner message={toMessage(rental.error)} onRetry={() => void rental.refetch()} />}
       {error && <ErrorBanner message={error} />}
-      <h2>렌탈 기본 정보</h2>
-      <dl className="info-list info-box">
-        <dt>대여자 참조 번호</dt>
-        <dd>{data.renterRef}</dd>
-        <dt>기기 시리얼</dt>
-        <dd>{serial ?? "—"}</dd>
-        <dt>현재 상태</dt>
-        <dd>{RENTAL_STATUS_LABEL[data.status]}</dd>
-        <dt>시작</dt>
-        <dd>{formatDateTime(data.startedAt)}</dd>
-        <dt>종료</dt>
-        <dd>{formatDateTime(data.endedAt)}</dd>
-      </dl>
+      <SectionTitle>렌탈 기본 정보</SectionTitle>
+      <InfoList
+        className="rounded-xl border bg-card p-5 shadow-xs"
+        items={[
+          ["대여자 참조 번호", data.renterRef],
+          ["기기 시리얼", serial ?? "—"],
+          ["현재 상태", RENTAL_STATUS_LABEL[data.status]],
+          ["시작", formatDateTime(data.startedAt)],
+          ["종료", formatDateTime(data.endedAt)],
+        ]}
+      />
       <InspectionHistory rental={data} serial={serial} />
-      <h2>시점 진행</h2>
+      <SectionTitle>시점 진행</SectionTitle>
       <CheckpointSteps rental={data} serial={serial} onError={setError} />
       {/* 3D 리포트(WE3)는 MVP 배포에서 보관(숨김) */}
       {data.checkpoints.length > 0 && !isArchived("report") && (
-        <p>
-          <Link to={`/my/rentals/${data.rentalId}`}>리포트 보기</Link>
+        <p className="mt-4">
+          <Link className="text-info underline-offset-4 hover:underline" to={`/my/rentals/${data.rentalId}`}>
+            리포트 보기
+          </Link>
         </p>
       )}
       {action.kind === "waitSeal" && action.type === "RET" && !laterArchived && (
-        <p role="status">반납 기록이 봉인되면 종료할 수 있습니다. 지금 반납 시점: {CHECKPOINT_STATUS_LABEL[action.status]}</p>
+        <p role="status" className="mt-4 text-sm text-muted-foreground">
+          반납 기록이 봉인되면 종료할 수 있습니다. 지금 반납 시점: {CHECKPOINT_STATUS_LABEL[action.status]}
+        </p>
       )}
       {action.kind === "closed" ? (
-        <p role="status">종료된 렌탈입니다.</p>
+        <p role="status" className="mt-4 text-sm text-muted-foreground">
+          종료된 렌탈입니다.
+        </p>
       ) : (
-        <div className="row">
-          <Button onClick={() => void rental.refetch()}>새로 고침</Button>
+        <div className="mt-6 flex flex-wrap gap-2">
+          <Button onClick={() => void rental.refetch()}>
+            <RefreshCw aria-hidden="true" />
+            새로 고침
+          </Button>
           {/* 종료는 반납 봉인 뒤에만 되므로 수령·반납을 보관한 MVP에서는 숨긴다(다시 검사하려면 렌탈을 새로 만든다) */}
           {!laterArchived && (
             <Button disabled={action.kind !== "close"} onClick={() => setAsking(true)}>

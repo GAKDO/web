@@ -29,7 +29,7 @@ export function DeviceEditor({ device, onDone }: { device: Device; onDone: () =>
   }
 
   return (
-    <form className="editor" onSubmit={submit} aria-label={`${device.serial} 고치기`}>
+    <form className="grid gap-x-3 md:grid-cols-2" onSubmit={submit} aria-label={`${device.serial} 고치기`}>
       <Field label="시리얼" value={device.serial} readOnly disabled />
       <Field label="기종" value={device.modelName} readOnly disabled />
       <SelectField label="OS" value={os} onChange={(e) => setOs(e.target.value as DeviceOs)}>
@@ -41,7 +41,7 @@ export function DeviceEditor({ device, onDone }: { device: Device; onDone: () =>
       </SelectField>
       <Field label="색상" maxLength={32} value={color} onChange={(e) => setColor(e.target.value)} />
       <Field label="자산번호" maxLength={64} value={assetNo} error={error} onChange={(e) => setAssetNo(e.target.value)} />
-      <div className="row">
+      <div className="col-span-full flex flex-wrap gap-2">
         <Button onClick={onDone}>취소</Button>
         <Button type="submit" busy={update.isPending}>
           저장

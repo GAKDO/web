@@ -1,3 +1,6 @@
+import { PageHeader } from "../../../shared/ui/PageHeader";
+import { FormActions, FormCard } from "../../../shared/ui/FormCard";
+import { buttonVariants } from "@/components/ui/button";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { Device } from "../../../shared/api/types";
@@ -35,16 +38,17 @@ export function RentalCreatePage() {
   }
 
   return (
-    <section className="narrow">
-      <h1>렌탈 만들기</h1>
+    <section className="max-w-xl">
+      <PageHeader title="렌탈 만들기" description="기기와 대여자 참조 번호로 렌탈을 만듭니다. 기본은 사용 가능 기기만 보입니다." />
       {error && (
         <ErrorBanner message={messageFor(error, { deviceStatus: picked?.status })}>
           {error.code === "RENTAL_OPEN_EXISTS" && <Link to="/admin/rentals?status=OPEN">진행 중인 렌탈 보기</Link>}
         </ErrorBanner>
       )}
-      <form onSubmit={submit} noValidate>
-        <label className="switch">
+      <FormCard onSubmit={submit}>
+        <label className="mb-4 flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium">
           <input
+            className="size-5 accent-brand"
             type="checkbox"
             checked={showAll}
             onChange={(e) => {
@@ -65,20 +69,20 @@ export function RentalCreatePage() {
           ))}
         </SelectField>
         {devices.hasNextPage && (
-          <Button type="button" busy={devices.isFetchingNextPage} onClick={() => void devices.fetchNextPage()}>
+          <Button type="button" size="sm" className="mb-4" busy={devices.isFetchingNextPage} onClick={() => void devices.fetchNextPage()}>
             기기 더 불러오기
           </Button>
         )}
         <Field label="대여자 참조 번호" required maxLength={128} placeholder="이름 대신 쓰는 번호" value={renterRef} onChange={(e) => setRenterRef(e.target.value)} />
-        <div className="row">
-          <Link className="button-link" to="/admin/rentals">
+        <FormActions>
+          <Link className={buttonVariants({ variant: "outline" })} to="/admin/rentals">
             취소
           </Link>
           <Button type="submit" busy={create.isPending} disabled={!deviceId || !renterRef.trim()}>
             렌탈 만들기
           </Button>
-        </div>
-      </form>
+        </FormActions>
+      </FormCard>
     </section>
   );
 }

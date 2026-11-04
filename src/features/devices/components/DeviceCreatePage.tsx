@@ -1,3 +1,6 @@
+import { PageHeader } from "../../../shared/ui/PageHeader";
+import { FormActions, FormCard } from "../../../shared/ui/FormCard";
+import { buttonVariants } from "@/components/ui/button";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { DeviceOs } from "../../../shared/api/types";
@@ -38,10 +41,10 @@ export function DeviceCreatePage() {
   }
 
   return (
-    <section className="narrow">
-      <h1>기기 등록</h1>
+    <section className="max-w-xl">
+      <PageHeader title="기기 등록" description="등록된 기종으로 새 기기를 등록합니다." />
       {error && <ErrorBanner message={error} />}
-      <form onSubmit={submit} noValidate>
+      <FormCard onSubmit={submit}>
         <Field label="시리얼" required maxLength={64} value={serial} onChange={(e) => setSerial(e.target.value)} />
         <SelectField label="기종" required value={modelCode} onChange={(e) => setModelCode(e.target.value)}>
           <option value="">기종을 고르세요</option>
@@ -60,15 +63,15 @@ export function DeviceCreatePage() {
         </SelectField>
         <Field label="색상(선택)" maxLength={32} value={color} onChange={(e) => setColor(e.target.value)} />
         <Field label="자산번호(선택)" maxLength={64} value={assetNo} onChange={(e) => setAssetNo(e.target.value)} />
-        <div className="row">
-          <Link className="button-link" to="/admin/devices">
+        <FormActions>
+          <Link className={buttonVariants({ variant: "outline" })} to="/admin/devices">
             취소
           </Link>
           <Button type="submit" busy={create.isPending} disabled={!serial.trim() || !modelCode}>
             등록
           </Button>
-        </div>
-      </form>
+        </FormActions>
+      </FormCard>
     </section>
   );
 }

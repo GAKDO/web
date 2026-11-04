@@ -1,0 +1,166 @@
+/* 화면 스타일 시작점: Tailwind CSS 4 + shadcn/ui 디자인 변수.
+   디자인 방향은 ui-ux-pro-max(디자인 도구)의 업무용 관리 화면 추천을 따랐다:
+   Minimalism & Swiss + Data-Dense Dashboard, 글꼴 Inter(숫자·영문) + Pretendard(한글), 어두운 왼쪽 메뉴, 브랜드 빨강은 포인트만.
+   층 순서: 보관 화면용 옛 CSS(legacy)는 Tailwind 기본(base) 뒤, 부품·유틸리티 앞이라 새 부품 모양을 덮지 않는다 */
+@layer theme, base, legacy, components, utilities;
+@import "tailwindcss";
+@import "./legacy.css" layer(legacy);
+
+/* 목록 표 모양은 왼쪽 메뉴(220px)를 빼고도 6칸이 들어가는 1100px부터(768px에서는 한 글자씩 줄이 바뀜) */
+@custom-variant table (@media (width >= 1100px));
+
+:root {
+  --radius: 0.625rem;
+  /* 브랜드 빨강(목업) */
+  --brand: #c8161d;
+  --brand-hover: #a51218;
+  --brand-soft: #fdeced;
+  --background: #f7f7f8;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+  --primary: var(--brand);
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #5b6270;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #b42318;
+  --destructive-soft: #fdecea;
+  --success: #1a7f37;
+  --success-soft: #e7f6ec;
+  --warning: #b54708;
+  --warning-soft: #fff4d6;
+  --info: #1d4ed8;
+  --info-soft: #e8efff;
+  --border: #e4e4e7;
+  --input: #d4d4d8;
+  --ring: var(--brand);
+  /* 어두운 왼쪽 메뉴 */
+  --sidebar: #0b0b0f;
+  --sidebar-foreground: #a1a1aa;
+  --sidebar-active: #ffffff;
+  --sidebar-border: #1f1f26;
+  --sidebar-width: 15rem;
+  /* 폰 아래 탭 메뉴 높이(아이폰 홈 막대 칸은 따로 더함) */
+  --tabbar-height: 4rem;
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-border: var(--sidebar-border);
+
+  /* 움직임: 짧고(150~400ms) 한 방향. 화면 들어올 때 아래에서 살짝, 패널은 옆에서, 검사 스캔 막대는 위아래로 */
+  --animate-enter: enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade: fade 200ms ease-out both;
+  --animate-sheet-right: sheet-right 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-sheet-up: sheet-up 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-scan: scan 2.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  --animate-ping-soft: ping-soft 2.8s ease-out infinite;
+  --animate-float: float 6s ease-in-out infinite;
+
+  @keyframes enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes sheet-right {
+    from { transform: translateX(100%); }
+    to { transform: none; }
+  }
+  @keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to { transform: none; }
+  }
+  /* 노트북 그림 위를 위→아래→위로 훑는 검사 막대 */
+  @keyframes scan {
+    0%, 100% { top: 6%; }
+    50% { top: 88%; }
+  }
+  /* 흠집 표시: 막대가 지나간 뒤 나타났다 사라짐 */
+  @keyframes ping-soft {
+    0%, 30% { opacity: 0; transform: scale(0.6); }
+    40% { opacity: 1; transform: scale(1); }
+    85% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans antialiased;
+    line-height: 1.5;
+    /* Inter 숫자를 같은 폭으로(표의 시각·시리얼이 줄마다 맞음) */
+    font-feature-settings: "cv11", "ss01";
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.005em;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      /* 무한 반복(검사 막대 등)도 한 번만 돌고 멈춘다 */
+      animation-iteration-count: 1 !important;
+    }
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  /* 순서대로 나타나기: style="--i: 2"처럼 순번을 주면 60ms씩 늦게 */
+  .stagger {
+    animation-delay: calc(var(--i, 0) * 60ms);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}

@@ -103,12 +103,18 @@ test("기기 정보에서 색상·자산번호·OS를 고치면 저장되고, �
   expect(db.devices.find((d) => d.serial === "LGGRAM0002")).toMatchObject({ color: "실버", assetNo: "TR-0202" });
 });
 
-test("결과가 많으면 더 보기로 다음 쪽을 불러온다", async () => {
+test("결과가 많으면 한 쪽씩 보이고, 다음 쪽·이전 쪽·쪽 번호로 넘긴다", async () => {
   for (let i = 0; i < 20; i += 1) db.devices.push({ ...db.devices[5], deviceId: `extra-${i}`, serial: `EXTRA${i}` });
   const user = await openList();
   expect(shownSerials()).toHaveLength(20);
-  await user.click(screen.getByRole("button", { name: "더 보기" }));
-  await waitFor(() => expect(shownSerials()).toHaveLength(28));
+  expect(screen.getByRole("button", { name: "이전 쪽" })).toBeDisabled();
+  await user.click(screen.getByRole("button", { name: "다음 쪽" }));
+  // 이어 붙이지 않고 다음 쪽(남은 8대)만 보인다
+  await waitFor(() => expect(shownSerials()).toHaveLength(8));
+  expect(screen.getByRole("button", { name: "2쪽" })).toHaveAttribute("aria-current", "page");
+  expect(screen.getByRole("button", { name: "다음 쪽" })).toBeDisabled();
+  await user.click(screen.getByRole("button", { name: "1쪽" }));
+  await waitFor(() => expect(shownSerials()).toHaveLength(20));
 });
 
 test("목록 한 줄에는 기기명·시리얼번호·상태·등록일이 보이고, 상세보기를 누르면 같은 화면에 기본 정보가 펼쳐진다", async () => {

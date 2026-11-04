@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { CircleCheck, X } from "lucide-react";
 
 /**
  * 등록·수정 성공 알림. 화면을 옮길 때 navigate(..., { state: { notice } })로 넘긴 문장을 잠깐 보여 준다.
@@ -40,10 +41,19 @@ export function FlashNotice({ ms = 4000 }: { ms?: number }) {
 
   if (!shown) return null;
   return (
-    <div className="toast" role="status">
-      <span>✔ {shown}</span>
-      <button type="button" aria-label="알림 닫기" onClick={() => setShown(null)}>
-        ×
+    <div
+      className="fixed right-4 bottom-4 z-20 flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-lg border border-success/30 bg-card py-2 pr-2 pl-4 text-sm font-semibold text-success shadow-lg"
+      role="status"
+    >
+      <CircleCheck aria-hidden="true" className="size-4 shrink-0" />
+      <span>{shown}</span>
+      <button
+        type="button"
+        aria-label="알림 닫기"
+        className="inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+        onClick={() => setShown(null)}
+      >
+        <X aria-hidden="true" className="size-4" />
       </button>
     </div>
   );

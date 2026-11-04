@@ -200,15 +200,36 @@ test("목록 카드의 판정을 읽지 못하면 그 카드에만 읽지 못했
   expect(within(await card("C02AIR0001")).getByText("검사 전")).toBeInTheDocument();
 });
 
-test("렌탈이 20건 넘으면 더 보기로 다음 쪽을 이어 붙인다", async () => {
+test("렌탈이 20건 넘으면 다음 쪽으로 넘겨 보고, 요약 카드는 지금 쪽만 센다", async () => {
   for (let i = 0; i < 20; i += 1) addRental("C02AIR0003", "OPEN");
   const user = userEvent.setup();
   renderAsAdmin("/admin/inspections");
-  const more = await screen.findByRole("button", { name: "더 보기" });
+  const next = await screen.findByRole("button", { name: "다음 쪽" });
   expect(screen.getAllByRole("listitem", { name: "C02AIR0003" })).toHaveLength(20);
-  await user.click(more);
+  expect(screen.getByText(/이 쪽 20건 기준 · 다음 쪽이 더 있습니다/)).toBeInTheDocument();
+  await user.click(next);
   await waitFor(() => expect(screen.getByRole("listitem", { name: "C02AIR0001" })).toBeInTheDocument());
-  expect(screen.queryByRole("button", { name: "더 보기" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("listitem", { name: "C02AIR0003" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "다음 쪽" })).toBeDisabled();
+});
+
+test("2쪽에서 결과를 열었다가 목록 링크로 돌아오면 2쪽이 그대로 보인다", async () => {
+  for (let i = 0; i < 20; i += 1) addRental("C02AIR0003", "OPEN");
+  const user = userEvent.setup();
+  renderAsAdmin("/admin/inspections");
+  await user.click(await screen.findByRole("button", { name: "다음 쪽" }));
+  const row = (await screen.findAllByRole("listitem", { name: "C02PRO0001" }))[0];
+  await user.click(within(row).getByRole("link", { name: "결과 보기" }));
+  await user.click((await screen.findAllByRole("link", { name: /검사 결과 목록으로/ }))[0]);
+  expect(await screen.findByRole("button", { name: "2쪽" })).toHaveAttribute("aria-current", "page");
+  expect(screen.queryByRole("listitem", { name: "C02AIR0003" })).not.toBeInTheDocument();
+});
+
+test("주소의 쪽 값이 1 이상 정수가 아니면(?page=1.5) 1쪽을 보인다", async () => {
+  for (let i = 0; i < 20; i += 1) addRental("C02AIR0003", "OPEN");
+  renderAsAdmin("/admin/inspections?page=1.5");
+  expect(await screen.findByRole("button", { name: "1쪽" })).toHaveAttribute("aria-current", "page");
+  expect(screen.getAllByRole("listitem", { name: "C02AIR0003" })).toHaveLength(20);
 });
 
 test("주소의 시점이 그 렌탈에 없으면 검사 결과를 읽지 않고 검사 전으로 보인다(다른 렌탈의 결과가 섞이지 않음)", async () => {

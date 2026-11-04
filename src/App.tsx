@@ -1,5 +1,6 @@
 // 화면 라우트. 관리자 화면(WE1)은 /admin 아래, 고객 폰 촬영·3D 리포트·검증 페이지는 이 아래에 더한다
 import { Navigate, type RouteObject } from "react-router-dom";
+import { HomePage } from "./features/home/components/HomePage";
 import { PasswordResetPage } from "./features/account/components/PasswordResetPage";
 import { WithdrawnPage, WithdrawPage } from "./features/account/components/WithdrawPage";
 import { LoginPage } from "./features/auth/components/LoginPage";
@@ -22,17 +23,9 @@ import { VerifyPage } from "./features/verify/components/VerifyPage";
 import { RequireAdmin } from "./shared/auth/RequireAdmin";
 import { RequireCustomer } from "./shared/auth/RequireCustomer";
 
-function Home() {
-  return (
-    <main className="page">
-      <h1>TRACE</h1>
-      <p>노트북 렌탈 상태 기록</p>
-    </main>
-  );
-}
 
 export const routes: RouteObject[] = [
-  { path: "/", element: <Home /> },
+  { path: "/", element: <HomePage /> },
   { path: "/admin/login", element: <LoginPage /> },
   { path: "/verify/:verifyToken", element: <VerifyPage /> },
   { path: "/login", element: <CustomerLoginPage /> },

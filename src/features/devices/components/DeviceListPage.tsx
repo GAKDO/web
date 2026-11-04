@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import type { Device, DeviceStatus } from "../../../shared/api/types";
 import { ApiError } from "../../../shared/api/problem";
 import { messageFor } from "../../../shared/api/errorMessages";
@@ -10,7 +13,11 @@ import { Field, SelectField } from "../../../shared/ui/Field";
 import { useDeviceModels, useDevices } from "../api/devices";
 import { DeviceEditor } from "./DeviceEditor";
 import { StatusMenu } from "./StatusMenu";
-import { DataTable } from "../../../shared/ui/DataTable";
+import { DataActions, DataCells, DataDetail, DataRow, DataTable } from "../../../shared/ui/DataTable";
+import { InfoList } from "../../../shared/ui/InfoList";
+import { PageHeader } from "../../../shared/ui/PageHeader";
+import { FilterPanel } from "../../../shared/ui/FilterPanel";
+import { Pager, usePaged } from "../../../shared/ui/Pager";
 import { formatDate } from "../../../shared/ui/format";
 
 /** 입력이 멈춘 뒤에만 검색한다 */
@@ -23,51 +30,51 @@ function useDebounced(value: string, ms = 250): string {
   return debounced;
 }
 
+/** 기기 상태 배지 색: 사용 가능 초록, 수리 중 노랑, 폐기 회색 */
+const STATUS_VARIANT = { ACTIVE: "success", MAINTENANCE: "warning", RETIRED: "secondary" } as const satisfies Record<DeviceStatus, string>;
+
 function DeviceCard({ device }: { device: Device }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const panelId = `device-${device.deviceId}-detail`;
   return (
-    <li className="card" aria-label={device.serial}>
-      <div className="card-main">
+    <DataRow label={device.serial}>
+      <DataCells>
         <span>{device.modelName}</span>
         <strong>{device.serial}</strong>
-        <span className={`badge badge-${device.status.toLowerCase()}`}>{DEVICE_STATUS_LABEL[device.status]}</span>
-        <span>{formatDate(device.createdAt)}</span>
-      </div>
-      <div className="row">
-        <Button aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((v) => !v)}>
+        <Badge variant={STATUS_VARIANT[device.status]}>{DEVICE_STATUS_LABEL[device.status]}</Badge>
+        <span className="text-muted-foreground tabular-nums">{formatDate(device.createdAt)}</span>
+      </DataCells>
+      <DataActions>
+        <Button size="sm" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((v) => !v)}>
           {open ? "닫기" : "상세보기"}
         </Button>
-      </div>
+      </DataActions>
       {/* 상세보기: 별도 페이지 없이 같은 줄 아래에 기본 정보와 상태 바꾸기·고치기를 펼친다 */}
       {open && (
-        <div id={panelId} className="detail-panel">
+        <DataDetail id={panelId}>
           {editing ? (
             <DeviceEditor device={device} onDone={() => setEditing(false)} />
           ) : (
             <>
-              <dl className="info-list">
-                <dt>OS</dt>
-                <dd>{DEVICE_OS_LABEL[device.os]}</dd>
-                <dt>색상</dt>
-                <dd>{device.color ?? "없음"}</dd>
-                <dt>자산번호</dt>
-                <dd>{device.assetNo ?? "없음"}</dd>
-                <dt>등록일</dt>
-                <dd>{formatDate(device.createdAt)}</dd>
-                <dt>고친 날</dt>
-                <dd>{formatDate(device.updatedAt)}</dd>
-              </dl>
-              <div className="row">
+              <InfoList
+                items={[
+                  ["OS", DEVICE_OS_LABEL[device.os]],
+                  ["색상", device.color ?? "없음"],
+                  ["자산번호", device.assetNo ?? "없음"],
+                  ["등록일", formatDate(device.createdAt)],
+                  ["고친 날", formatDate(device.updatedAt)],
+                ]}
+              />
+              <div className="flex flex-wrap items-start gap-2">
                 <StatusMenu device={device} />
                 <Button onClick={() => setEditing(true)}>고치기</Button>
               </div>
             </>
           )}
-        </div>
+        </DataDetail>
       )}
-    </li>
+    </DataRow>
   );
 }
 
@@ -82,17 +89,30 @@ export function DeviceListPage() {
     status: status || undefined,
     q,
   });
-  const items = devices.data?.pages.flatMap((page) => page.items) ?? [];
+  const paged = usePaged(devices, `${modelCode}|${status}|${q}`);
+  const items = paged.items;
+  const active = (modelCode ? 1 : 0) + (status ? 1 : 0);
 
   return (
     <section>
-      <div className="row heading-row">
-        <h1>기기 목록</h1>
-        <Link className="button-link primary" to="/admin/devices/new">
-          기기 등록
-        </Link>
-      </div>
-      <div className="filters">
+      <PageHeader
+        title="기기 목록"
+        actions={
+          <Link className={buttonVariants()} to="/admin/devices/new">
+            <Plus aria-hidden="true" />
+            기기 등록
+          </Link>
+        }
+      />
+      <FilterPanel
+        active={active}
+        cols="1fr 1fr 2fr"
+        onReset={() => {
+          setModelCode("");
+          setStatus("");
+        }}
+        inline={<Field label="검색" type="search" placeholder="시리얼·자산번호 일부" maxLength={64} value={search} onChange={(e) => setSearch(e.target.value)} />}
+      >
         <SelectField label="기종" value={modelCode} onChange={(e) => setModelCode(e.target.value)}>
           <option value="">전체</option>
           {models.data?.map((m) => (
@@ -109,28 +129,22 @@ export function DeviceListPage() {
             </option>
           ))}
         </SelectField>
-        <Field label="검색" type="search" placeholder="시리얼·자산번호 일부" maxLength={64} value={search} onChange={(e) => setSearch(e.target.value)} />
-      </div>
+
+      </FilterPanel>
       {devices.isError && (
         <ErrorBanner
           message={devices.error instanceof ApiError ? messageFor(devices.error) : "목록을 불러오지 못했습니다."}
           onRetry={() => void devices.refetch()}
         />
       )}
-      {devices.isPending && <p>불러오는 중…</p>}
-      {devices.isSuccess && items.length === 0 && <p>조건에 맞는 기기가 없습니다.</p>}
-      <DataTable cols="1.6fr minmax(110px, 1fr) 0.8fr 0.9fr 120px" labels={["기기명", "시리얼번호", "상태", "등록일", ""]}>
-        <ul className="cards table-list" aria-label="기기">
-          {items.map((device) => (
-            <DeviceCard key={device.deviceId} device={device} />
-          ))}
-        </ul>
+      {devices.isPending && <p className="text-muted-foreground">불러오는 중…</p>}
+      {devices.isSuccess && items.length === 0 && <p className="text-muted-foreground">조건에 맞는 기기가 없습니다.</p>}
+      <DataTable cols="1.6fr minmax(110px, 1fr) 0.8fr 0.9fr 120px" labels={["기기명", "시리얼번호", "상태", "등록일", ""]} label="기기">
+        {items.map((device) => (
+          <DeviceCard key={device.deviceId} device={device} />
+        ))}
       </DataTable>
-      {devices.hasNextPage && (
-        <Button busy={devices.isFetchingNextPage} onClick={() => void devices.fetchNextPage()}>
-          더 보기
-        </Button>
-      )}
+      <Pager paged={paged} label="기기" />
     </section>
   );
 }
