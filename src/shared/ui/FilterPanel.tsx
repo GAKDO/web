@@ -38,7 +38,7 @@ export function FilterPanel({ children, active, inline, cols, onReset }: FilterP
       <div className="min-w-0 flex-1 [&>*]:mb-0">{inline}</div>
       <Button type="button" variant="outline" className={cn(!inline && "w-full", active > 0 && "border-brand text-brand")} onClick={() => setOpen(true)} aria-haspopup="dialog">
         <SlidersHorizontal aria-hidden="true" />
-        필터{active > 0 && <span className="grid size-5 place-items-center rounded-full bg-brand text-[11px] font-bold text-white">{active}</span>}
+        필터{active > 0 && <span className="grid size-5 place-items-center rounded-full bg-brand text-[0.6875rem] font-bold text-white">{active}</span>}
       </Button>
       {open && (
         <Sheet

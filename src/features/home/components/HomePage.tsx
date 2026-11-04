@@ -23,7 +23,7 @@ export function HomePage() {
           aria-hidden="true"
           className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(255_255_255/0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgb(255_255_255/0.05)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_at_top,black_30%,transparent_75%)]"
         />
-        <div aria-hidden="true" className="absolute -top-32 left-1/2 -z-10 size-[520px] -translate-x-1/2 rounded-full bg-brand/30 blur-[140px]" />
+        <div aria-hidden="true" className="absolute -top-32 left-1/2 -z-10 size-[32.5rem] -translate-x-1/2 rounded-full bg-brand/30 blur-[140px]" />
         <header className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 md:px-8">
           <span className="inline-flex items-center gap-2.5">
             <span aria-hidden="true" className="grid size-8 place-items-center rounded-lg bg-brand font-black shadow-[0_0_24px_-4px_var(--brand)]">
@@ -41,12 +41,12 @@ export function HomePage() {
               <span className="size-1.5 rounded-full bg-brand" />
               렌탈 노트북 검사 · 관리
             </p>
-            <p className="stagger mt-5 mb-4 animate-enter text-[34px] leading-[1.15] font-bold tracking-tight md:text-[52px]" style={{ "--i": 1 } as CSSProperties}>
+            <p className="stagger mt-5 mb-4 animate-enter text-[2.125rem] leading-[1.15] font-bold tracking-tight md:text-[3.25rem]" style={{ "--i": 1 } as CSSProperties}>
               노트북 상태를
               <br />
               <span className="bg-gradient-to-r from-brand to-[#ff5a5f] bg-clip-text text-transparent">투명하게</span>, 정확하게
             </p>
-            <p className="stagger m-0 max-w-md animate-enter text-[15px] leading-relaxed text-zinc-400 md:text-base" style={{ "--i": 2 } as CSSProperties}>
+            <p className="stagger m-0 max-w-md animate-enter text-[0.9375rem] leading-relaxed text-zinc-400 md:text-base" style={{ "--i": 2 } as CSSProperties}>
               빌려주기 전과 돌려받은 뒤, 부스에서 찍은 사진으로 흠집을 찾아 기록합니다. 누가 봐도 같은 결과를 사진과 함께 남깁니다.
             </p>
             <div className="stagger mt-8 flex animate-enter flex-wrap gap-3" style={{ "--i": 3 } as CSSProperties}>
@@ -56,7 +56,7 @@ export function HomePage() {
               </Link>
             </div>
           </div>
-          <ScanVisual className="mx-auto max-w-[460px]" />
+          <ScanVisual className="mx-auto max-w-[28.75rem]" />
         </div>
       </section>
 

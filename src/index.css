@@ -144,6 +144,13 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.005em;
   }
+  /* 넓은 모니터(1920·2560)에서는 글자·간격을 함께 키운다(rem 기준이라 화면 전체가 같은 비율로 커짐) */
+  @media (min-width: 1880px) {
+    html { font-size: 112.5%; }
+  }
+  @media (min-width: 2400px) {
+    html { font-size: 125%; }
+  }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       transition-duration: 0.01ms !important;

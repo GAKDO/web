@@ -24,7 +24,7 @@ export function DataTable({ cols, labels, label, children }: DataTableProps) {
       style={{ "--cols": cols } as CSSProperties}
     >
       <div
-        className="hidden gap-3 border-b bg-zinc-50 px-4 py-2.5 text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase table:grid table:grid-cols-(--cols)"
+        className="hidden gap-3 border-b bg-zinc-50 px-4 py-2.5 text-[0.6875rem] font-semibold tracking-[0.06em] text-muted-foreground uppercase table:grid table:grid-cols-(--cols)"
         aria-hidden="true"
       >
         {labels.map((text, i) => (
@@ -45,7 +45,7 @@ export function DataRow({ label, className, children }: { label: string; classNa
       aria-label={label}
       className={cn(
         "grid animate-enter grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 rounded-xl border bg-card px-3.5 py-3 shadow-xs transition-colors md:p-4",
-        "table:min-h-[52px] table:grid-cols-(--cols) table:rounded-none table:border-0 table:border-t table:px-4 table:py-1.5 table:text-sm table:shadow-none table:first:border-t-0 table:animate-none table:hover:bg-zinc-50",
+        "table:min-h-[3.25rem] table:grid-cols-(--cols) table:rounded-none table:border-0 table:border-t table:px-4 table:py-1.5 table:text-sm table:shadow-none table:first:border-t-0 table:animate-none table:hover:bg-zinc-50",
         className,
       )}
     >

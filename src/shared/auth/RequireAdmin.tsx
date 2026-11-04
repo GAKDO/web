@@ -29,7 +29,7 @@ const ACTIVE =
   "bg-white/10 text-sidebar-active hover:bg-white/10 after:absolute after:inset-y-2 after:-left-3 after:w-[3px] after:rounded-full after:bg-brand";
 // 폰(767px 이하) 아래 탭 한 칸: 엄지로 닿는 아래쪽에 메뉴 4개를 고르게 놓는다(가로로 밀지 않음)
 const TAB =
-  "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-zinc-500 no-underline transition-[color,scale] duration-200 active:scale-95 motion-reduce:scale-none";
+  "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[0.6875rem] font-medium text-zinc-500 no-underline transition-[color,scale] duration-200 active:scale-95 motion-reduce:scale-none";
 const TAB_ACTIVE =
   "text-foreground before:absolute before:top-0 before:h-0.5 before:w-8 before:rounded-full before:bg-brand";
 
@@ -86,7 +86,7 @@ export function RequireAdmin() {
             <span className="px-2 pb-6">
               <Brand />
             </span>
-            <p className="m-0 px-3 pb-2 text-[11px] font-semibold tracking-[0.14em] text-zinc-500 uppercase">
+            <p className="m-0 px-3 pb-2 text-[0.6875rem] font-semibold tracking-[0.14em] text-zinc-500 uppercase">
               관리
             </p>
             <nav aria-label="관리 메뉴" className="flex flex-1 flex-col gap-1">
@@ -96,7 +96,7 @@ export function RequireAdmin() {
                   to={to}
                   className={({ isActive }) => cn(ITEM, isActive && ACTIVE)}
                 >
-                  <Icon aria-hidden="true" className="size-[18px]" />
+                  <Icon aria-hidden="true" className="size-[1.125rem]" />
                   {label}
                 </NavLink>
               ))}
@@ -119,7 +119,7 @@ export function RequireAdmin() {
                 className={cn(ITEM, "w-full border-0 bg-transparent")}
                 onClick={() => logout()}
               >
-                <LogOut aria-hidden="true" className="size-[18px]" />
+                <LogOut aria-hidden="true" className="size-[1.125rem]" />
                 로그아웃
               </button>
             </div>
@@ -129,7 +129,7 @@ export function RequireAdmin() {
       {/* 폰은 아래 탭 메뉴 높이만큼 바닥을 비워 마지막 줄이 가리지 않게 */}
       <main
         key={pathname}
-        className="mx-auto w-full max-w-[1200px] min-w-0 animate-enter px-4 pt-5 pb-[calc(var(--tabbar-height)+env(safe-area-inset-bottom)+1.5rem)] md:px-8 md:py-8 min-[1600px]:max-w-[1600px]"
+        className="mx-auto w-full max-w-[75rem] min-w-0 animate-enter px-4 pt-5 pb-[calc(var(--tabbar-height)+env(safe-area-inset-bottom)+1.5rem)] md:px-8 md:py-8 min-[1600px]:max-w-[100rem]"
       >
         <FlashNotice />
         <Outlet />
@@ -151,7 +151,7 @@ export function RequireAdmin() {
                   <Icon
                     aria-hidden="true"
                     className={cn(
-                      "size-[22px] transition-transform duration-200",
+                      "size-[1.375rem] transition-transform duration-200",
                       isActive && "scale-110 text-brand",
                     )}
                   />

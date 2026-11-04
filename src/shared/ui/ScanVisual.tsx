@@ -16,7 +16,7 @@ export function ScanVisual({ className }: { className?: string }) {
   return (
     <div aria-hidden="true" className={cn("relative aspect-[4/3] w-full animate-float select-none", className)}>
       {/* 노트북 윗면: 둥근 판 + 로고 자리 + 경첩 */}
-      <div className="absolute inset-[6%] rounded-[18px] border border-white/15 bg-[linear-gradient(145deg,#2a2a31,#141418)] shadow-[0_30px_60px_-20px_rgb(0_0_0/0.8),inset_0_1px_0_rgb(255_255_255/0.08)]">
+      <div className="absolute inset-x-0 inset-y-[6%] rounded-[18px] border border-white/15 bg-[linear-gradient(145deg,#2a2a31,#141418)] shadow-[0_30px_60px_-20px_rgb(0_0_0/0.8),inset_0_1px_0_rgb(255_255_255/0.08)]">
         <div className="absolute top-1/2 left-1/2 size-10 -translate-1/2 rounded-full border border-white/10 bg-white/[0.04]" />
         <div className="absolute inset-x-[30%] -bottom-px h-1.5 rounded-t-md bg-white/10" />
         {/* 사진 칸 표시(부스 카메라 2대 × 조명 3개 = 6칸) */}

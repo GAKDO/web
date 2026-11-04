@@ -36,7 +36,7 @@ export function ModelListPage() {
           <DataRow key={m.modelCode} label={m.modelCode}>
             <DataCells>
               <strong>{m.name}</strong>
-              <span className="font-mono text-[13px] text-muted-foreground">{m.modelCode}</span>
+              <span className="font-mono text-[0.8125rem] text-muted-foreground">{m.modelCode}</span>
               <span>{m.manufacturer ?? "제조사 없음"}</span>
               <span>{DEVICE_FORM_FACTOR_LABEL[m.formFactor]}</span>
             </DataCells>

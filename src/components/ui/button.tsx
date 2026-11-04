@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 // shadcn/ui Button(new-york). 손가락으로 누르는 폰(375px)에서는 44px, 768px 이상은 40px 높이.
 // 누르면 살짝 눌리고(0.97배) 마우스를 올리면 1px 뜬다. 움직임 줄이기 설정이면 움직이지 않는다
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-[15px] font-medium transition-[color,background-color,box-shadow,translate,scale] duration-150 ease-out outline-none active:scale-[0.97] hover:-translate-y-px active:translate-y-0 motion-reduce:translate-none motion-reduce:scale-none cursor-pointer focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-[0.9375rem] font-medium transition-[color,background-color,box-shadow,translate,scale] duration-150 ease-out outline-none active:scale-[0.97] hover:-translate-y-px active:translate-y-0 motion-reduce:translate-none motion-reduce:scale-none cursor-pointer focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
