@@ -38,14 +38,14 @@ export function DataTable({ cols, labels, label, children }: DataTableProps) {
   );
 }
 
-/** 표 한 줄(375px에서는 카드 한 장) */
+/** 표 한 줄(375px에서는 카드 한 장: 내용은 왼쪽, 버튼은 오른쪽에 붙여 카드 높이를 줄임) */
 export function DataRow({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
   return (
     <li
       aria-label={label}
       className={cn(
-        "grid gap-3 rounded-xl border bg-card p-4 shadow-xs transition-colors md:grid-cols-[1fr_auto] md:items-center",
-        "table:min-h-[52px] table:grid-cols-(--cols) table:rounded-none table:border-0 table:border-t table:px-4 table:py-1.5 table:text-sm table:shadow-none table:first:border-t-0 table:hover:bg-zinc-50",
+        "grid animate-enter grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 rounded-xl border bg-card px-3.5 py-3 shadow-xs transition-colors md:p-4",
+        "table:min-h-[52px] table:grid-cols-(--cols) table:rounded-none table:border-0 table:border-t table:px-4 table:py-1.5 table:text-sm table:shadow-none table:first:border-t-0 table:animate-none table:hover:bg-zinc-50",
         className,
       )}
     >
@@ -57,7 +57,7 @@ export function DataRow({ label, className, children }: { label: string; classNa
 /** 줄의 칸들. 카드에서는 한데 흐르고, 표에서는 칸마다 열 하나 */
 export function DataCells({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 table:contents [&>*]:min-w-0 [&>*]:break-words">{children}</div>
+    <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1 table:contents [&>*]:min-w-0 [&>*]:break-words">{children}</div>
   );
 }
 

@@ -14,6 +14,7 @@ import { VerdictBadge } from "./VerdictBadge";
 import { VerdictSummary } from "./VerdictSummary";
 import { DataActions, DataCells, DataRow, DataTable } from "../../../shared/ui/DataTable";
 import { PageHeader } from "../../../shared/ui/PageHeader";
+import { Pager, usePaged } from "../../../shared/ui/Pager";
 import { formatDateTime } from "../../../shared/ui/format";
 
 /** 상세에서 이 목록으로 돌아올 곳 */
@@ -29,7 +30,8 @@ export function InspectionListPage() {
   const rentals = useRentals(undefined, { live: true });
   const models = useDeviceModels();
   const modelName = (code: string) => models.data?.find((m) => m.modelCode === code)?.name ?? code;
-  const items = rentals.data?.pages.flatMap((page) => page.items) ?? [];
+  const paged = usePaged(rentals);
+  const items = paged.items;
   const refresh = () => {
     void rentals.refetch();
     void client.invalidateQueries({ queryKey: INSPECTIONS });
@@ -54,7 +56,7 @@ export function InspectionListPage() {
         />
       )}
       {rentals.isPending && <p className="text-muted-foreground">불러오는 중…</p>}
-      {items.length > 0 && <VerdictSummary items={items} hasMore={!!rentals.hasNextPage} />}
+      {items.length > 0 && <VerdictSummary items={items} hasMore={paged.canNext} />}
       {rentals.isSuccess && items.length === 0 && <p className="text-muted-foreground">검사할 렌탈이 없습니다. 렌탈을 먼저 만들어 주세요.</p>}
       <DataTable cols="minmax(150px, 1.2fr) minmax(110px, 1fr) 1.4fr 1.1fr 1.3fr 110px" labels={["검사 시각", "시리얼", "기기명", "지금 시점", "판정", ""]} label="검사 결과">
         {items.map((r) => {
@@ -87,11 +89,7 @@ export function InspectionListPage() {
           );
         })}
       </DataTable>
-      {rentals.hasNextPage && (
-        <Button busy={rentals.isFetchingNextPage} onClick={() => void rentals.fetchNextPage()}>
-          더 보기
-        </Button>
-      )}
+      <Pager paged={paged} label="검사 결과" />
     </section>
   );
 }

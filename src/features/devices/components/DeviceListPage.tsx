@@ -16,6 +16,8 @@ import { StatusMenu } from "./StatusMenu";
 import { DataActions, DataCells, DataDetail, DataRow, DataTable } from "../../../shared/ui/DataTable";
 import { InfoList } from "../../../shared/ui/InfoList";
 import { PageHeader } from "../../../shared/ui/PageHeader";
+import { FilterPanel } from "../../../shared/ui/FilterPanel";
+import { Pager, usePaged } from "../../../shared/ui/Pager";
 import { formatDate } from "../../../shared/ui/format";
 
 /** 입력이 멈춘 뒤에만 검색한다 */
@@ -87,7 +89,9 @@ export function DeviceListPage() {
     status: status || undefined,
     q,
   });
-  const items = devices.data?.pages.flatMap((page) => page.items) ?? [];
+  const paged = usePaged(devices, `${modelCode}|${status}|${q}`);
+  const items = paged.items;
+  const active = (modelCode ? 1 : 0) + (status ? 1 : 0);
 
   return (
     <section>
@@ -100,7 +104,15 @@ export function DeviceListPage() {
           </Link>
         }
       />
-      <div className="grid gap-x-3 md:grid-cols-[1fr_1fr_2fr]">
+      <FilterPanel
+        active={active}
+        cols="1fr 1fr 2fr"
+        onReset={() => {
+          setModelCode("");
+          setStatus("");
+        }}
+        inline={<Field label="검색" type="search" placeholder="시리얼·자산번호 일부" maxLength={64} value={search} onChange={(e) => setSearch(e.target.value)} />}
+      >
         <SelectField label="기종" value={modelCode} onChange={(e) => setModelCode(e.target.value)}>
           <option value="">전체</option>
           {models.data?.map((m) => (
@@ -117,8 +129,8 @@ export function DeviceListPage() {
             </option>
           ))}
         </SelectField>
-        <Field label="검색" type="search" placeholder="시리얼·자산번호 일부" maxLength={64} value={search} onChange={(e) => setSearch(e.target.value)} />
-      </div>
+
+      </FilterPanel>
       {devices.isError && (
         <ErrorBanner
           message={devices.error instanceof ApiError ? messageFor(devices.error) : "목록을 불러오지 못했습니다."}
@@ -132,11 +144,7 @@ export function DeviceListPage() {
           <DeviceCard key={device.deviceId} device={device} />
         ))}
       </DataTable>
-      {devices.hasNextPage && (
-        <Button busy={devices.isFetchingNextPage} onClick={() => void devices.fetchNextPage()}>
-          더 보기
-        </Button>
-      )}
+      <Pager paged={paged} label="기기" />
     </section>
   );
 }

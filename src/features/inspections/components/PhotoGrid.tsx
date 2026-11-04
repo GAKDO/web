@@ -1,4 +1,6 @@
 import { useState, type CSSProperties } from "react";
+import { cn } from "@/lib/utils";
+import { useIsMobile } from "../../../shared/ui/useMediaQuery";
 import { CAPTURE_CAMERA_LABEL, CAPTURE_FACE_LABEL, CAPTURE_LIGHT_LABEL, DEFECT_CLASS_LABEL } from "../../../shared/codes/labels";
 import type { FaceGrid, TextureOverlay } from "../model/photos";
 import { formatConfidence } from "../model/verdict";
@@ -15,6 +17,10 @@ const overlayOf = (defects: PhotoDefect[]) =>
  */
 export function PhotoGrid({ grids }: { grids: FaceGrid[] }) {
   const [open, setOpen] = useState<number | null>(null);
+  // 폰: 12장이 세로로 1000px 넘게 이어져 면(윗면·바닥) 탭으로 나눠 6장씩 본다. 768px 이상은 모두 펼친다
+  const mobile = useIsMobile();
+  const [face, setFace] = useState(grids[0]?.face);
+  const shown = mobile && grids.length > 1 ? grids.filter((g) => g.face === face) : grids;
   const shots: LightboxPhoto[] = grids.flatMap((grid) =>
     grid.cells.flatMap((cell) =>
       cell.photo
@@ -31,8 +37,28 @@ export function PhotoGrid({ grids }: { grids: FaceGrid[] }) {
   );
   return (
     <>
-      {grids.map((grid) => (
-        <section key={grid.face} aria-label={`${CAPTURE_FACE_LABEL[grid.face]} 사진`}>
+      {mobile && grids.length > 1 && (
+        <div role="tablist" aria-label="사진 면" className="sticky top-14 z-10 -mx-4 mb-1 flex gap-1 bg-background/95 px-4 py-2 backdrop-blur">
+          {grids.map((g) => (
+            <button
+              key={g.face}
+              type="button"
+              role="tab"
+              aria-selected={g.face === face}
+              onClick={() => setFace(g.face)}
+              className={cn(
+                "flex min-h-10 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border text-sm font-medium transition-all duration-200 active:scale-[0.97]",
+                g.face === face ? "border-foreground bg-foreground text-background shadow-sm" : "bg-card text-muted-foreground",
+              )}
+            >
+              {CAPTURE_FACE_LABEL[g.face]}
+              <span className={cn("rounded-full px-1.5 text-[11px] font-bold", g.defectCount > 0 ? "bg-destructive text-white" : "bg-muted text-muted-foreground")}>{g.defectCount}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {shown.map((grid) => (
+        <section key={grid.face} aria-label={`${CAPTURE_FACE_LABEL[grid.face]} 사진`} className="animate-enter">
           <h3 className="mt-4 mb-2 text-base font-semibold">
             {CAPTURE_FACE_LABEL[grid.face]} · 흠집 {grid.defectCount}개
           </h3>
@@ -48,7 +74,7 @@ export function PhotoGrid({ grids }: { grids: FaceGrid[] }) {
                     <div className={PHOTO_MISSING}>사진 없음</div>
                   )}
                   <p className="mt-1 mb-0 grid text-[13px] leading-snug">
-                    <strong>{CAPTURE_FACE_LABEL[cell.face]}</strong>
+                    {!(mobile && grids.length > 1) && <strong>{CAPTURE_FACE_LABEL[cell.face]}</strong>}
                     <span className="text-muted-foreground">
                       {CAPTURE_CAMERA_LABEL[cell.camera]} · {CAPTURE_LIGHT_LABEL[cell.light]} · 흠집 {cell.defects.length}개
                     </span>

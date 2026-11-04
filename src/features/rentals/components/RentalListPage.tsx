@@ -13,6 +13,8 @@ import { useDeviceModels } from "../../devices/api/devices";
 import { useRentals } from "../api/rentals";
 import { DataCells, DataRow, DataTable } from "../../../shared/ui/DataTable";
 import { PageHeader } from "../../../shared/ui/PageHeader";
+import { FilterPanel } from "../../../shared/ui/FilterPanel";
+import { Pager, usePaged } from "../../../shared/ui/Pager";
 import { formatDate } from "../../../shared/ui/format";
 
 export { formatDate };
@@ -36,7 +38,8 @@ export function RentalListPage() {
   const rentals = useRentals(status);
   const models = useDeviceModels();
   const modelName = (code: string) => models.data?.find((m) => m.modelCode === code)?.name ?? code;
-  const items = rentals.data?.pages.flatMap((page) => page.items) ?? [];
+  const paged = usePaged(rentals, status ?? "");
+  const items = paged.items;
 
   return (
     <section>
@@ -49,7 +52,7 @@ export function RentalListPage() {
           </Link>
         }
       />
-      <div className="grid gap-x-3 md:grid-cols-[minmax(0,320px)]">
+      <FilterPanel active={status ? 1 : 0} onReset={() => setParams({})}>
         <SelectField label="렌탈 상태" value={status ?? ""} onChange={(e) => setParams(e.target.value ? { status: e.target.value } : {})}>
           <option value="">전체</option>
           {Object.entries(RENTAL_STATUS_LABEL).map(([value, label]) => (
@@ -58,7 +61,7 @@ export function RentalListPage() {
             </option>
           ))}
         </SelectField>
-      </div>
+      </FilterPanel>
       {rentals.isError && (
         <ErrorBanner
           message={rentals.error instanceof ApiError ? messageFor(rentals.error) : "목록을 불러오지 못했습니다."}
@@ -69,7 +72,7 @@ export function RentalListPage() {
       {rentals.isSuccess && items.length === 0 && <p className="text-muted-foreground">렌탈이 없습니다.</p>}
       <DataTable cols="minmax(110px, 1fr) 1.5fr 0.7fr 1.6fr 1fr" labels={["시리얼", "기종", "상태", "지금 시점", "만든 날"]} label="렌탈">
         {items.map((r) => (
-          <DataRow key={r.rentalId} label={r.serial} className="md:grid-cols-1">
+          <DataRow key={r.rentalId} label={r.serial} className="grid-cols-1">
             <DataCells>
               <Link className="text-info underline-offset-4 hover:underline" to={`/admin/rentals/${r.rentalId}`} state={{ serial: r.serial }}>
                 <strong>{r.serial}</strong>
@@ -82,11 +85,7 @@ export function RentalListPage() {
           </DataRow>
         ))}
       </DataTable>
-      {rentals.hasNextPage && (
-        <Button busy={rentals.isFetchingNextPage} onClick={() => void rentals.fetchNextPage()}>
-          더 보기
-        </Button>
-      )}
+      <Pager paged={paged} label="렌탈" />
     </section>
   );
 }

@@ -1,9 +1,11 @@
+import type { CSSProperties } from "react";
 import { Navigate } from "react-router-dom";
 import { Camera, ScanSearch, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { useAuth } from "../../../shared/auth/AuthProvider";
 import { LoginForm } from "../../../shared/auth/LoginForm";
 import { LOGIN_NOTICE } from "../../../shared/auth/loginNotice";
+import { ScanVisual } from "../../../shared/ui/ScanVisual";
 
 // 왼쪽 면에 적는 세 단계(MVP 흐름: 부스 촬영 → 흠집 판정 → 결과 확인). 장식이라 읽는 내용만 짧게
 const STEPS = [
@@ -31,21 +33,27 @@ export function LoginPage() {
         />
         <div aria-hidden="true" className="absolute -top-24 -left-24 -z-10 size-[420px] rounded-full bg-brand/35 blur-[120px]" />
         <div className="mx-auto w-full max-w-[460px] min-[1600px]:max-w-[540px]">
-          <span className="inline-flex items-center gap-3">
+          <span className="inline-flex animate-enter items-center gap-3">
             <span aria-hidden="true" className="grid size-10 place-items-center rounded-xl bg-brand text-lg font-black shadow-[0_0_32px_-4px_var(--brand)]">
               T
             </span>
             <span className="text-2xl font-bold tracking-[0.14em]">TRACE</span>
           </span>
-          <p className="mt-6 mb-3 text-[26px] leading-tight font-bold tracking-tight md:mt-10 md:text-[40px]">
+          <p className="stagger mt-6 mb-3 animate-enter text-[26px] leading-tight font-bold tracking-tight md:mt-10 md:text-[40px]" style={{ "--i": 1 } as CSSProperties}>
             노트북 상태를
             <br />
-            <span className="text-brand">투명하게</span>, 정확하게
+            <span className="bg-gradient-to-r from-brand to-[#ff5a5f] bg-clip-text text-transparent">투명하게</span>, 정확하게
           </p>
           <p className="m-0 text-zinc-400">렌탈 기기 검사 · 관리 시스템</p>
-          <ol className="m-0 mt-10 hidden list-none gap-3 p-0 md:grid">
+          {/* 검사 막대가 노트북을 훑는 그림(장식). 폰에서는 입력칸이 먼저 보이게 뺀다 */}
+          <ScanVisual className="mt-8 hidden max-w-[380px] md:block" />
+          <ol className="m-0 mt-8 hidden list-none gap-3 p-0 md:grid">
             {STEPS.map(({ icon: Icon, text }, i) => (
-              <li key={text} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 backdrop-blur-sm">
+              <li
+                key={text}
+                className="stagger flex animate-enter items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 backdrop-blur-sm transition-colors duration-200 hover:border-white/20 hover:bg-white/[0.06]"
+                style={{ "--i": i + 2 } as CSSProperties}
+              >
                 <span aria-hidden="true" className="grid size-9 place-items-center rounded-lg bg-white/10 text-white">
                   <Icon className="size-[18px]" />
                 </span>
@@ -59,7 +67,7 @@ export function LoginPage() {
         </div>
       </section>
       <main className="flex flex-col items-center justify-center gap-4 px-4 py-8">
-        <Card className="w-full max-w-[400px] gap-5 py-7 shadow-[0_8px_40px_-12px_rgb(16_24_40/0.18)] min-[1600px]:max-w-[440px]">
+        <Card className="w-full max-w-[400px] animate-enter [animation-delay:120ms] gap-5 py-7 shadow-[0_8px_40px_-12px_rgb(16_24_40/0.18)] min-[1600px]:max-w-[440px]">
           <CardHeader className="px-7">
             <h1 className="m-0 text-2xl font-bold tracking-tight">관리자 로그인</h1>
             <CardDescription>관리자 계정 이메일과 비밀번호를 넣어 주세요.</CardDescription>

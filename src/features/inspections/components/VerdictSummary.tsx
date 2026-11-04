@@ -13,8 +13,8 @@ interface Tile {
 }
 
 /**
- * 검사 결과 맨 위 요약 카드. 지금 불러온 목록(더 보기로 늘어남)만 센다.
- * 전체 건수는 계약에 아직 없어서(contracts#23) "불러온 N건 기준"이라고 함께 적고, 더 있으면 그것도 알린다.
+ * 검사 결과 맨 위 요약 카드. 지금 보고 있는 쪽만 센다.
+ * 전체 건수는 계약에 아직 없어서(contracts#23) "이 쪽 N건 기준"이라고 함께 적고, 더 있으면 그것도 알린다.
  * 줄마다 쓰는 검사 결과와 같은 키라 따로 더 읽지 않는다
  */
 export function VerdictSummary({ items, hasMore }: { items: RentalSummary[]; hasMore: boolean }) {
@@ -40,23 +40,23 @@ export function VerdictSummary({ items, hasMore }: { items: RentalSummary[]; has
   ];
   return (
     <section aria-label="판정 요약" className="mb-6">
-      <ul className="m-0 grid list-none grid-cols-2 gap-3 p-0 md:grid-cols-4">
+      <ul className="m-0 grid list-none grid-cols-4 gap-2 p-0 md:gap-3">
         {tiles.map(({ label, count, icon: Icon, tone }) => (
-          <li key={label} className="flex items-center gap-3 rounded-xl border bg-card p-4 shadow-xs">
-            <span aria-hidden="true" className={cn("grid size-10 shrink-0 place-items-center rounded-lg", tone)}>
+          <li key={label} className="flex animate-enter flex-col items-start gap-1 rounded-xl border bg-card px-3 py-2.5 shadow-xs md:flex-row md:items-center md:gap-3 md:p-4">
+            <span aria-hidden="true" className={cn("hidden size-10 shrink-0 place-items-center rounded-lg md:grid", tone)}>
               <Icon className="size-5" />
             </span>
             <span className="grid min-w-0">
-              <span className="text-[13px] text-muted-foreground">{label}</span>
-              <strong className="text-2xl leading-tight font-bold tracking-tight">{count}</strong>
+              <span className="text-[11px] whitespace-nowrap text-muted-foreground md:text-[13px]">{label}</span>
+              <strong className={cn("text-xl leading-tight font-bold tracking-tight md:text-2xl md:text-foreground", tone.split(" ")[0])}>{count}</strong>
             </span>
           </li>
         ))}
       </ul>
       <p className="mt-2 mb-0 text-xs text-muted-foreground">
-        지금 불러온 {items.length}건 기준
+        이 쪽 {items.length}건 기준
         {other > 0 ? ` · 검사 전·판정 불가·읽지 못함 ${other}건은 위 칸에 넣지 않았습니다` : ""}
-        {hasMore ? " · 목록이 더 있습니다(아래 더 보기)" : ""}
+        {hasMore ? " · 다음 쪽이 더 있습니다" : ""}
       </p>
     </section>
   );
