@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,9 +40,13 @@ export function usePaged<T>(query: InfiniteLike<T>, resetKey = "") {
   );
   // 거르기 조건이 바뀌면 1쪽으로(처음 열 때는 주소의 쪽을 지킨다)
   const lastKey = useRef(resetKey);
+  // 자동 읽기가 한 번 실패하면 멈춘다. 주기 새로 고침이 성공해 오류 표시가 지워져도 다시 부르지 않고,
+  // 거르기 조건이 바뀌거나 사용자가 직접 넘겨 성공했을 때만 다시 허용한다
+  const [autoBlocked, setAutoBlocked] = useState(false);
   useEffect(() => {
     if (lastKey.current === resetKey) return;
     lastKey.current = resetKey;
+    setAutoBlocked(false);
     setPage(0);
   }, [resetKey, setPage]);
   const pages = query.data?.pages ?? [];
@@ -50,8 +54,13 @@ export function usePaged<T>(query: InfiniteLike<T>, resetKey = "") {
   const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } = query;
   // 주소의 쪽까지 아직 읽지 않았으면(새로 열었거나 캐시가 비었으면) 그 쪽까지 차례로 읽는다. 읽기에 실패하면 멈춘다(같은 쪽을 계속 다시 부르지 않게)
   useEffect(() => {
-    if (loaded > 0 && page >= loaded && hasNextPage && !isFetchingNextPage && !isFetchNextPageError) void fetchNextPage();
-  }, [loaded, page, hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage]);
+    if (autoBlocked || isFetchNextPageError) return;
+    if (loaded > 0 && page >= loaded && hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage().then((result) => {
+        if (result.isError) setAutoBlocked(true);
+      });
+    }
+  }, [autoBlocked, loaded, page, hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage]);
   const current = Math.min(page, Math.max(loaded - 1, 0));
   const go = async (to: number) => {
     if (to >= loaded) {
@@ -59,6 +68,7 @@ export function usePaged<T>(query: InfiniteLike<T>, resetKey = "") {
       // 다음 쪽을 못 읽었으면 쪽을 옮기지 않는다(빈 쪽이 보이지 않게)
       const result = await fetchNextPage();
       if (result.isError) return;
+      setAutoBlocked(false);
     }
     setPage(to);
   };
