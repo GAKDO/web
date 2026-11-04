@@ -130,6 +130,7 @@ test("렌탈 상세의 '부스에 넣을 ID'에 기기·렌탈 ID가 보이고, 
   await u.click(within(panel).getByRole("button", { name: "출고 시점 ID 복사" }));
   expect(write).toHaveBeenCalledWith(checkpointId);
   expect(within(panel).getByRole("button", { name: "출고 시점 ID 복사" })).toHaveTextContent("복사됨");
+  expect(within(panel).getByText("출고 시점 ID를 복사했습니다")).toHaveAttribute("aria-live", "polite");
 });
 
 test("클립보드를 쓸 수 없으면 '부스에 넣을 ID' 복사는 복사됨 대신 직접 복사하라고 알린다", async () => {

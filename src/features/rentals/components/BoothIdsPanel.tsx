@@ -25,6 +25,10 @@ function IdRow({ name, value, hint }: { name: string; value: string; hint: strin
           {state === "ok" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
           {state === "ok" ? "복사됨" : "복사"}
         </Button>
+        {/* 버튼 이름은 "… 복사"로 고정이라, 복사가 된 것은 화면 읽기 프로그램에 따로 알린다(빈 role=status를 여러 개 두지 않게 aria-live만) */}
+        <span aria-live="polite" className="sr-only">
+          {state === "ok" ? `${name}를 복사했습니다` : ""}
+        </span>
         {state === "failed" && <small role="alert">복사하지 못했습니다. 글자를 길게 눌러 직접 복사하세요.</small>}
         <small className="basis-full text-muted-foreground">{hint}</small>
       </dd>
