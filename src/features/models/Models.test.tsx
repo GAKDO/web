@@ -98,6 +98,7 @@ test("치수가 비거나 0 이하, 코드 형식이 틀리면 칸마다 이유�
     cpu: "",
     ramGb: "1.5",
     ssdGb: "",
+    gpu: "",
     widthMm: "0",
     depthMm: "",
     baseHMm: "-1",
@@ -116,10 +117,50 @@ test("사양을 비우면 spec 없이, 제조사를 비우면 manufacturer 없�
     cpu: "",
     ramGb: "",
     ssdGb: "",
+    gpu: "",
     widthMm: "300",
     depthMm: "200",
     baseHMm: "10",
     lidHMm: "5",
   });
   expect(body).toEqual({ name: "X", formFactor: "CLAMSHELL", dimensions: { widthMm: 300, depthMm: 200, baseHMm: 10, lidHMm: 5 } });
+});
+
+test("기종 목록에 기준 사양(CPU·메모리·저장 공간·GPU)이 보이고, 검색과 정렬이 된다", async () => {
+  const user = userEvent.setup();
+  renderAsAdmin("/admin/models");
+  const gram = await screen.findByRole("listitem", { name: "LG-GRAM16" });
+  expect(gram).toHaveTextContent("Intel Core Ultra 7 155H");
+  expect(gram).toHaveTextContent("16GB");
+  expect(gram).toHaveTextContent("512GB");
+  expect(gram).toHaveTextContent("Intel Arc Graphics");
+
+  await user.selectOptions(screen.getByLabelText("정렬"), "메모리 큰 순");
+  const codes = () => screen.getAllByRole("listitem").map((li) => li.getAttribute("aria-label"));
+  // 메모리 16GB → 8GB → 사양 없음(맨 뒤)
+  expect(codes()).toEqual(["LG-GRAM16", "MBA13-M2", "MBP14-M3"]);
+
+  await user.type(screen.getByLabelText("검색"), "arc");
+  expect(codes()).toEqual(["LG-GRAM16"]);
+  await user.clear(screen.getByLabelText("검색"));
+  await user.type(screen.getByLabelText("검색"), "없는기종");
+  expect(screen.getByText("검색어에 맞는 기종이 없습니다.")).toBeInTheDocument();
+});
+
+test("Windows 노트북은 기준 사양에 GPU를 적어 저장할 수 있다", () => {
+  const { body } = toRequest({
+    modelCode: "GRAM16-RTX",
+    name: "Windows 노트북",
+    manufacturer: "",
+    formFactor: "CLAMSHELL",
+    cpu: "Intel Core i7",
+    ramGb: "",
+    ssdGb: "",
+    gpu: " NVIDIA GeForce RTX 4060 Laptop ",
+    widthMm: "357",
+    depthMm: "250",
+    baseHMm: "12",
+    lidHMm: "5",
+  });
+  expect(body?.spec).toEqual({ cpu: "Intel Core i7", gpu: "NVIDIA GeForce RTX 4060 Laptop" });
 });

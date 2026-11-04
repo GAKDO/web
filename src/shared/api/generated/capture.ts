@@ -281,7 +281,7 @@ export interface components {
             uploads: components["schemas"]["UploadTarget"][];
         };
         CaptureSetCompleteRequest: {
-            /** @description 찍지 못한 선택 면 → 사유. 키는 codes.yaml capture.face, 세트 source의 face_required에 없는 면만. */
+            /** @description 찍지 못한 선택 면 → 사유. 키는 codes.yaml capture.face. profile=FULL이면 세트 source의 face_required에 없는 면만, profile=QUICK이면 capture.face_required_quick.BOOTH(TOP·BOT)에 없는 면만. */
             skippedFaces?: {
                 [key: string]: string;
             };
