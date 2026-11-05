@@ -59,13 +59,13 @@ export function InspectionListPage() {
       {rentals.isPending && <p className="text-muted-foreground">불러오는 중…</p>}
       {items.length > 0 && <VerdictSummary items={items} hasMore={paged.canNext} />}
       {rentals.isSuccess && items.length === 0 && <p className="text-muted-foreground">검사할 렌탈이 없습니다. 렌탈을 먼저 만들어 주세요.</p>}
-      <DataTable cols="minmax(150px, 1.2fr) minmax(110px, 1fr) 1.4fr 1.1fr 1.3fr 110px" labels={["검사 시각", "시리얼", "기기명", "지금 시점", "판정", ""]} label="검사 결과">
+      <DataTable cols="minmax(11.5rem, 1.2fr) minmax(7rem, 1fr) 1.4fr 1.1fr 1.3fr 110px" labels={["검사 시각", "시리얼", "기기명", "지금 시점", "판정", ""]} label="검사 결과">
         {items.map((r) => {
           const checkpoint = r.currentCheckpoint ?? null;
           return (
             <DataRow key={r.rentalId} label={r.serial}>
               <DataCells>
-                <span className="text-muted-foreground tabular-nums">{checkpoint ? formatDateTime(checkpoint.occurredAt) : "—"}</span>
+                <span className="whitespace-nowrap text-muted-foreground tabular-nums">{checkpoint ? formatDateTime(checkpoint.occurredAt) : "—"}</span>
                 <strong>{r.serial}</strong>
                 <span>{modelName(r.modelCode)}</span>
                 <span>{checkpoint ? `${CHECKPOINT_TYPE_LABEL[checkpoint.type]} · ${CHECKPOINT_STATUS_LABEL[checkpoint.status]}` : "시점 없음"}</span>

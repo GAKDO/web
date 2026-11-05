@@ -1,6 +1,8 @@
 import { PageHeader, SectionTitle } from "../../../shared/ui/PageHeader";
 import { InfoList } from "../../../shared/ui/InfoList";
 import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ApiError } from "../../../shared/api/problem";
 import { messageFor } from "../../../shared/api/errorMessages";
@@ -57,7 +59,8 @@ interface DefectRow {
   /** undefined면 길이를 재지 않은 것(빠른 검사), null이면 읽지 못한 것 */
   lengthMm?: number | null;
   areaMm2?: number | null;
-  note: string;
+  /** 출처(정합 세트만). 빠른 검사는 비운다 */
+  note?: string;
 }
 
 const fromPhotoDefect = (d: PhotoDefect): DefectRow => ({
@@ -65,7 +68,6 @@ const fromPhotoDefect = (d: PhotoDefect): DefectRow => ({
   classLabel: DEFECT_CLASS_LABEL[d.class],
   where: [CAPTURE_FACE_LABEL[d.face], `${CAPTURE_CAMERA_LABEL[d.camera]} · ${CAPTURE_LIGHT_LABEL[d.light]}`],
   confidence: d.confidence,
-  note: "원본 사진 px",
 });
 
 const fromDefect = (d: Defect): DefectRow => ({
@@ -91,7 +93,7 @@ function DefectCard({ row, index }: { row: DefectRow; index: number }) {
         <span>신뢰도 {formatConfidence(row.confidence)}</span>
         {row.lengthMm !== undefined && <span>길이 {formatMm(row.lengthMm)}</span>}
         {row.areaMm2 !== undefined && <span>면적 {formatMm(row.areaMm2, "mm²")}</span>}
-        <span className="text-muted-foreground">{row.note}</span>
+        {row.note && <span className="text-muted-foreground">{row.note}</span>}
       </div>
     </li>
   );
@@ -140,7 +142,8 @@ export function InspectionDetailPage() {
             if (checkpoint) void inspection.refetch();
           }}
         />
-        <Link className="text-info underline-offset-4 hover:underline" to={backTo?.path ?? "/admin/inspections"}>
+        <Link className={cn(buttonVariants({ variant: "outline" }), "mt-4")} to={backTo?.path ?? "/admin/inspections"}>
+          <ArrowLeft aria-hidden="true" />
           {backTo?.label ?? "검사 결과 목록으로"}
         </Link>
       </section>
@@ -240,15 +243,15 @@ export function InspectionDetailPage() {
           <Photos checkpointId={checkpointId} inspection={data} />
         </>
       )}
-      <p className="mt-6 text-sm">
-        <Link className="text-info underline-offset-4 hover:underline" to={back.path}>
-          ← {back.label}
-        </Link>{" "}
-        ·{" "}
-        <Link className="text-info underline-offset-4 hover:underline" to={`/admin/rentals/${rentalId}`} state={{ serial }}>
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Link className={buttonVariants({ variant: "outline" })} to={back.path}>
+          <ArrowLeft aria-hidden="true" />
+          {back.label}
+        </Link>
+        <Link className={buttonVariants({ variant: "outline" })} to={`/admin/rentals/${rentalId}`} state={{ serial }}>
           렌탈 상세
         </Link>
-      </p>
+      </div>
     </section>
   );
 }

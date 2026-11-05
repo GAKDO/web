@@ -36,7 +36,7 @@ function HistoryRow({ rental, checkpoint, serial }: { rental: Rental; checkpoint
           to={`/admin/inspections/${rental.rentalId}/${checkpoint.checkpointId}`}
           state={{ serial, backTo }}
         >
-          상세보기
+          결과 보기
         </Link>
       </DataActions>
     </DataRow>
