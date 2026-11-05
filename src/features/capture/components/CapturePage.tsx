@@ -6,6 +6,7 @@ import { CAPTURE_FACE_LABEL } from "../../../shared/codes/labels";
 import { useFaceGuides } from "../api/model";
 import { FaceShooter, type Accepted } from "./FaceShooter";
 import { SubmitPanel } from "./SubmitPanel";
+import { isArchived } from "../../../shared/config/features";
 
 export type Shots = Partial<Record<CaptureFace, Accepted>>;
 
@@ -82,7 +83,7 @@ export function CapturePage({ grant }: { grant: CaptureGrant }) {
     return (
       <main className="page capture">
         <h1>제출 완료</h1>
-        <p role="status">수령 사진이 접수되었습니다. 검사가 끝나면 내 렌탈에서 결과를 볼 수 있습니다.</p>
+        <p role="status">수령 사진이 접수되었습니다.{isArchived("report") ? "" : " 검사가 끝나면 내 렌탈에서 결과를 볼 수 있습니다."}</p>
       </main>
     );
   }
