@@ -2,7 +2,7 @@
  * 보관 기능(11/3 방향 전환, 민서 승인): 코드는 develop에 그대로 두고 MVP 배포에서는 메뉴·링크만 숨긴다.
  * 빌드할 때 VITE_ARCHIVED_FEATURES에 쉼표로 적는다(예: "phoneCapture,diagnostics,report,account,pilot").
  * 비우면 아무것도 숨기지 않는다(개발·테스트 기본). 모르는 이름은 무시한다.
- * 화면 주소(라우트)는 그대로 열리고, 재도입(11/10~12)은 목록에서 이름을 빼면 된다.
+ * 숨긴 기능의 화면 주소를 직접 치면 첫 화면으로 돌려보낸다(ArchivedRoute). 재도입(11/10~12)은 목록에서 이름을 빼면 된다.
  */
 export const ARCHIVABLE_FEATURES = [
   /** 폰 수령 촬영(WE2): 렌탈 상세의 수령 QR 발급 */
