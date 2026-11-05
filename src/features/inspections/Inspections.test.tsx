@@ -347,7 +347,7 @@ test("빠른 검사 사진을 누르면 크게 보기 팝업이 열리고, 이�
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
 
-test("렌탈 상세의 검사 이력에서 상세보기를 누르면 그 검사 결과가 열리고, 렌탈 상세로 돌아갈 수 있다", async () => {
+test("렌탈 상세의 검사 이력에서 결과 보기를 누르면 그 검사 결과가 열리고, 렌탈 상세로 돌아갈 수 있다", async () => {
   const { rentalId } = addRental("C02AIR0002", "GRADED", { grade: "B", ruleVersion: "grade-rules-v1", reasons: ["긁힘 1개"], defects: [] });
   const user = userEvent.setup();
   const { router } = renderAsAdmin(`/admin/rentals/${rentalId}`);
@@ -355,7 +355,7 @@ test("렌탈 상세의 검사 이력에서 상세보기를 누르면 그 검사 
   const row = within(history).getByRole("listitem", { name: "출고 검사" });
   expect(await within(row).findByText("문제 있음 · B등급")).toBeInTheDocument();
   expect(within(row).getByText("수리 필요")).toBeInTheDocument();
-  await user.click(within(row).getByRole("link", { name: "상세보기" }));
+  await user.click(within(row).getByRole("link", { name: "결과 보기" }));
   expect(await screen.findByRole("heading", { name: "C02AIR0002 출고 검사 결과" })).toBeInTheDocument();
   // B 등급인데 흠집 위치 기록이 비었으면 "문제 없음"이라고 하지 않는다
   expect(await screen.findByText(/등록된 흠집 위치 없음/)).toBeInTheDocument();
