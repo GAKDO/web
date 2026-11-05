@@ -122,3 +122,17 @@ test("MVP 배포에서도 관리자 화면 주소는 그대로 열린다", async
   await screen.findByRole("heading", { name: "검사 결과" });
   expect(router.state.location.pathname).toBe("/admin/inspections");
 });
+
+test("리포트만 숨기면 로그인하지 않은 사람이 내 렌탈 주소를 쳐도 로그인 화면이 아니라 첫 화면으로 간다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "report");
+  const { router } = renderApp("/my/rentals");
+  await screen.findByRole("link", { name: /관리자 화면 열기/ });
+  expect(router.state.location.pathname).toBe("/");
+});
+
+test("계정 기능을 다시 켜면 폰 촬영·리포트가 숨겨져 있어도 고객 로그인 화면이 열린다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "phoneCapture,report");
+  const { router } = renderApp("/login");
+  await screen.findByRole("heading", { level: 1 });
+  expect(router.state.location.pathname).toBe("/login");
+});

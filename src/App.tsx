@@ -29,20 +29,23 @@ export const routes: RouteObject[] = [
   { path: "/", element: <HomePage /> },
   { path: "/admin/login", element: <LoginPage /> },
   { path: "/verify/:verifyToken", element: <ArchivedRoute features={["report"]}><VerifyPage /></ArchivedRoute> },
-  { path: "/login", element: <ArchivedRoute features={["phoneCapture", "report"]}><CustomerLoginPage /></ArchivedRoute> },
+  { path: "/login", element: <ArchivedRoute features={["phoneCapture", "report", "account"]}><CustomerLoginPage /></ArchivedRoute> },
   { path: "/password/reset", element: <ArchivedRoute features={["account"]}><PasswordResetPage /></ArchivedRoute> },
   { path: "/account/withdrawn", element: <ArchivedRoute features={["account"]}><WithdrawnPage /></ArchivedRoute> },
   { path: "/signup", element: <ArchivedRoute features={["account"]}><SignupPage /></ArchivedRoute> },
   { path: "/signup/verify", element: <ArchivedRoute features={["account"]}><VerifyEmailPage /></ArchivedRoute> },
   { path: "/capture", element: <ArchivedRoute features={["phoneCapture"]}><RequireCustomer /></ArchivedRoute>, children: [{ index: true, element: <CaptureEntryPage /> }] },
   {
-    // 고객 화면(WE3): 고객·관리자 모두 연다
-    element: <RequireCustomer />,
+    // 고객 화면(WE3): 고객·관리자 모두 연다. 보관 검사를 로그인 검사보다 먼저 한다(보관된 주소는 로그인 화면이 아니라 첫 화면으로)
+    element: <ArchivedRoute features={["report"]}><RequireCustomer /></ArchivedRoute>,
     children: [
-      { path: "/my/rentals", element: <ArchivedRoute features={["report"]}><MyRentalsPage /></ArchivedRoute> },
-      { path: "/my/rentals/:rentalId", element: <ArchivedRoute features={["report"]}><ReportPage /></ArchivedRoute> },
-      { path: "/my/account/withdraw", element: <ArchivedRoute features={["account"]}><WithdrawPage /></ArchivedRoute> },
+      { path: "/my/rentals", element: <MyRentalsPage /> },
+      { path: "/my/rentals/:rentalId", element: <ReportPage /> },
     ],
+  },
+  {
+    element: <ArchivedRoute features={["account"]}><RequireCustomer /></ArchivedRoute>,
+    children: [{ path: "/my/account/withdraw", element: <WithdrawPage /> }],
   },
   {
     path: "/admin",
