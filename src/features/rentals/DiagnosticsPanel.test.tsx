@@ -24,7 +24,7 @@ function diagnostics(checkpointId: string): CheckpointDiagnostics {
       battery: { cycleCount: 37, designCapacity: 4382, fullChargeCapacity: 4100, capacityUnit: "mAh", maxCapacityPct: 93.6, condition: "NORMAL", skippedReason: null },
       ssd: { percentUsed: 2, availableSparePct: 100, criticalWarning: 0, powerOnHours: 120, mediaErrors: 0, skippedReason: null },
       components: [{ kind: "CPU", identifier: "Apple M2" }],
-      benchmarks: [],
+      benchmarks: [{ metric: "DISK_READ", median: 1482.6 }],
     },
     previous: null,
     flags: [],
@@ -48,6 +48,7 @@ test("에이전트가 올린 진단이 있으면 배터리·충전 횟수·SSD·
   expect(panel).toHaveTextContent("37회");
   expect(panel).toHaveTextContent("사용률 2%");
   expect(panel).toHaveTextContent("없음");
+  expect(panel).toHaveTextContent("디스크 읽기 1,483 MB/s");
 });
 
 test("봉인된 시점도 올라온 진단은 그대로 보인다", async () => {

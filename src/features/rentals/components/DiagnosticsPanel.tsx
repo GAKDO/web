@@ -1,9 +1,25 @@
 import { useEffect, useRef } from "react";
+import type { CheckpointDiagnostics } from "../../../shared/api/types";
 import { ApiError } from "../../../shared/api/problem";
 import { formatDateTime } from "../../../shared/ui/format";
 import { useDiagnostics } from "../../report/api/report";
 import { diagnosticsReadings, flagText, type Reading } from "../../report/model/compare";
 import { PairingCodePanel } from "./PairingCodePanel";
+
+type BenchmarkMetric = CheckpointDiagnostics["current"]["benchmarks"][number]["metric"];
+
+/** 벤치마크 이름과 단위. 에이전트가 재는 단위(CPU ops/s, 메모리·디스크 MB/s) 그대로 보인다 */
+const BENCHMARK_LABEL: Record<BenchmarkMetric, [string, string]> = {
+  CPU_SINGLE: ["CPU 단일 코어", "ops/s"],
+  CPU_MULTI: ["CPU 멀티 코어", "ops/s"],
+  MEM_COPY: ["메모리 복사", "MB/s"],
+  DISK_READ: ["디스크 읽기", "MB/s"],
+  DISK_WRITE: ["디스크 쓰기", "MB/s"],
+};
+
+function benchmarkText(median: number, unit: string): string {
+  return `${Math.round(median).toLocaleString("ko-KR")} ${unit}`;
+}
 
 function ReadingText({ reading }: { reading: Reading }) {
   return reading.kind === "value" ? <>{reading.text}</> : <span className="text-muted-foreground">읽지 못함 ({reading.reason})</span>;
@@ -64,6 +80,21 @@ export function DiagnosticsPanel({ checkpointId, live }: { checkpointId: string;
         </dd>
         <dt className="text-muted-foreground">점검 알림</dt>
         <dd>{flagLabels.length === 0 ? "없음" : flagLabels.join(", ")}</dd>
+        {/* 벤치마크는 3회 중앙값. 전원이 없어 건너뛰면 비어 온다 */}
+        <dt className="text-muted-foreground">벤치마크(3회 중앙값)</dt>
+        <dd>
+          {current.benchmarks.length === 0 ? (
+            <span className="text-muted-foreground">측정 안 함 (전원 미연결 등)</span>
+          ) : (
+            <ul className="m-0 list-none p-0">
+              {current.benchmarks.map((b) => (
+                <li key={b.metric}>
+                  {BENCHMARK_LABEL[b.metric][0]} {benchmarkText(b.median, BENCHMARK_LABEL[b.metric][1])}
+                </li>
+              ))}
+            </ul>
+          )}
+        </dd>
       </dl>
     </section>
   );
