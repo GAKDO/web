@@ -1,3 +1,4 @@
+import { maskSerial } from "../../../shared/ui/maskSerial";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
@@ -75,7 +76,7 @@ export function RentalListPage() {
           <DataRow key={r.rentalId} label={r.serial} className="grid-cols-1">
             <DataCells>
               <Link className="text-info underline-offset-4 hover:underline" to={`/admin/rentals/${r.rentalId}`} state={{ serial: r.serial }}>
-                <strong>{r.serial}</strong>
+                <strong>{maskSerial(r.serial)}</strong>
               </Link>
               <span>{modelName(r.modelCode)}</span>
               <Badge variant={RENTAL_STATUS_VARIANT[r.status]}>{RENTAL_STATUS_LABEL[r.status]}</Badge>

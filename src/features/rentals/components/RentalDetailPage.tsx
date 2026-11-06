@@ -144,7 +144,7 @@ export function RentalDetailPage() {
           ["대여자 참조 번호", data.renterRef],
           [
             "기기 시리얼",
-            // 시리얼은 가려 두고 눈 아이콘으로 보인다(11/6 민서 요청). 기기 상세(렌탈 이력)로 가는 링크를 옆에 둔다
+            // 시리얼은 가려 두고 눈 아이콘으로 보인다(11/6 팀 요청). 기기 상세(렌탈 이력)로 가는 링크를 옆에 둔다
             <span key="serial" className="inline-flex flex-wrap items-center gap-x-3">
               {serial ? <MaskedSerial serial={serial} /> : "—"}
               <Link className="text-info underline-offset-4 hover:underline" to={`/admin/devices/${data.deviceId}`}>

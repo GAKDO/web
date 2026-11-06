@@ -1,3 +1,5 @@
+import { maskSerial } from "../../../shared/ui/maskSerial";
+import { MaskedSerial } from "../../../shared/ui/MaskedSerial";
 import { PageHeader, SectionTitle } from "../../../shared/ui/PageHeader";
 import { InfoList } from "../../../shared/ui/InfoList";
 import { cn } from "@/lib/utils";
@@ -127,7 +129,8 @@ export function InspectionDetailPage() {
   // 이 렌탈의 시점일 때만 검사 결과를 읽는다. 다른 렌탈의 시점 주소를 넣어도 그 결과가 이 렌탈 아래 보이지 않는다
   const inspection = useCheckpointInspection(checkpoint?.checkpointId);
   const serial = rental.data?.serial || hint || "";
-  const title = checkpoint ? `${serial} ${CHECKPOINT_TYPE_LABEL[checkpoint.type]} 검사 결과` : `${serial} 검사 결과`.trim();
+  const shownSerial = serial ? maskSerial(serial) : "";
+  const title = checkpoint ? `${shownSerial} ${CHECKPOINT_TYPE_LABEL[checkpoint.type]} 검사 결과` : `${shownSerial} 검사 결과`.trim();
 
   if (rental.isPending || (checkpoint && inspection.isPending)) return <p className="text-muted-foreground">불러오는 중…</p>;
   const error = rental.isError ? rental.error : inspection.isError ? inspection.error : null;
@@ -227,7 +230,7 @@ export function InspectionDetailPage() {
       <InfoList
         className="rounded-xl border bg-card p-5 shadow-xs"
         items={[
-          ["기기 시리얼", serial || "—"],
+          ["기기 시리얼", serial ? <MaskedSerial serial={serial} /> : "—"],
           ["렌탈 참조번호", rental.data?.renterRef ?? "—"],
           ["렌탈 상태", rental.data ? RENTAL_STATUS_LABEL[rental.data.status] : "—"],
           ["검사 시점", checkpoint ? `${CHECKPOINT_TYPE_LABEL[checkpoint.type]} · ${CHECKPOINT_STATUS_LABEL[checkpoint.status]}` : "없음"],

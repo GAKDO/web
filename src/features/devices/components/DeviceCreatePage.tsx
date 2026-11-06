@@ -1,7 +1,7 @@
 import { PageHeader } from "../../../shared/ui/PageHeader";
 import { FormActions, FormCard } from "../../../shared/ui/FormCard";
 import { buttonVariants } from "@/components/ui/button";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { DeviceOs } from "../../../shared/api/types";
 import { ApiError } from "../../../shared/api/problem";
@@ -11,6 +11,8 @@ import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { Field, SelectField } from "../../../shared/ui/Field";
 import { useCreateDevice, useDeviceModels } from "../api/devices";
+import { matchModel, type LabelReading } from "../lib/labelParse";
+import { LabelScanner } from "./LabelScanner";
 
 /** 등록된 기종으로 새 기기를 등록한다(FR-013) */
 export function DeviceCreatePage() {
@@ -23,6 +25,23 @@ export function DeviceCreatePage() {
   const [color, setColor] = useState("");
   const [assetNo, setAssetNo] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // 기종 목록보다 OCR이 먼저 끝나면 기종 맞추기를 목록이 온 뒤로 미룬다
+  const [pendingReading, setPendingReading] = useState<LabelReading | null>(null);
+
+  /** 라벨에서 읽은 값으로 빈 칸을 미리 채운다. 못 읽은 값은 건드리지 않고, 관리자가 등록 전에 고칠 수 있다 */
+  function fillFromLabel(reading: LabelReading) {
+    if (reading.serial) setSerial(reading.serial);
+    if (reading.os) setOs(reading.os);
+    setPendingReading(reading);
+  }
+
+  useEffect(() => {
+    if (!pendingReading || !models.data) return;
+    const matched = matchModel(pendingReading, models.data);
+    if (matched) setModelCode(matched);
+    setPendingReading(null);
+  }, [pendingReading, models.data]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -42,9 +61,10 @@ export function DeviceCreatePage() {
 
   return (
     <section className="max-w-xl">
-      <PageHeader title="기기 등록" description="등록된 기종으로 새 기기를 등록합니다." />
+      <PageHeader title="기기 등록" description="등록된 기종으로 새 기기를 등록합니다. 라벨 사진을 찍으면 시리얼·기종을 미리 채워 드립니다." />
       {error && <ErrorBanner message={error} />}
       <FormCard onSubmit={submit}>
+        <LabelScanner onRead={fillFromLabel} />
         <Field label="시리얼" required maxLength={64} value={serial} onChange={(e) => setSerial(e.target.value)} />
         <SelectField label="기종" required value={modelCode} onChange={(e) => setModelCode(e.target.value)}>
           <option value="">기종을 고르세요</option>
