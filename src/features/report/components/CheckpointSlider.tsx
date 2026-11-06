@@ -9,7 +9,7 @@ interface Props {
 
 /** 시점 슬라이더(FR-012·015). 봉인된 시점만 올리고, 화살표 키로도 움직인다 */
 export function CheckpointSlider({ checkpoints, index, onChange }: Props) {
-  if (checkpoints.length === 0) return <p className="text-muted-foreground">아직 검사 기록이 없습니다. 부스 검사가 끝나면 이곳에 사진과 흠집 표시가 나옵니다.</p>;
+  if (checkpoints.length === 0) return <p className="text-muted-foreground">아직 확정된 검사 기록이 없습니다. 부스 검사가 끝나고 기록이 확정(봉인)되면 이곳에 사진과 흠집 표시가 나옵니다.</p>;
   const current = checkpoints[index];
   return (
     <div className="slider">
