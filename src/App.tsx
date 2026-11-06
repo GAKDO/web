@@ -39,8 +39,9 @@ function CaptureOrClaim() {
 
 export const routes: RouteObject[] = [
   { path: "/", element: <HomePage /> },
-  // 고객 이용 안내(11/6): 대여는 창구, 고객은 QR로 렌탈을 계정에 연결. 로그인 없이 연다
-  { path: "/guide", element: <GuidePage /> },
+  // 고객 이용 안내(11/6): 대여는 창구, 고객은 QR로 렌탈을 계정에 연결. 로그인 없이 연다.
+  // 안내하는 QR 연결·검증·내 렌탈이 모두 report가 보일 때만 열리므로 report를 보관하면 안내도 숨긴다
+  { path: "/guide", element: <ArchivedRoute features={["report"]}><GuidePage /></ArchivedRoute> },
   { path: "/admin/login", element: <LoginPage /> },
   // 부스 옆 태블릿 화면(11/6 강사님 피드백 3번). 관리자 틀(메뉴) 없이 화면 전체를 쓴다
   { path: "/booth", element: <BoothPage /> },

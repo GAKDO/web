@@ -40,3 +40,11 @@ test("렌탈이 없는 고객은 내 렌탈에서 이용 안내로 갈 수 있�
   await u.click(screen.getByRole("link", { name: /내 렌탈 열기/ }));
   expect(await screen.findByRole("heading", { level: 1, name: "내 렌탈" })).toBeInTheDocument();
 });
+
+test("리포트(report)를 숨긴 배포에서는 이용 안내 주소가 첫 화면으로 돌아간다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "phoneCapture,report,diagnostics,pilot");
+  renderApp("/guide");
+  expect(await screen.findByRole("link", { name: "회원가입하고 시작하기" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { level: 1, name: "TRACE로 노트북 빌리는 방법" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "빌리는 방법 보기" })).not.toBeInTheDocument();
+});

@@ -44,7 +44,7 @@ export function HomePage() {
             </Link>
           </h1>
           <nav className="flex items-center gap-1.5" aria-label="로그인">
-            {showAccount && (
+            {showAccount && showReport && (
               <Link to="/guide" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "hidden text-zinc-300 hover:bg-white/10 hover:text-white sm:inline-flex")}>
                 이용 안내
               </Link>
@@ -107,8 +107,9 @@ export function HomePage() {
                     회원가입하고 시작하기
                     <ArrowRight aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-1" />
                   </Link>
-                  <Link to="/guide" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white")}>
-                    빌리는 방법 보기
+                  {/* 이용 안내는 report가 보일 때만 열린다. 숨긴 배포에서는 전처럼 로그인 버튼 */}
+                  <Link to={showReport ? "/guide" : "/login"} className={cn(buttonVariants({ variant: "outline", size: "lg" }), "border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white")}>
+                    {showReport ? "빌리는 방법 보기" : "로그인"}
                   </Link>
                 </>
               ) : (
