@@ -58,3 +58,9 @@ test("모델 번호가 다른 코드의 일부로만 들어 있으면 그 기종
   const extra = [{ modelCode: "XP54G7", name: "Other XP54G7", manufacturer: "Acme", formFactor: "CLAMSHELL" as const }];
   expect(matchModel({ serial: null, modelNumber: "P54G", manufacturer: null, os: null }, extra)).toBeNull();
 });
+
+test("Serial 머리말 뒤 값이 비고 다음 줄이 Model이면 모델 글자를 시리얼로 쓰지 않는다", () => {
+  const r = parseLabelText("Serial:\nModel A2681\nEMC 4048");
+  expect(r.serial).toBeNull();
+  expect(r.modelNumber).toBe("A2681");
+});

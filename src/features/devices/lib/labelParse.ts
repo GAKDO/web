@@ -31,10 +31,18 @@ const MANUFACTURERS: { name: string; re: RegExp; os: DeviceOs }[] = [
  */
 function cleanToken(raw: string): string {
   const parts = raw.trim().toUpperCase().split(/[\s\-]+/).filter(Boolean);
-  let token = parts[0] ?? "";
-  for (let i = 1; i < parts.length && token.length < 7; i++) token += parts[i];
-  return token.replace(/[^A-Z0-9]/g, "");
+  // 다른 항목의 머리말(예: "Serial:" 다음 줄의 "Model A2681")이 나오면 거기서 멈춘다
+  const stop = parts.findIndex((p) => FIELD_WORDS.has(p.replace(/[^A-Z]/g, "")));
+  const usable = stop === -1 ? parts : parts.slice(0, stop);
+  let token = usable[0] ?? "";
+  for (let i = 1; i < usable.length && token.length < 7; i++) token += usable[i];
+  token = token.replace(/[^A-Z0-9]/g, "");
+  // 시리얼에는 숫자가 하나는 들어 있다(글자만 있으면 다른 낱말로 본다)
+  return /\d/.test(token) ? token : "";
 }
+
+/** 라벨에서 시리얼 다음에 올 수 있는 다른 항목의 머리말 */
+const FIELD_WORDS = new Set(["MODEL", "REG", "REGULATORY", "EMC", "FCC", "FCCID", "RATING", "MADE", "DESIGNED", "ASSEMBLED", "MFD", "INPUT", "PN", "SKU"]);
 
 /** OCR 글자 전체에서 시리얼·모델 번호·제조사를 뽑는다 */
 export function parseLabelText(text: string): LabelReading {
