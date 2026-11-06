@@ -5,6 +5,9 @@ import { messageFor } from "../../../shared/api/errorMessages";
 import { Button } from "../../../shared/ui/Button";
 import { Field } from "../../../shared/ui/Field";
 import { requestPasswordReset, resetPassword } from "../api";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { AuthHeading, AuthShell } from "../../../shared/ui/AuthShell";
 
 type Step = "email" | "code" | "done";
 
@@ -73,13 +76,19 @@ export function PasswordResetPage() {
   }
 
   return (
-    <main className="page login">
-      <h1>비밀번호 재설정</h1>
+    <AuthShell
+      topRight={
+        <Link to="/login" className="font-semibold text-white underline-offset-4 hover:underline">
+          로그인
+        </Link>
+      }
+    >
+      <AuthHeading title="비밀번호 재설정" />
       {step === "email" && (
         <form onSubmit={sendCode} noValidate>
-          <p>가입한 이메일로 6자리 재설정 코드를 보내 드립니다.</p>
+          <p className="m-0 mb-4 text-sm leading-relaxed text-zinc-300">가입한 이메일로 6자리 재설정 코드를 보내 드립니다.</p>
           <Field label="이메일" type="email" autoComplete="username" required value={email} error={error} onChange={(e) => edit(setEmail, e.target.value)} />
-          <Button type="submit" busy={busy} disabled={!email.trim()}>
+          <Button type="submit" size="lg" className="w-full" busy={busy} disabled={!email.trim()}>
             코드 받기
           </Button>
         </form>
@@ -87,7 +96,7 @@ export function PasswordResetPage() {
       {step === "code" && (
         <form onSubmit={submit} noValidate>
           {/* 계정이 있는지 드러내지 않도록 늘 같은 문장 */}
-          <p role="status">{email.trim()}이(가) 가입된 이메일이면 재설정 코드를 보냈습니다. 메일함과 스팸함을 확인해 주세요.</p>
+          <p role="status" className="m-0 mb-4 text-sm leading-relaxed text-zinc-300">{email.trim()}이(가) 가입된 이메일이면 재설정 코드를 보냈습니다. 메일함과 스팸함을 확인해 주세요.</p>
           <Field
             label="재설정 코드(6자리)"
             inputMode="numeric"
@@ -107,27 +116,29 @@ export function PasswordResetPage() {
             error={error}
             onChange={(e) => edit(setConfirm, e.target.value)}
           />
-          <Button type="submit" busy={busy} disabled={code.length !== 6 || !password || !confirm}>
+          <Button type="submit" size="lg" className="w-full" busy={busy} disabled={code.length !== 6 || !password || !confirm}>
             비밀번호 바꾸기
           </Button>
-          <Button type="button" disabled={busy} onClick={() => void sendCode()}>
+          <Button type="button" variant="ghost" className="mt-2 w-full text-zinc-300" disabled={busy} onClick={() => void sendCode()}>
             코드 다시 받기
           </Button>
         </form>
       )}
       {step === "done" && (
         <>
-          <p role="status">비밀번호를 바꿨습니다. 다른 기기의 로그인도 모두 끝났습니다.</p>
-          <Link className="button-link" to="/login">
+          <p role="status" className="m-0 mb-4 text-sm leading-relaxed text-zinc-300">비밀번호를 바꿨습니다. 다른 기기의 로그인도 모두 끝났습니다.</p>
+          <Link className={cn(buttonVariants({ size: "lg" }), "w-full")} to="/login">
             새 비밀번호로 로그인
           </Link>
         </>
       )}
       {step !== "done" && (
-        <p>
-          <Link to="/login">로그인으로 돌아가기</Link>
+        <p className="m-0 mt-4 text-center text-sm">
+          <Link to="/login" className="text-zinc-300 underline-offset-4 hover:text-white hover:underline">
+            로그인으로 돌아가기
+          </Link>
         </p>
       )}
-    </main>
+    </AuthShell>
   );
 }

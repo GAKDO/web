@@ -1,6 +1,7 @@
 import { Link, Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   Camera,
+  ChartColumn,
   ClipboardCheck,
   ExternalLink,
   FileText,
@@ -22,6 +23,7 @@ const MENU: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/admin/devices", label: "기기", icon: Laptop },
   { to: "/admin/models", label: "기종", icon: LayoutGrid },
   { to: "/admin/rentals", label: "렌탈", icon: FileText },
+  { to: "/admin/benchmark", label: "성능", icon: ChartColumn },
 ];
 
 // 왼쪽 메뉴 한 칸(768px 이상, 어두운 바탕): 지금 화면은 흰 글자 + 왼쪽 빨간 막대
@@ -29,18 +31,18 @@ const ITEM =
   "relative inline-flex min-h-10 cursor-pointer items-center gap-2.5 rounded-md px-3 text-sm font-medium whitespace-nowrap text-sidebar-foreground no-underline transition-colors duration-200 hover:bg-white/5 hover:text-sidebar-active";
 const ACTIVE =
   "bg-white/10 text-sidebar-active hover:bg-white/10 after:absolute after:inset-y-2 after:-left-3 after:w-[3px] after:rounded-full after:bg-brand";
-// 폰(767px 이하) 아래 탭 한 칸: 엄지로 닿는 아래쪽에 메뉴 4개를 고르게 놓는다(가로로 밀지 않음)
+// 폰(767px 이하) 아래 탭 한 칸: 엄지로 닿는 아래쪽에 메뉴 5개를 고르게 놓는다(가로로 밀지 않음)
 const TAB =
   "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[0.6875rem] font-medium text-zinc-500 no-underline transition-[color,scale] duration-200 active:scale-95 motion-reduce:scale-none";
 const TAB_ACTIVE =
   "text-foreground before:absolute before:top-0 before:h-0.5 before:w-8 before:rounded-full before:bg-brand";
 
-/** 로고: TRACE 글자 로고. 누르면 관리자 첫 화면(/admin)으로 */
+/** 로고: TRACE 글자 로고. 누르면 다른 화면처럼 첫 화면(/)으로 */
 function Brand() {
   return (
     <Link
-      to="/admin"
-      aria-label="TRACE 관리자 홈"
+      to="/"
+      aria-label="TRACE 첫 화면"
       className="inline-flex items-center rounded-lg no-underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand"
     >
       <TraceLogo className="h-11" />

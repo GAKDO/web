@@ -20,11 +20,12 @@ test("대시보드 주소가 없으면 '파일럿 추이' 메뉴를 숨긴다", 
   expect(screen.queryByRole("link", { name: /파일럿 추이/ })).not.toBeInTheDocument();
 });
 
-test("왼쪽 위 TRACE 로고를 누르면 관리자 첫 화면(기기 목록)으로 간다", async () => {
+test("왼쪽 위 TRACE 로고를 누르면 첫 화면으로 가고, 첫 화면에서 관리자 화면으로 돌아올 수 있다", async () => {
   const user = userEvent.setup();
   renderAsAdmin("/admin/inspections");
-  const logo = await screen.findByRole("link", { name: "TRACE 관리자 홈" });
-  expect(logo).toHaveAttribute("href", "/admin");
+  const logo = await screen.findByRole("link", { name: "TRACE 첫 화면" });
+  expect(logo).toHaveAttribute("href", "/");
   await user.click(logo);
+  await user.click(await screen.findByRole("link", { name: "관리자 화면" }));
   expect(await screen.findByRole("heading", { level: 1, name: /기기/ })).toBeInTheDocument();
 });

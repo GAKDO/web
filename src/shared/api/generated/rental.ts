@@ -33,7 +33,7 @@ export interface paths {
         };
         /**
          * 렌탈 목록
-         * @description ADMIN은 전체, CUSTOMER는 rentals 클레임에 있는 내 렌탈만 보인다. 최근 생성 순. 항목마다 지금 시점(currentCheckpoint)을 준다. (FR-USR-03) BOOTH(11/3 추가)는 부스 태블릿의 "검사 기다리는 기기" 목록용으로 진행 중(OPEN) 렌탈만 보인다. status를 무엇으로 보내든 OPEN으로 거른다. 부스는 currentCheckpoint가 OPEN인 항목을 고르고 그 checkpointId로 세트를 만든다(빌린 노트북이라 스티커·QR 없이 목록에서 탭).
+         * @description ADMIN은 전체, CUSTOMER는 rentals 클레임에 있는 내 렌탈만 보인다. 최근 생성 순. 항목마다 지금 시점(currentCheckpoint)을 준다. (FR-USR-03) BOOTH(11/3 추가)는 부스 태블릿의 "검사 기다리는 기기" 목록용으로 진행 중(OPEN) 렌탈만 보인다. status를 무엇으로 보내든 OPEN으로 거른다. 부스는 currentCheckpoint가 OPEN인 항목을 고르고 그 checkpointId로 세트를 만든다(빌린 노트북이라 스티커·QR 없이 목록에서 탭). deviceId(11/6 추가)를 주면 그 기기의 렌탈만 보인다(기기별 렌탈 이력). 없는 기기 ID면 빈 목록. 역할별 거르기(CUSTOMER 클레임·BOOTH OPEN)는 그대로 겹쳐 적용한다.
          */
         get: operations["listRentals"];
         put?: never;
@@ -201,7 +201,12 @@ export interface paths {
             };
             cookie?: never;
         };
-        get?: never;
+        /**
+         * 기기 상세
+         * @description 기기 하나. 기기별 렌탈 이력 화면의 머리글용(11/6 추가). 이력은 `GET /api/v1/rentals?deviceId=`로 읽는다.
+         *     없는 기기면 404. (FR-RNT-05)
+         */
+        get: operations["getDevice"];
         put?: never;
         post?: never;
         delete?: never;
@@ -324,6 +329,12 @@ export interface components {
             modelCode: components["schemas"]["ModelCode"];
             status: components["schemas"]["RentalStatus"];
             createdAt: components["schemas"]["DateTime"];
+            /** @description 대여자 참조(렌탈 생성 때 받은 값). 1.0.x에 더한 선택 필드(11/6, 기기별 이력)지만 rental-server는 항상 보낸다. */
+            renterRef?: string;
+            /** @description 출고 시점을 시작한 때. 아직이면 null. 선택 필드(11/6), rental-server는 항상 보낸다. */
+            startedAt?: components["schemas"]["DateTime"] | null;
+            /** @description 렌탈을 종료(CLOSED)한 때. 아직이면 null. 선택 필드(11/6), rental-server는 항상 보낸다. */
+            endedAt?: components["schemas"]["DateTime"] | null;
             /**
              * @description 지금 시점 = 시작된 시점 중 가장 뒤(OUT → RCV → RET). 아직 시작한 시점이 없으면 null.
              *     1.0.x에 더한 선택 필드지만 rental-server는 항상 보낸다(값이 없으면 null).
@@ -595,24 +606,6 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description 요청 제한 초과 (IP당 분당 10회, RATE_LIMITED) */
-        TooManyRequests: {
-            headers: {
-                /** @description 다시 시도할 수 있을 때까지 초 */
-                "Retry-After"?: number;
-                [name: string]: unknown;
-            };
-            content: {
-                /**
-                 * @example {
-                 *       "title": "요청이 너무 많습니다",
-                 *       "status": 429,
-                 *       "code": "RATE_LIMITED"
-                 *     }
-                 */
-                "application/problem+json": components["schemas"]["Problem"];
-            };
-        };
     };
     parameters: {
         RentalId: components["schemas"]["PublicId"];
@@ -657,6 +650,8 @@ export interface operations {
         parameters: {
             query?: {
                 status?: components["schemas"]["RentalStatus"];
+                /** @description 이 기기의 렌탈만(기기별 렌탈 이력, 11/6 추가) */
+                deviceId?: components["schemas"]["PublicId"];
                 limit?: components["parameters"]["Limit"];
                 /** @description 이전 응답의 nextCursor. 비우면 처음부터. */
                 cursor?: components["parameters"]["Cursor"];
@@ -681,7 +676,10 @@ export interface operations {
                      *           "deviceId": "aAXQFO2Vz6ZTFbPctC2dq",
                      *           "serial": "C02EXAMPLE01",
                      *           "modelCode": "MBA13-M2",
+                     *           "renterRef": "R-2026-0012",
                      *           "status": "OPEN",
+                     *           "startedAt": "2026-11-12T09:00:00+09:00",
+                     *           "endedAt": null,
                      *           "createdAt": "2026-11-12T08:50:00+09:00",
                      *           "currentCheckpoint": {
                      *             "checkpointId": "h40b9AN9xMQhXRHrOyJWB",
@@ -1032,7 +1030,24 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            429: components["responses"]["TooManyRequests"];
+            /** @description 요청 제한 초과 (모든 부스를 합쳐 틀린 코드 분당 30회, 넘으면 1분 차단, RATE_LIMITED) */
+            429: {
+                headers: {
+                    /** @description 다시 시도할 수 있을 때까지 초 */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "요청이 너무 많습니다",
+                     *       "status": 429,
+                     *       "code": "RATE_LIMITED"
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     closeRental: {
@@ -1192,6 +1207,46 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+        };
+    };
+    getDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deviceId: components["schemas"]["PublicId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 기기 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "deviceId": "aAXQFO2Vz6ZTFbPctC2dq",
+                     *       "serial": "C02EXAMPLE01",
+                     *       "modelCode": "MBA13-M2",
+                     *       "modelName": "MacBook Air (M2, 2022)",
+                     *       "os": "MACOS",
+                     *       "color": "미드나이트",
+                     *       "assetNo": "A-0001",
+                     *       "status": "ACTIVE",
+                     *       "retiredAt": null,
+                     *       "createdAt": "2026-11-10T10:00:00+09:00",
+                     *       "updatedAt": "2026-11-10T10:00:00+09:00"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Device"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     updateDevice: {
