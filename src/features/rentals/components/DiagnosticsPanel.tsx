@@ -76,10 +76,11 @@ export function DiagnosticsPanel({ checkpointId, live }: { checkpointId: string;
 export function CheckpointDiagnostics({ rentalId, checkpointId, open, serial }: { rentalId: string; checkpointId: string; open: boolean; serial?: string }) {
   // DiagnosticsPanel과 같은 쿼리 키라 요청은 한 번만 나간다
   const diag = useDiagnostics(checkpointId, open ? 5_000 : undefined);
-  const uploaded = !!diag.data;
+  // 조회가 끝나 진단이 없다고 확인된 뒤에만 코드를 만들 수 있게 한다(로딩 중에 눌러 쓸데없는 코드가 나가지 않게)
+  const canPair = open && !diag.isPending && !diag.data;
   return (
     <>
-      {open && !uploaded && <PairingCodePanel key={`${rentalId}:${checkpointId}`} rentalId={rentalId} checkpointId={checkpointId} deviceSerial={serial} />}
+      {canPair && <PairingCodePanel key={`${rentalId}:${checkpointId}`} rentalId={rentalId} checkpointId={checkpointId} deviceSerial={serial} />}
       {/* 폴링으로 결과가 바뀌면 화면 읽기 프로그램에 알린다. 알림 영역은 결과보다 먼저 있어야 한다 */}
       <div aria-live="polite" className="w-full">
         <DiagnosticsPanel checkpointId={checkpointId} live={open} />
