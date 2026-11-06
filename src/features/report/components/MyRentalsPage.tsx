@@ -63,8 +63,10 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
   return (
     <div className="rounded-2xl border bg-card p-4 shadow-xs">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="m-0 mt-1 text-2xl font-bold tabular-nums">{value}</dd>
-      {hint && <p className="m-0 mt-0.5 text-xs text-muted-foreground">{hint}</p>}
+      <dd className="m-0 mt-1">
+        <span className="text-2xl font-bold tabular-nums">{value}</span>
+        {hint && <span className="mt-0.5 block text-xs text-muted-foreground">{hint}</span>}
+      </dd>
     </div>
   );
 }
@@ -78,7 +80,8 @@ export function MyRentalsPage() {
   const rentals = useMyRentals();
   const items = rentals.data?.pages.flatMap((page) => page.items) ?? [];
   const partial = rentals.hasNextPage ? `불러온 ${items.length}대 기준` : undefined;
-  const linked = me.data?.rentalIds.length ?? items.length;
+  // 내 정보를 못 읽었으면 불러온 목록 수로 대신하고, 다음 쪽이 있으면 그렇다고 적는다
+  const linked = me.data?.rentalIds.length;
   const name = me.data?.role === "CUSTOMER" ? me.data.name : undefined;
 
   return (
@@ -103,7 +106,7 @@ export function MyRentalsPage() {
       </header>
 
       <dl aria-label="요약" className="m-0 mt-4 grid grid-cols-3 gap-3">
-        <Stat label="연결된 노트북" value={`${linked}대`} />
+        <Stat label="연결된 노트북" value={`${linked ?? items.length}대`} hint={linked === undefined ? partial : undefined} />
         <Stat label="사용 중" value={`${items.filter((r) => r.status === "OPEN").length}대`} hint={partial} />
         <Stat label="반납 완료" value={`${items.filter((r) => r.status !== "OPEN").length}대`} hint={partial} />
       </dl>
