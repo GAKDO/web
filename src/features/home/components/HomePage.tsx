@@ -4,6 +4,7 @@ import { ArrowRight, Camera, CircleCheck, CircleX, ScanSearch, ShieldCheck } fro
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ScanVisual } from "../../../shared/ui/ScanVisual";
+import { TraceLogo } from "../../../shared/ui/TraceLogo";
 import { isArchived } from "../../../shared/config/features";
 
 const STEPS = [
@@ -27,12 +28,9 @@ export function HomePage() {
         />
         <div aria-hidden="true" className="absolute -top-32 left-1/2 -z-10 size-[32.5rem] -translate-x-1/2 rounded-full bg-brand/30 blur-[140px]" />
         <header className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 md:px-8">
-          <span className="inline-flex items-center gap-2.5">
-            <span aria-hidden="true" className="grid size-8 place-items-center rounded-lg bg-brand font-black shadow-[0_0_24px_-4px_var(--brand)]">
-              T
-            </span>
-            <h1 className="m-0 text-lg font-bold tracking-[0.12em]">TRACE</h1>
-          </span>
+          <h1 className="m-0">
+            <TraceLogo className="h-11" />
+          </h1>
           <nav className="flex items-center gap-1" aria-label="로그인">
             {showAccount && (
               <Link to="/login" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-zinc-300 hover:bg-white/10 hover:text-white")}>

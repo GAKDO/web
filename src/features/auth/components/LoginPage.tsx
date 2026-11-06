@@ -6,6 +6,7 @@ import { useAuth } from "../../../shared/auth/AuthProvider";
 import { LoginForm } from "../../../shared/auth/LoginForm";
 import { LOGIN_NOTICE } from "../../../shared/auth/loginNotice";
 import { ScanVisual } from "../../../shared/ui/ScanVisual";
+import { TraceLogo } from "../../../shared/ui/TraceLogo";
 
 // 왼쪽 면에 적는 세 단계(MVP 흐름: 부스 촬영 → 흠집 판정 → 결과 확인). 장식이라 읽는 내용만 짧게
 const STEPS = [
@@ -33,12 +34,7 @@ export function LoginPage() {
         />
         <div aria-hidden="true" className="absolute -top-24 -left-24 -z-10 size-[26.25rem] rounded-full bg-brand/35 blur-[120px]" />
         <div className="mx-auto w-full max-w-[30rem]">
-          <span className="inline-flex animate-enter items-center gap-3">
-            <span aria-hidden="true" className="grid size-10 place-items-center rounded-xl bg-brand text-lg font-black shadow-[0_0_32px_-4px_var(--brand)]">
-              T
-            </span>
-            <span className="text-2xl font-bold tracking-[0.14em]">TRACE</span>
-          </span>
+          <TraceLogo className="h-12 animate-enter md:h-14" />
           <p className="stagger mt-6 mb-3 animate-enter text-[1.625rem] leading-tight font-bold tracking-tight md:mt-10 md:text-[2.5rem]" style={{ "--i": 1 } as CSSProperties}>
             노트북 상태를
             <br />
@@ -48,7 +44,7 @@ export function LoginPage() {
           {/* 검사 막대가 노트북을 훑는 그림(장식). 폰에서는 입력칸이 먼저 보이게 뺀다.
               768px 이상에서는 화면 높이에 맞춰 그림 높이를 줄여(글자·단계 약 37rem을 뺀 나머지, 최대 16:9) 스크롤 없이 한 화면에 들어오게 하고,
               높이가 아주 낮은 창(680px 이하)에서는 그림을 뺀다 */}
-          <ScanVisual className="mt-8 hidden md:block md:aspect-auto md:h-[clamp(0rem,calc(100svh-37rem),16.875rem)] [@media(max-height:760px)]:md:hidden" />
+          <ScanVisual className="mt-8 hidden md:block md:aspect-auto md:h-[clamp(0rem,calc(100svh-38rem),16.875rem)] [@media(max-height:760px)]:md:hidden" />
           <ol className="m-0 mt-8 hidden list-none gap-3 p-0 md:grid">
             {STEPS.map(({ icon: Icon, text }, i) => (
               <li
