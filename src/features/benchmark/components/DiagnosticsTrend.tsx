@@ -12,6 +12,8 @@ import { TrendChart } from "./TrendChart";
  */
 export function DiagnosticsTrend({ deviceId }: { deviceId: string }) {
   const data = useDeviceDiagnostics(deviceId);
+  // 렌탈 목록부터 못 읽으면 '진단 없음'이 아니라 오류로 알린다
+  if (data.rentals.isError && !data.rentals.data) return <ErrorBanner message="이 기기의 렌탈 기록을 불러오지 못했습니다." onRetry={data.refetch} />;
   if (data.loading && !data.diagnosed.length) return <p className="text-sm text-muted-foreground">진단 기록을 모으는 중…</p>;
   const series = trendSeries(data.diagnosed);
   return (
