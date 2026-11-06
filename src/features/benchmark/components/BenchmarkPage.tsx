@@ -5,7 +5,8 @@ import type { CaptureCamera, DefectClass } from "../../../shared/api/types";
 import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { PageHeader } from "../../../shared/ui/PageHeader";
-import { useBenchmarkData } from "../api/benchmark";
+import { useBenchmarkData, useCaptureBenchmarks } from "../api/benchmark";
+import { BOOTH_TARGET_MS, buildTiming, formatSeconds } from "../model/timing";
 import { buildStats, GRADES } from "../model/stats";
 import { ColumnChart } from "./ColumnChart";
 
@@ -59,12 +60,16 @@ const pct = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}%` : "�
 
 /**
  * 성능 그래프(Grafana 대신, 11/6). 서버가 이미 주는 검사 결과만 모아 그린다: 날짜별 판정, 등급 분포,
- * 조명·카메라별 흠집, 흠집 종류, 신뢰도 분포, 모델 버전. 판정 시간·모델 정확도는 계약에 없어 빈칸으로 둔다
+ * 조명·카메라별 흠집, 흠집 종류, 신뢰도 분포, 모델 버전, 그리고 세트별 처리 시간·모델 mAP(GET /captures/benchmarks)
  */
 export function BenchmarkPage() {
   const data = useBenchmarkData();
   const s = buildStats(data.results);
   const has = s.graded > 0;
+  const bench = useCaptureBenchmarks();
+  const t = buildTiming(bench.data?.items ?? []);
+  const models = bench.data?.models ?? [];
+  const sec = (ms: number) => Math.round(ms / 100) / 10;
 
   return (
     <section>
@@ -72,7 +77,12 @@ export function BenchmarkPage() {
         title="성능 그래프"
         description="부스 검사 결과를 모아 그래프로 봅니다. 서버에 저장된 검사 결과만 셉니다."
         actions={
-          <Button onClick={data.refetch}>
+          <Button
+            onClick={() => {
+              data.refetch();
+              void bench.refetch();
+            }}
+          >
             <RefreshCw aria-hidden="true" />
             새로 고침
           </Button>
@@ -157,14 +167,76 @@ export function BenchmarkPage() {
         </Card>
       </div>
 
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
-        <Missing icon={<Timer className="size-5" />} title="부스 판정 시간">
-          부스가 버튼부터 판정까지 걸린 시간(목표 30초)을 재지만 아직 서버로 보내지 않아 그래프로 그릴 수 없습니다.
-        </Missing>
-        <Missing icon={<Target className="size-5" />} title="모델 정확도(mAP)">
-          학습 결과(검증 기기 MB04·MB13·MB16)가 서버에 아직 없어 그래프로 그릴 수 없습니다.
-        </Missing>
-      </div>
+      <h2 className="mt-8 mb-3 text-lg font-semibold tracking-tight">처리 시간·모델 정확도</h2>
+      {bench.isError ? (
+        <div className="grid gap-3 md:grid-cols-2">
+          <Missing icon={<Timer className="size-5" />} title="부스 판정 시간">
+            처리 시간을 불러오지 못했습니다. capture-server가 새 버전으로 배포됐는지 확인해 주세요.
+          </Missing>
+          <Missing icon={<Target className="size-5" />} title="모델 정확도(mAP)">
+            처리 시간과 같은 곳에서 받습니다. 불러오지 못해 비워 둡니다.
+          </Missing>
+        </div>
+      ) : (
+        <>
+          <ul className="m-0 mb-3 grid list-none grid-cols-2 gap-2 p-0 md:grid-cols-4 md:gap-3">
+            <Stat label="부스 판정 중간값" value={formatSeconds(t.boothMedianMs)} sub={t.boothMedianMs === null ? "버튼→판정, 부스가 보낸 값" : `30초 안 ${t.boothWithinTarget}/${t.boothCount}세트`} />
+            <Stat label="Jetson 탐지 중간값" value={formatSeconds(t.inferenceMedianMs)} sub="세트 사진 전체 탐지" />
+            <Stat label="서버 처리 · 부스" value={formatSeconds(t.serverMedianMs.BOOTH)} sub="촬영 완료→등급 중간값" />
+            <Stat label="서버 처리 · 폰" value={formatSeconds(t.serverMedianMs.PHONE)} sub="촬영 완료→등급 중간값" />
+          </ul>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Card title="부스 판정 시간" note="세트마다 촬영 시작 버튼부터 부스 화면 판정까지(최근 20세트). 굵은 선이 목표 30초입니다">
+              {t.booth.length ? (
+                <ColumnChart
+                  title="부스 판정 시간"
+                  unit="초"
+                  target={{ value: BOOTH_TARGET_MS / 1000, label: "목표 30초" }}
+                  columns={t.booth.map((b) => ({ label: b.label, values: [sec(b.detectMs), sec(b.otherMs)] }))}
+                  series={[
+                    { name: "Jetson 탐지", color: SERIES_1 },
+                    { name: "촬영·그 밖", color: SERIES_2 },
+                  ]}
+                />
+              ) : (
+                <Empty>{bench.isPending ? "불러오는 중…" : "부스가 판정 시간을 보낸 세트가 아직 없습니다."}</Empty>
+              )}
+            </Card>
+            <Card title="폰 촬영 처리 시간" note="폰 세트마다 촬영 완료부터 등급까지(서버 CPU 탐지 포함, 최근 20세트)">
+              {t.phone.length ? (
+                <ColumnChart title="폰 촬영 처리 시간" unit="초" columns={t.phone.map((p) => ({ label: p.label, values: [sec(p.ms)] }))} series={[{ name: "처리 시간", color: SERIES_1 }]} />
+              ) : (
+                <Empty>{bench.isPending ? "불러오는 중…" : "등급까지 끝난 폰 세트가 아직 없습니다."}</Empty>
+              )}
+            </Card>
+            <Card title="모델 정확도(mAP)" note="학습 뒤 검증 기기(MB04·MB13·MB16)로 잰 점수. 1에 가까울수록 정확합니다">
+              {models.length ? (
+                <ul className="m-0 grid list-none gap-3 p-0 text-sm">
+                  {models.map((m) => (
+                    <li key={m.modelVersion} className="grid gap-1.5">
+                      <code className="truncate text-xs">{m.modelVersion}</code>
+                      {([
+                        ["mAP50", m.map50],
+                        ["mAP50-95", m.map50To95],
+                      ] as const).map(([name, v]) => (
+                        <div key={name} className="grid grid-cols-[5.5rem_1fr_3rem] items-center gap-2 text-xs">
+                          <span className="text-muted-foreground">{name}</span>
+                          <span className="h-2 rounded-full bg-muted">
+                            {v !== null && <span className="block h-2 rounded-full" style={{ width: `${v * 100}%`, background: SERIES_1 }} />}
+                          </span>
+                          <span className="text-right tabular-nums">{v === null ? "—" : v.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <Empty>{bench.isPending ? "불러오는 중…" : "학습 결과 점수가 아직 서버에 없습니다. 학습이 끝나면 여기에 나옵니다."}</Empty>
+              )}
+            </Card>
+          </div>
+        </>
+      )}
     </section>
   );
 }

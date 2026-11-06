@@ -24,9 +24,24 @@ export function niceMax(max: number): number {
  * 세로 막대 그래프(쌓기 지원). 막대에 마우스·키보드 초점을 두면 값이 뜨고, 아래 '표로 보기'로 같은 값을 읽을 수 있다.
  * 두 계열 이상이면 범례를 늘 보인다(색만으로 구분하지 않음)
  */
-export function ColumnChart({ title, columns, series, unit = "건", height = 160 }: { title: string; columns: Column[]; series: Series[]; unit?: string; height?: number }) {
-  const totals = columns.map((c) => c.values.reduce((s, v) => s + v, 0));
-  const top = niceMax(Math.max(0, ...totals));
+export function ColumnChart({
+  title,
+  columns,
+  series,
+  unit = "건",
+  height = 160,
+  target,
+}: {
+  title: string;
+  columns: Column[];
+  series: Series[];
+  unit?: string;
+  height?: number;
+  /** 목표선(예: 부스 판정 30초). 눈금은 목표선이 보이게 잡는다 */
+  target?: { value: number; label: string };
+}) {
+  const totals = columns.map((c) => Math.round(c.values.reduce((s, v) => s + v, 0) * 10) / 10);
+  const top = niceMax(Math.max(0, target?.value ?? 0, ...totals));
   return (
     <figure className="m-0 grid gap-3" aria-label={title}>
       {series.length > 1 && (
@@ -48,8 +63,13 @@ export function ColumnChart({ title, columns, series, unit = "건", height = 160
         <div className="relative flex min-w-0 flex-1 items-end gap-1 border-b border-border" style={{ height }}>
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-border/70" />
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-dashed border-border/70" />
+          {target && (
+            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 z-[1] border-t-2 border-foreground/70" style={{ bottom: (target.value / top) * (height - 2) }}>
+              <span className="absolute right-0 bottom-0.5 rounded-sm bg-card/90 px-1 text-[0.6875rem] font-medium text-foreground">{target.label}</span>
+            </div>
+          )}
           {columns.map((c, i) => (
-            <div key={c.label} tabIndex={0} aria-label={`${c.label}: ${series.map((s, j) => `${s.name} ${c.values[j]}${unit}`).join(", ")}`} className="group relative flex h-full min-w-0 flex-1 cursor-default flex-col justify-end outline-none">
+            <div key={`${c.label}-${i}`} tabIndex={0} aria-label={`${c.label}: ${series.map((s, j) => `${s.name} ${c.values[j]}${unit}`).join(", ")}`} className="group relative flex h-full min-w-0 flex-1 cursor-default flex-col justify-end outline-none">
               <div className="mx-auto flex w-full max-w-10 flex-col-reverse gap-[2px]">
                 {c.values.map((v, j) =>
                   v > 0 ? (
@@ -73,8 +93,8 @@ export function ColumnChart({ title, columns, series, unit = "건", height = 160
         </div>
       </div>
       <div className="ml-7 flex gap-1 text-[0.6875rem] text-muted-foreground" aria-hidden="true">
-        {columns.map((c) => (
-          <span key={c.label} className="min-w-0 flex-1 truncate text-center">
+        {columns.map((c, i) => (
+          <span key={`${c.label}-${i}`} className="min-w-0 flex-1 truncate text-center">
             {c.label}
           </span>
         ))}
@@ -93,8 +113,8 @@ export function ColumnChart({ title, columns, series, unit = "건", height = 160
             </tr>
           </thead>
           <tbody>
-            {columns.map((c) => (
-              <tr key={c.label} className="border-t">
+            {columns.map((c, i) => (
+              <tr key={`${c.label}-${i}`} className="border-t">
                 <td className="py-1">{c.label}</td>
                 {c.values.map((v, j) => (
                   <td key={series[j].name} className="py-1">

@@ -57,3 +57,15 @@ export function useBenchmarkData() {
     },
   };
 }
+
+/** 성능 그래프에 쓰는 최근 세트 수(계약 limit 최대 100) */
+export const BENCHMARK_LIMIT = 100;
+
+/** 세트별 처리 시간과 모델 점수(GET /captures/benchmarks, contracts #29·#30). 최근 세트부터 최대 100개 */
+export function useCaptureBenchmarks() {
+  return useQuery({
+    queryKey: ["benchmark", "sets"],
+    queryFn: () => unwrap(api.GET("/api/v1/captures/benchmarks", { params: { query: { limit: BENCHMARK_LIMIT } } })),
+    retry: false,
+  });
+}
