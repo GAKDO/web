@@ -20,10 +20,17 @@ import { RentalDetailPage } from "./features/rentals/components/RentalDetailPage
 import { RentalListPage } from "./features/rentals/components/RentalListPage";
 import { MyRentalsPage } from "./features/report/components/MyRentalsPage";
 import { ReportPage } from "./features/report/components/ReportPage";
+import { ClaimRentalPage } from "./features/report/components/ClaimRentalPage";
 import { VerifyPage } from "./features/verify/components/VerifyPage";
 import { RequireAdmin } from "./shared/auth/RequireAdmin";
 import { RequireCustomer } from "./shared/auth/RequireCustomer";
 import { ArchivedRoute } from "./shared/config/ArchivedRoute";
+import { isArchived } from "./shared/config/features";
+
+/** 수령 QR 주소. 폰 촬영을 숨긴 배포에서는 렌탈을 계정에 연결만 한다(내 렌탈이 보일 때) */
+function CaptureOrClaim() {
+  return isArchived("phoneCapture") ? <ClaimRentalPage /> : <CaptureEntryPage />;
+}
 
 
 export const routes: RouteObject[] = [
@@ -35,7 +42,7 @@ export const routes: RouteObject[] = [
   { path: "/account/withdrawn", element: <ArchivedRoute features={["account"]}><WithdrawnPage /></ArchivedRoute> },
   { path: "/signup", element: <ArchivedRoute features={["account"]}><SignupPage /></ArchivedRoute> },
   { path: "/signup/verify", element: <ArchivedRoute features={["account"]}><VerifyEmailPage /></ArchivedRoute> },
-  { path: "/capture", element: <ArchivedRoute features={["phoneCapture"]}><RequireCustomer /></ArchivedRoute>, children: [{ index: true, element: <CaptureEntryPage /> }] },
+  { path: "/capture", element: <ArchivedRoute features={["phoneCapture", "report"]}><RequireCustomer /></ArchivedRoute>, children: [{ index: true, element: <CaptureOrClaim /> }] },
   {
     // 고객 화면(WE3): 고객·관리자 모두 연다. 보관 검사를 로그인 검사보다 먼저 한다(보관된 주소는 로그인 화면이 아니라 첫 화면으로)
     element: <ArchivedRoute features={["report"]}><RequireCustomer /></ArchivedRoute>,
