@@ -1,4 +1,4 @@
-import { Camera } from "lucide-react";
+import { Camera, ImageUp } from "lucide-react";
 import { useId, useState, type ChangeEvent } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ type ScanState =
  */
 export function LabelScanner({ onRead }: { onRead: (reading: LabelReading) => void }) {
   const inputId = useId();
+  const pickId = useId();
   const [state, setState] = useState<ScanState>({ kind: "idle" });
 
   async function pick(event: ChangeEvent<HTMLInputElement>) {
@@ -44,14 +45,17 @@ export function LabelScanner({ onRead }: { onRead: (reading: LabelReading) => vo
       <p className="m-0 mb-3 text-sm text-muted-foreground">
         기기 바닥의 시리얼·모델 번호 글자를 가까이, 반사 없이 찍어 주세요. 읽은 값은 아래 칸에 미리 채워지고, 확인·수정한 뒤 등록합니다.
       </p>
-      <label
-        htmlFor={inputId}
-        aria-disabled={busy || undefined}
-        className={cn(buttonVariants({ variant: "outline" }), "cursor-pointer", busy && "pointer-events-none opacity-50")}
-      >
-        <Camera aria-hidden />
-        {busy ? "읽는 중…" : "라벨 사진 찍기·고르기"}
-      </label>
+      <div className="flex flex-wrap gap-2">
+        <label htmlFor={inputId} aria-disabled={busy || undefined} className={cn(buttonVariants({ variant: "outline" }), "cursor-pointer", busy && "pointer-events-none opacity-50")}>
+          <Camera aria-hidden />
+          {busy ? "읽는 중…" : "라벨 사진 찍기"}
+        </label>
+        <label htmlFor={pickId} aria-disabled={busy || undefined} className={cn(buttonVariants({ variant: "outline" }), "cursor-pointer", busy && "pointer-events-none opacity-50")}>
+          <ImageUp aria-hidden />
+          사진 고르기
+        </label>
+      </div>
+      {/* 카메라 권한을 거부하면 촬영 입력이 사진 고르기로 넘어가지 않는 브라우저가 있어 고르기 입력을 따로 둔다 */}
       <input
         id={inputId}
         type="file"
@@ -62,6 +66,7 @@ export function LabelScanner({ onRead }: { onRead: (reading: LabelReading) => vo
         disabled={busy}
         onChange={pick}
       />
+      <input id={pickId} type="file" accept="image/*" className="sr-only" aria-label="저장된 라벨 사진" disabled={busy} onChange={pick} />
       <div role="status" className="mt-3 text-sm empty:hidden">
         {state.kind === "reading" && `글자를 읽고 있습니다… ${state.percent}% (처음 한 번은 글자 모델을 내려받아 조금 더 걸립니다)`}
         {state.kind === "failed" && "사진의 글자를 읽지 못했습니다. 직접 입력하거나 다시 찍어 주세요."}

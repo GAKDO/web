@@ -67,7 +67,15 @@ test("라벨 사진을 고르면 읽은 시리얼·기종이 칸에 미리 채�
 test("라벨 글자를 못 읽으면 칸을 비워 두고 직접 입력하라고 알린다", async () => {
   readLabelText.mockRejectedValueOnce(new Error("no wasm"));
   const { user } = await openForm();
-  await user.upload(screen.getByLabelText("라벨 사진"), new File(["x"], "label.jpg", { type: "image/jpeg" }));
+  await user.upload(screen.getByLabelText("저장된 라벨 사진"), new File(["x"], "label.jpg", { type: "image/jpeg" }));
   expect(await screen.findByText("사진의 글자를 읽지 못했습니다. 직접 입력하거나 다시 찍어 주세요.")).toBeInTheDocument();
   expect(screen.getByLabelText("시리얼")).toHaveValue("");
+});
+
+test("기종 목록이 오기 전에 라벨을 다 읽어도 목록이 오면 기종이 채워진다", async () => {
+  readLabelText.mockResolvedValueOnce("Model A2681\nSerial: C02LBL0088");
+  const { user } = await openForm();
+  // 기종 목록을 기다리지 않고 바로 올린다
+  await user.upload(screen.getByLabelText("라벨 사진"), new File(["x"], "label.jpg", { type: "image/jpeg" }));
+  await waitFor(() => expect(screen.getByLabelText("기종")).toHaveValue("MBA13-M2"));
 });

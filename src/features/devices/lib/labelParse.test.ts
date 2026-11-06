@@ -53,3 +53,8 @@ test("Apple 기종이 둘이라 모델 번호가 표에 없으면 기종을 고�
 test("Serial 머리말과 값이 다른 줄로 나뉘어 읽혀도 시리얼을 찾는다", () => {
   expect(parseLabelText("Model A2681\nSerial:\nK7QX2M9P4T\nEMC 4048").serial).toBe("K7QX2M9P4T");
 });
+
+test("모델 번호가 다른 코드의 일부로만 들어 있으면 그 기종을 고르지 않는다", () => {
+  const extra = [{ modelCode: "XP54G7", name: "Other XP54G7", manufacturer: "Acme", formFactor: "CLAMSHELL" as const }];
+  expect(matchModel({ serial: null, modelNumber: "P54G", manufacturer: null, os: null }, extra)).toBeNull();
+});

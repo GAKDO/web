@@ -100,7 +100,10 @@ function includesAll(name: string, words: string[]): boolean {
 export function matchModel(reading: LabelReading, models: DeviceModelSummary[]): string | null {
   const num = reading.modelNumber?.toLowerCase();
   if (num) {
-    const direct = models.filter((m) => m.modelCode.toLowerCase().includes(num) || m.name.toLowerCase().includes(num));
+    // 다른 코드의 일부(예: P54G ⊂ XP54G7)는 맞춘 것으로 보지 않는다. 앞뒤가 영숫자가 아니어야 한다(괄호·띄어쓰기·하이픈은 경계)
+    const escaped = num.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const bounded = new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`);
+    const direct = models.filter((m) => bounded.test(m.modelCode.toLowerCase()) || bounded.test(m.name.toLowerCase()));
     if (direct.length === 1) return direct[0]!.modelCode;
     const hints = APPLE_MODEL_HINTS[reading.modelNumber!];
     if (hints) {
