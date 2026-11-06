@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import type { Inspection, RentalSummary } from "../../../shared/api/types";
 import { CHECKPOINT_STATUS_LABEL, CHECKPOINT_TYPE_LABEL } from "../../../shared/codes/labels";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
+import { maskSerial } from "../../../shared/ui/maskSerial";
 import { BoothCodePanel } from "../../rentals/components/BoothCodePanel";
 import { useCheckpointInspection, useCheckpointMedia } from "../../inspections/api/inspections";
 import { PhotoGrid } from "../../inspections/components/PhotoGrid";
@@ -27,7 +28,7 @@ export function BoothDevicePanel({ rental, modelName }: { rental: RentalSummary;
       <div className="grid gap-1">
         <h2 className="m-0 text-2xl font-bold">{modelName}</h2>
         <p className="m-0 text-sm text-muted-foreground">
-          시리얼 {rental.serial}
+          시리얼 {maskSerial(rental.serial)}
           {cp ? ` · ${CHECKPOINT_TYPE_LABEL[cp.type]} · ${CHECKPOINT_STATUS_LABEL[cp.status]}` : " · 시점 없음"}
         </p>
       </div>
@@ -36,7 +37,7 @@ export function BoothDevicePanel({ rental, modelName }: { rental: RentalSummary;
           <ol className="m-0 grid gap-1 rounded-xl border bg-card p-4 pl-8 text-sm">
             <li>노트북을 부스에 넣습니다.</li>
             <li>
-              부스(Jetson) 화면의 <b>기다리는 기기</b>에서 시리얼 <b>{rental.serial}</b>을 누르거나, 아래 부스 코드를 넣습니다.
+              부스(Jetson) 화면의 <b>기다리는 기기</b>에서 끝자리가 <b>{rental.serial.slice(-4)}</b>인 시리얼을 누르거나, 아래 부스 코드를 넣습니다.
             </li>
             <li>찍고 나면 이 화면에 판정과 사진이 저절로 뜹니다.</li>
           </ol>

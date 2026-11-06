@@ -12,6 +12,7 @@ import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { TraceLogo } from "../../../shared/ui/TraceLogo";
 import { formatDateTime } from "../../../shared/ui/format";
+import { maskSerial } from "../../../shared/ui/maskSerial";
 import { useDeviceModels } from "../../devices/api/devices";
 import { useRentals } from "../../rentals/api/rentals";
 import { VerdictBadge } from "../../inspections/components/VerdictBadge";
@@ -175,7 +176,7 @@ function DeviceList({ title, empty, items, selectedId, onSelect, modelName, show
                   {showVerdict ? <VerdictBadge checkpoint={cp} /> : cp && <span className="text-sm font-medium text-brand">{CHECKPOINT_TYPE_LABEL[cp.type]} 촬영</span>}
                 </span>
                 <span className="text-sm text-muted-foreground">
-                  시리얼 {r.serial}
+                  시리얼 {maskSerial(r.serial)}
                   {showVerdict && cp ? ` · ${CHECKPOINT_TYPE_LABEL[cp.type]} · ${cp.occurredAt ? formatDateTime(cp.occurredAt) : "—"}` : ""}
                 </span>
               </button>
