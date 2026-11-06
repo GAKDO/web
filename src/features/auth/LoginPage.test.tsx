@@ -8,6 +8,10 @@ import { MOCK_ADMIN, MOCK_CUSTOMER, db, expireAccessTokens } from "../../shared/
 import { api, unwrap } from "../../shared/api/client";
 import { tokenStore } from "../../shared/auth/tokenStore";
 
+// 이 파일은 관리자 전용 로그인(고객 계정 숨김, MVP 배포)을 본다. 통합 로그인은 UnifiedLogin.test.tsx
+beforeEach(() => vi.stubEnv("VITE_ARCHIVED_FEATURES", "account"));
+afterEach(() => vi.unstubAllEnvs());
+
 async function loginAs(email: string, password: string) {
   const user = userEvent.setup();
   const { router } = renderApp("/admin/login");

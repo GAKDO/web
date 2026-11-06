@@ -18,8 +18,8 @@ interface AuthValue {
   status: AuthStatus;
   role: SessionRole | null;
   notice: AuthNotice;
-  /** expected와 다른 역할이면 로그아웃하고 notice로 알린다. 기본은 관리자(WE1) */
-  login(email: string, password: string, expected?: SessionRole): Promise<void>;
+  /** expected와 다른 역할이면 로그아웃하고 notice로 알린다. 기본은 관리자(WE1). "ANY"면 관리자·고객 모두 받는다(통합 로그인) */
+  login(email: string, password: string, expected?: SessionRole | "ANY"): Promise<void>;
   /** 이 화면의 세션은 항상 지운다. 서버가 로그아웃(리프레시 폐기)을 확인했으면 true */
   logout(): Promise<boolean>;
   /** 서버가 이미 세션을 끝냈을 때(탈퇴 등): 서버를 부르지 않고 이 화면의 세션만 지운다 */
@@ -81,9 +81,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [endSession]);
 
   const login = useCallback(
-    async (email: string, password: string, expected: SessionRole = "ADMIN") => {
+    async (email: string, password: string, expected: SessionRole | "ANY" = "ADMIN") => {
+      // 이미 다른 계정 세션이 있던 탭이면 그 계정의 캐시(내 렌탈 등)가 새 계정에 보이지 않게 지운다
+      const hadSession = tokenStore.get() !== null;
       const token = await withRefreshExclusive(() => unwrap(api.POST("/api/v1/auth/login", { body: { email, password } })));
       captureTokenStore.clear();
+      if (hadSession) queryClient.clear();
       tokenStore.set(token);
       // 고객 화면에는 관리자도 들어올 수 있다(시연 확인용). 관리자 화면에는 관리자만
       const allowed = expected === "ADMIN" ? token.role === "ADMIN" : isSessionRole(token.role);
@@ -96,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(token.role);
       setStatus("authenticated");
     },
-    [logout],
+    [logout, queryClient],
   );
 
   const clearSession = useCallback(() => endSession(null), [endSession]);
