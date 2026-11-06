@@ -1,3 +1,5 @@
+import { maskSerial } from "../../../shared/ui/maskSerial";
+import { MaskedSerial } from "../../../shared/ui/MaskedSerial";
 import { PageHeader, SectionTitle } from "../../../shared/ui/PageHeader";
 import { InfoList } from "../../../shared/ui/InfoList";
 import { Badge } from "@/components/ui/badge";
@@ -21,8 +23,6 @@ import { PairingCodePanel } from "./PairingCodePanel";
 import { formatDate, RENTAL_STATUS_VARIANT } from "./RentalListPage";
 import { InspectionHistory } from "../../inspections/components/InspectionHistory";
 import { formatDateTime } from "../../../shared/ui/format";
-import { MaskedSerial } from "../../../shared/ui/MaskedSerial";
-import { maskSerial } from "../../../shared/ui/maskSerial";
 
 const STEPS: CheckpointType[] = ["OUT", "RCV", "RET"];
 const BEFORE: Record<CheckpointType, string> = { OUT: "출고를", RCV: "수령을", RET: "반납을" };
