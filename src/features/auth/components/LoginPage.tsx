@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { Camera, ScanSearch, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { useAuth } from "../../../shared/auth/AuthProvider";
@@ -41,7 +41,9 @@ export function LoginPage() {
         />
         <div aria-hidden="true" className="absolute -top-24 -left-24 -z-10 size-[26.25rem] rounded-full bg-brand/35 blur-[120px]" />
         <div className="mx-auto w-full max-w-[30rem]">
-          <TraceLogo className="h-12 animate-enter md:h-14" />
+          <Link to="/" aria-label="TRACE 첫 화면" className="inline-block animate-enter rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand">
+            <TraceLogo className="h-12 md:h-14" />
+          </Link>
           <p className="stagger mt-6 mb-3 animate-enter text-[1.625rem] leading-tight font-bold tracking-tight md:mt-10 md:text-[2.5rem]" style={{ "--i": 1 } as CSSProperties}>
             노트북 상태를
             <br />

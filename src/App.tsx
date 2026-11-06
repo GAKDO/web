@@ -52,7 +52,7 @@ export const routes: RouteObject[] = [
     ],
   },
   {
-    element: <ArchivedRoute features={["account"]}><RequireCustomer /></ArchivedRoute>,
+    element: <ArchivedRoute features={["account"]}><RequireCustomer customerOnly /></ArchivedRoute>,
     children: [
       { path: "/my/account", element: <MyAccountPage /> },
       { path: "/my/account/withdraw", element: <WithdrawPage /> },
