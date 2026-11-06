@@ -5,6 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ScanVisual } from "../../../shared/ui/ScanVisual";
 import { TraceLogo } from "../../../shared/ui/TraceLogo";
+import { CustomerSections } from "./CustomerSections";
 import { isArchived } from "../../../shared/config/features";
 import { customerHome } from "../../../shared/config/customerHome";
 import { useAuth } from "../../../shared/auth/AuthProvider";
@@ -92,7 +93,7 @@ export function HomePage() {
             </p>
             <p className="stagger m-0 max-w-md animate-enter text-[0.9375rem] leading-relaxed text-zinc-400 md:text-base" style={{ "--i": 2 } as CSSProperties}>
               {showAccount
-                ? `받을 때와 돌려줄 때 부스에서 찍은 사진으로 흠집을 기록합니다. ${showReport ? "가입하면 내 렌탈에서 사진과 흠집 기록을 바로 볼 수 있어요." : "미리 가입해 두면 렌탈받을 때 바로 이어서 쓸 수 있어요."}`
+                ? `받을 때와 돌려줄 때 부스에서 찍은 사진으로 흠집을 기록합니다. ${showReport ? "가입하면 마이페이지에서 사진과 흠집 기록을 바로 볼 수 있어요." : "미리 가입해 두면 렌탈받을 때 바로 이어서 쓸 수 있어요."}`
                 : "빌려주기 전과 돌려받은 뒤, 부스에서 찍은 사진으로 흠집을 찾아 기록합니다. 누가 봐도 같은 결과를 사진과 함께 남깁니다."}
             </p>
             <div className="stagger mt-8 flex animate-enter flex-wrap gap-3" style={{ "--i": 3 } as CSSProperties}>
@@ -124,52 +125,63 @@ export function HomePage() {
         </div>
       </section>
 
-      <main className="mx-auto max-w-6xl px-4 py-14 md:px-8 md:py-20">
-        <h2 className="m-0 text-2xl font-bold tracking-tight md:text-3xl">이렇게 검사합니다</h2>
-        <ol className="m-0 mt-6 grid list-none gap-3 p-0 md:grid-cols-3 md:gap-4">
-          {STEPS.map(({ icon: Icon, title, text }, i) => (
-            <li
-              key={title}
-              className="stagger group animate-enter rounded-2xl border bg-card p-5 shadow-xs transition-[translate,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lg motion-reduce:translate-none"
-              style={{ "--i": i + 4 } as CSSProperties}
-            >
-              <span aria-hidden="true" className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand transition-colors duration-200 group-hover:bg-brand group-hover:text-white">
-                <Icon className="size-5" />
-              </span>
-              <h3 className="mt-4 mb-1 text-base font-semibold">
-                <span className="mr-2 text-muted-foreground tabular-nums">0{i + 1}</span>
-                {title}
-              </h3>
-              <p className="m-0 text-sm leading-relaxed text-muted-foreground">{text}</p>
-            </li>
-          ))}
-        </ol>
+      {showAccount && showReport ? (
+        <CustomerSections signedIn={signedIn} myHome={myHome} myHomeLabel={myHomeLabel} />
+      ) : (
+        <main className="mx-auto max-w-6xl px-4 py-14 md:px-8 md:py-20">
+          <h2 className="m-0 text-2xl font-bold tracking-tight md:text-3xl">이렇게 검사합니다</h2>
+          <ol className="m-0 mt-6 grid list-none gap-3 p-0 md:grid-cols-3 md:gap-4">
+            {STEPS.map(({ icon: Icon, title, text }, i) => (
+              <li
+                key={title}
+                className="stagger group animate-enter rounded-2xl border bg-card p-5 shadow-xs transition-[translate,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lg motion-reduce:translate-none"
+                style={{ "--i": i + 4 } as CSSProperties}
+              >
+                <span aria-hidden="true" className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand transition-colors duration-200 group-hover:bg-brand group-hover:text-white">
+                  <Icon className="size-5" />
+                </span>
+                <h3 className="mt-4 mb-1 text-base font-semibold">
+                  <span className="mr-2 text-muted-foreground tabular-nums">0{i + 1}</span>
+                  {title}
+                </h3>
+                <p className="m-0 text-sm leading-relaxed text-muted-foreground">{text}</p>
+              </li>
+            ))}
+          </ol>
 
-        <h2 className="mt-14 mb-0 text-2xl font-bold tracking-tight md:text-3xl">판정 기준</h2>
-        <ul className="m-0 mt-6 grid list-none gap-3 p-0 md:grid-cols-2 md:gap-4">
-          <li className="flex items-start gap-3 rounded-2xl border border-success/30 bg-success-soft p-5">
-            <CircleCheck aria-hidden="true" className="mt-0.5 size-6 shrink-0 text-success" />
-            <span>
-              <strong className="text-success">문제 없음 · 등급 A</strong>
-              <span className="mt-1 block text-sm text-muted-foreground">수리 필요 없음</span>
-            </span>
-          </li>
-          <li className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive-soft p-5">
-            <CircleX aria-hidden="true" className="mt-0.5 size-6 shrink-0 text-destructive" />
-            <span>
-              <strong className="text-destructive">문제 있음 · 등급 B~D</strong>
-              <span className="mt-1 block text-sm text-muted-foreground">수리 필요</span>
-            </span>
-          </li>
-        </ul>
-      </main>
+          <h2 className="mt-14 mb-0 text-2xl font-bold tracking-tight md:text-3xl">판정 기준</h2>
+          <ul className="m-0 mt-6 grid list-none gap-3 p-0 md:grid-cols-2 md:gap-4">
+            <li className="flex items-start gap-3 rounded-2xl border border-success/30 bg-success-soft p-5">
+              <CircleCheck aria-hidden="true" className="mt-0.5 size-6 shrink-0 text-success" />
+              <span>
+                <strong className="text-success">문제 없음 · 등급 A</strong>
+                <span className="mt-1 block text-sm text-muted-foreground">수리 필요 없음</span>
+              </span>
+            </li>
+            <li className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive-soft p-5">
+              <CircleX aria-hidden="true" className="mt-0.5 size-6 shrink-0 text-destructive" />
+              <span>
+                <strong className="text-destructive">문제 있음 · 등급 B~D</strong>
+                <span className="mt-1 block text-sm text-muted-foreground">수리 필요</span>
+              </span>
+            </li>
+          </ul>
+        </main>
+      )}
       <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 border-t px-4 py-6 text-xs text-muted-foreground md:px-8">
         <span>TRACE Rental Management System</span>
         {/* 관리자 입구는 고객이 먼저 보이도록 맨 아래 작은 링크로만 둔다 */}
         {showAccount && (
-          <Link to="/admin/login" className="underline-offset-4 hover:text-foreground hover:underline">
-            관리자 로그인
-          </Link>
+          <nav aria-label="바로 가기" className="flex flex-wrap items-center gap-4">
+            {showReport && (
+              <Link to="/guide" className="underline-offset-4 hover:text-foreground hover:underline">
+                이용 안내
+              </Link>
+            )}
+            <Link to="/admin/login" className="underline-offset-4 hover:text-foreground hover:underline">
+              관리자 로그인
+            </Link>
+          </nav>
         )}
       </footer>
     </div>

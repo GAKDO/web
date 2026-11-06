@@ -1,34 +1,13 @@
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Camera, CircleCheck, CircleX, Mail, QrCode, ScanSearch, Store } from "lucide-react";
+import { ArrowRight, CircleCheck, CircleX, Mail } from "lucide-react";
+import { FAQ, STEPS } from "../content";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { TraceLogo } from "../../../shared/ui/TraceLogo";
 import { isArchived } from "../../../shared/config/features";
 import { customerHome } from "../../../shared/config/customerHome";
 import { useAuth } from "../../../shared/auth/AuthProvider";
-
-const STEPS = [
-  { icon: Store, title: "창구에서 대여", text: "렌탈 창구에서 빌릴 노트북을 정하면 직원이 렌탈을 만들고 기기를 연결합니다." },
-  { icon: Camera, title: "출고 검사", text: "내보내기 전에 부스에서 윗면·바닥을 카메라 2대, 조명 3개로 12장 찍고 흠집을 찾아 둡니다." },
-  { icon: QrCode, title: "QR로 내 계정에 연결", text: "받을 때 직원이 보여 주는 QR을 폰 카메라로 찍고 로그인하면 그 렌탈이 내 계정에 연결됩니다." },
-  { icon: ScanSearch, title: "반납 비교", text: "돌려줄 때 다시 찍어 처음 사진과 비교하고, 새로 생긴 흠집만 따집니다." },
-];
-
-const FAQ = [
-  {
-    q: "원래 있던 흠집 때문에 돈을 물게 되지 않나요?",
-    a: "출고 검사 사진이 기준입니다. 반납 때는 그 사진과 비교해 새로 생긴 흠집만 표시하므로, 처음부터 있던 흠집은 따로 구분됩니다.",
-  },
-  {
-    q: "업체가 나중에 기록을 고치면요?",
-    a: "검사 기록은 시점마다 봉인되고, 봉인된 기록의 지문(해시)을 메일로 보내 드립니다. 리포트의 검증 링크에서 같은 지문인지 누구나 확인할 수 있습니다.",
-  },
-  {
-    q: "QR을 찍었는데 내 렌탈이 비어 있어요.",
-    a: "로그인한 계정으로 QR을 다시 열어 주세요. 이미 다른 계정에 연결된 렌탈은 연결되지 않으니, 그럴 때는 창구에 알려 주세요.",
-  },
-];
 
 /**
  * 고객 이용 안내(11/6). TRACE는 판매 사이트가 아니라 빌린 노트북 상태를 기록하는 서비스라서,
