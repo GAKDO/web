@@ -20,6 +20,8 @@ const STEPS = [
  */
 export function HomePage() {
   const showAccount = !isArchived("account");
+  // 내 렌탈(report)을 숨긴 배포에서는 가입 뒤 볼 수 있는 곳이 내 계정뿐이라 안내를 바꾼다
+  const showReport = !isArchived("report");
   return (
     <div className="min-h-svh bg-background">
       <section className="relative isolate overflow-hidden bg-sidebar text-white">
@@ -72,7 +74,7 @@ export function HomePage() {
             </p>
             <p className="stagger m-0 max-w-md animate-enter text-[0.9375rem] leading-relaxed text-zinc-400 md:text-base" style={{ "--i": 2 } as CSSProperties}>
               {showAccount
-                ? "받을 때와 돌려줄 때 부스에서 찍은 사진으로 흠집을 기록합니다. 가입하면 내 렌탈에서 사진과 흠집 기록을 바로 볼 수 있어요."
+                ? `받을 때와 돌려줄 때 부스에서 찍은 사진으로 흠집을 기록합니다. ${showReport ? "가입하면 내 렌탈에서 사진과 흠집 기록을 바로 볼 수 있어요." : "미리 가입해 두면 렌탈받을 때 바로 이어서 쓸 수 있어요."}`
                 : "빌려주기 전과 돌려받은 뒤, 부스에서 찍은 사진으로 흠집을 찾아 기록합니다. 누가 봐도 같은 결과를 사진과 함께 남깁니다."}
             </p>
             <div className="stagger mt-8 flex animate-enter flex-wrap gap-3" style={{ "--i": 3 } as CSSProperties}>
