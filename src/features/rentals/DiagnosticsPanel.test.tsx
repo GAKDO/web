@@ -1,4 +1,5 @@
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { nanoid } from "nanoid";
 import { renderAsAdmin } from "../../test/renderApp";
 import type { Checkpoint, CheckpointDiagnostics } from "../../shared/api/types";
@@ -66,4 +67,20 @@ test("진단이 올라온 시점은 다 쓴 페어링 코드 버튼을 가린다
   const step = await screen.findByRole("listitem", { name: "출고" });
   await within(step).findByRole("region", { name: "진단 결과" });
   expect(within(step).queryByRole("button", { name: /페어링 코드/ })).not.toBeInTheDocument();
+});
+
+test("렌탈 상세의 진단 추이에 이 기기의 진단이 날짜 순 꺾은선으로 보이고, 시리얼은 드러나지 않는다", async () => {
+  const pro = db.devices.find((d) => d.serial === "C02PRO0001")!;
+  const rental = db.rentals.find((r) => r.deviceId === pro.deviceId && r.checkpoints.some((c) => db.report.diagnostics.has(c.checkpointId)))!;
+  renderAsAdmin(`/admin/rentals/${rental.rentalId}`);
+  await userEvent.click(await screen.findByRole("button", { name: "진단 추이 보기" }));
+  const trend = await screen.findByRole("region", { name: "진단 추이" });
+  const battery = await within(trend).findByRole("figure", { name: "배터리 최대 용량 추이" });
+  // 출고 91.2% → 반납 84.0%: 마지막 값이 '최근'으로 보이고, 점마다 날짜·시점·값이 읽힌다
+  expect(within(battery).getByText("최근 84.0%")).toBeInTheDocument();
+  expect(within(battery).getAllByLabelText(/91\.2%/).length).toBeGreaterThan(0);
+  // SSD는 권한이 없어 한 번도 못 읽었으므로 그래프가 없다
+  expect(within(trend).queryByRole("figure", { name: "SSD 사용률 추이" })).not.toBeInTheDocument();
+  expect(within(trend).getByRole("figure", { name: "CPU 단일 코어 (3회 중앙값) 추이" })).toBeInTheDocument();
+  expect(trend.textContent).not.toContain(pro.serial);
 });
