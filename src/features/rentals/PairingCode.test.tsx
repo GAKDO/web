@@ -21,7 +21,7 @@ async function openRental(out: Checkpoint["status"]) {
 
 test("봉인 전 시점에서 진단 페어링 코드를 만들면 6자리 코드와 남은 시간이 보인다", async () => {
   const { step, rentalId, checkpointId } = await openRental("OPEN");
-  await userEvent.setup().click(within(step).getByRole("button", { name: "진단 페어링 코드 만들기" }));
+  await userEvent.setup().click(await within(step).findByRole("button", { name: "진단 페어링 코드 만들기" }));
   expect(await within(step).findByLabelText("페어링 코드")).toHaveTextContent(/^\d{6}$/);
   expect(within(step).getByText(/남은 시간 \d분 \d+초/)).toBeInTheDocument();
   expect(captureDb.pairings).toMatchObject([{ rentalId, checkpointId, deviceSerial: "C02AIR0002" }]);
@@ -29,7 +29,7 @@ test("봉인 전 시점에서 진단 페어링 코드를 만들면 6자리 코�
 
 test("5분이 지나면 코드를 가리고 새로 만들라고 알린다", async () => {
   const { step } = await openRental("OPEN");
-  await userEvent.setup().click(within(step).getByRole("button", { name: "진단 페어링 코드 만들기" }));
+  await userEvent.setup().click(await within(step).findByRole("button", { name: "진단 페어링 코드 만들기" }));
   await within(step).findByLabelText("페어링 코드");
   const later = Date.now() + 5 * 60_000 + 1000;
   const spy = vi.spyOn(Date, "now").mockReturnValue(later);
@@ -50,7 +50,7 @@ test("봉인된 시점에는 페어링 코드 버튼이 없다", async () => {
 test("다시 만들기가 실패해도 아직 유효한 코드는 그대로 보인다", async () => {
   const { step } = await openRental("OPEN");
   const user = userEvent.setup();
-  await user.click(within(step).getByRole("button", { name: "진단 페어링 코드 만들기" }));
+  await user.click(await within(step).findByRole("button", { name: "진단 페어링 코드 만들기" }));
   const first = (await within(step).findByLabelText("페어링 코드")).textContent;
   server.use(http.post("*/api/v1/auth/pairing-codes", () => HttpResponse.error()));
   await user.click(within(step).getByRole("button", { name: "페어링 코드 다시 만들기" }));
@@ -60,7 +60,7 @@ test("다시 만들기가 실패해도 아직 유효한 코드는 그대로 보�
 
 test("목록에서 들어와도 요청에 그 렌탈 기기의 시리얼이 실리고, 시리얼 없는 요청은 400이다", async () => {
   const { step } = await openRental("OPEN");
-  await userEvent.setup().click(within(step).getByRole("button", { name: "진단 페어링 코드 만들기" }));
+  await userEvent.setup().click(await within(step).findByRole("button", { name: "진단 페어링 코드 만들기" }));
   await within(step).findByLabelText("페어링 코드");
   expect(captureDb.pairings.at(-1)?.deviceSerial).toBe("C02AIR0002");
   const admin = db.accounts.find((a) => a.role === "ADMIN");
@@ -82,7 +82,7 @@ test("상세에 시리얼이 없으면(옛 서버) 코드를 만들 수 없고 �
     }),
   );
   const { step } = await openRental("OPEN");
-  expect(within(step).getByRole("button", { name: "진단 페어링 코드 만들기" })).toBeDisabled();
+  expect(await within(step).findByRole("button", { name: "진단 페어링 코드 만들기" })).toBeDisabled();
   expect(within(step).getByRole("note")).toHaveTextContent("기기 시리얼");
 });
 
@@ -95,7 +95,7 @@ test("주소로 바로 연 렌탈도 렌탈 목록을 읽지 않고 상세의 �
     }),
   );
   const { step, rentalId } = await openRental("OPEN");
-  await userEvent.setup().click(within(step).getByRole("button", { name: "진단 페어링 코드 만들기" }));
+  await userEvent.setup().click(await within(step).findByRole("button", { name: "진단 페어링 코드 만들기" }));
   await within(step).findByLabelText("페어링 코드");
   expect(captureDb.pairings.at(-1)).toMatchObject({ rentalId, deviceSerial: "C02AIR0002" });
   expect(listCalls).toBe(0);
