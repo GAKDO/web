@@ -96,3 +96,43 @@ test("파일럿 추이를 보관하면 Grafana 주소가 있어도 관리 메뉴
   await screen.findByRole("link", { name: "기기" });
   expect(screen.queryByRole("link", { name: /파일럿 추이/ })).not.toBeInTheDocument();
 });
+
+const MVP_ARCHIVED = "phoneCapture,diagnostics,report,account,pilot";
+
+test.each(["/signup", "/signup/verify", "/login", "/capture", "/my/rentals", "/my/rentals/abc", "/verify/abc", "/password/reset"])(
+  "MVP 배포에서 숨긴 화면 주소 %s를 직접 치면 첫 화면으로 돌아간다",
+  async (path) => {
+    vi.stubEnv("VITE_ARCHIVED_FEATURES", MVP_ARCHIVED);
+    const { router } = renderApp(path);
+    await screen.findByRole("link", { name: /관리자 화면 열기/ });
+    expect(router.state.location.pathname).toBe("/");
+  },
+);
+
+test("보관하지 않으면 숨긴 화면 주소도 그대로 열린다(개발·재도입)", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "");
+  const { router } = renderApp("/signup");
+  await screen.findByRole("heading", { level: 1 });
+  expect(router.state.location.pathname).toBe("/signup");
+});
+
+test("MVP 배포에서도 관리자 화면 주소는 그대로 열린다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", MVP_ARCHIVED);
+  const { router } = renderAsAdmin("/admin/inspections");
+  await screen.findByRole("heading", { name: "검사 결과" });
+  expect(router.state.location.pathname).toBe("/admin/inspections");
+});
+
+test("리포트만 숨기면 로그인하지 않은 사람이 내 렌탈 주소를 쳐도 로그인 화면이 아니라 첫 화면으로 간다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "report");
+  const { router } = renderApp("/my/rentals");
+  await screen.findByRole("link", { name: /관리자 화면 열기/ });
+  expect(router.state.location.pathname).toBe("/");
+});
+
+test("계정 기능을 다시 켜면 폰 촬영·리포트가 숨겨져 있어도 고객 로그인 화면이 열린다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "phoneCapture,report");
+  const { router } = renderApp("/login");
+  await screen.findByRole("heading", { level: 1 });
+  expect(router.state.location.pathname).toBe("/login");
+});
