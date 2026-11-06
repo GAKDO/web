@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { LogOut, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,9 @@ import { BoothDevicePanel } from "./BoothDevicePanel";
  * 검사 기다리는 기기 고르기 → 부스 코드(Jetson 화면에 넣음) → 판정·사진이 저절로 뜸.
  * 계약을 바꾸지 않으려고 관리자(ADMIN) 로그인으로 연다(BOOTH 토큰은 검사 결과를 읽을 수 없고 비밀값을 브라우저에 둘 수 없음).
  */
+/** 렌탈 목록을 이어서 읽는 최대 쪽 수(부스 rentals.py MAX_PAGES와 같음) */
+const MAX_PAGES = 5;
+
 export function BoothPage() {
   const { status, role, login, logout } = useAuth();
   if (status === "unknown") return <p className="p-6 text-muted-foreground">로그인 상태를 확인하는 중…</p>;
@@ -48,6 +51,12 @@ function BoothBoard({ onLogout }: { onLogout(): void }) {
   const models = useDeviceModels();
   const modelName = (code: string) => models.data?.find((m) => m.modelCode === code)?.name ?? code;
   const items = rentals.data?.pages.flatMap((p) => p.items) ?? [];
+  // 오래전에 만든 렌탈의 시점도 빠지지 않게 다음 쪽을 이어서 읽는다(부스 rentals.py처럼 최대 MAX_PAGES쪽)
+  const pageCount = rentals.data?.pages.length ?? 0;
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = rentals;
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage && pageCount < MAX_PAGES) void fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, pageCount, fetchNextPage]);
   const { waiting, judged } = boothQueue(items);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = items.find((r) => r.rentalId === selectedId) ?? null;

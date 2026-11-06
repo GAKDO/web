@@ -68,3 +68,14 @@ test("기기 A에 발급한 부스 코드는 기기 B를 고르면 사라진다(
   expect(within(panel).queryByLabelText("부스 코드 6자리")).not.toBeInTheDocument();
   expect(within(panel).getByRole("button", { name: "부스 코드 발급" })).toBeInTheDocument();
 });
+
+test("렌탈이 한 쪽(20건)보다 많아도 오래전에 만든 기다리는 기기가 목록에 보인다", async () => {
+  addRental("C02AIR0002", "OPEN");
+  for (let i = 0; i < 25; i += 1) {
+    const now = new Date().toISOString();
+    db.rentals.push({ rentalId: nanoid(), deviceId: "x", renterRef: `R-${i}`, status: "CLOSED", startedAt: now, endedAt: now, createdAt: now, checkpoints: [] });
+  }
+  renderAsAdmin("/booth");
+  const waiting = await screen.findByRole("region", { name: "검사 기다리는 기기" });
+  expect(await within(waiting).findByRole("button", { name: /C02AIR0002/ })).toBeInTheDocument();
+});
