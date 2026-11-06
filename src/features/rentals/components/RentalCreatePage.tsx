@@ -10,7 +10,7 @@ import { DEVICE_STATUS_LABEL } from "../../../shared/codes/labels";
 import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { Field, SelectField } from "../../../shared/ui/Field";
-import { useDevices } from "../../devices/api/devices";
+import { useDevice, useDevices } from "../../devices/api/devices";
 import { useCreateRental } from "../api/rentals";
 
 /** 기기와 대여자 참조 번호로 렌탈을 만든다. 기본은 사용 가능 기기만(FR-020) */
@@ -19,10 +19,15 @@ export function RentalCreatePage() {
   const create = useCreateRental();
   const [showAll, setShowAll] = useState(false);
   const devices = useDevices(showAll ? { limit: 100 } : { status: "ACTIVE", limit: 100 });
-  const list: Device[] = devices.data?.pages.flatMap((page) => page.items) ?? [];
   // 기기 상세의 "이 기기로 렌탈 만들기"가 넘긴 기기를 미리 고른다
   const location = useLocation();
-  const [deviceId, setDeviceId] = useState((location.state as { deviceId?: string } | null)?.deviceId ?? "");
+  const prefillId = (location.state as { deviceId?: string } | null)?.deviceId ?? "";
+  const [deviceId, setDeviceId] = useState(prefillId);
+  // 넘겨받은 기기가 목록 첫 쪽(100대)에 없어도 선택지에 보이도록 따로 읽어 덧붙인다
+  const prefilled = useDevice(prefillId);
+  const loaded: Device[] = devices.data?.pages.flatMap((page) => page.items) ?? [];
+  const list: Device[] =
+    prefilled.data && !loaded.some((d) => d.deviceId === prefilled.data.deviceId) ? [prefilled.data, ...loaded] : loaded;
   const [renterRef, setRenterRef] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
   const picked = list.find((d) => d.deviceId === deviceId);

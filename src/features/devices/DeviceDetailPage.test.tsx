@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderAsAdmin } from "../../test/renderApp";
 import { db } from "../../shared/mocks/db";
@@ -50,4 +50,12 @@ test("기기 상세의 시리얼은 가려져 있다가 눈 아이콘을 누르�
   expect(screen.getByText("C02PRO0001")).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "시리얼 가리기" }));
   expect(screen.queryByText("C02PRO0001")).not.toBeInTheDocument();
+});
+
+test("기기 상세에서 '이 기기로 렌탈 만들기'를 누르면 렌탈 만들기 화면에 그 기기가 골라져 있다", async () => {
+  const user = userEvent.setup();
+  const device = deviceOf("C02AIR0002");
+  renderAsAdmin(`/admin/devices/${device.deviceId}`);
+  await user.click(await screen.findByRole("link", { name: "이 기기로 렌탈 만들기" }));
+  await waitFor(() => expect(screen.getByLabelText("기기")).toHaveValue(device.deviceId));
 });

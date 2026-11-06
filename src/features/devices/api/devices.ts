@@ -23,8 +23,9 @@ export function useDevices(filters: DeviceFilters) {
 }
 
 /** 기기 하나(기기별 렌탈 이력 화면 머리글, contracts #28) */
-export function useDevice(deviceId: string) {
+export function useDevice(deviceId: string, enabled = true) {
   return useQuery({
+    enabled: enabled && !!deviceId,
     queryKey: [...DEVICES, "detail", deviceId],
     queryFn: () => unwrap(api.GET("/api/v1/devices/{deviceId}", { params: { path: { deviceId } } })),
   });
