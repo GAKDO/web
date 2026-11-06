@@ -8,16 +8,16 @@ import { exchangeOnce } from "../api/exchange";
 import { hasCameraApi, isSecure } from "../camera";
 import { CapturePage } from "./CapturePage";
 
-type EntryError = "invalid" | "otherAccount" | "notCustomer" | "retry";
+export type EntryError = "invalid" | "otherAccount" | "notCustomer" | "retry";
 
-const MESSAGE: Record<EntryError, string> = {
+export const ENTRY_MESSAGE: Record<EntryError, string> = {
   invalid: "만료되었거나 이미 사용한 QR입니다. 대여 담당자에게 새 QR을 받아 주세요.",
   otherAccount: "다른 계정에 연결된 렌탈입니다. 로그아웃한 뒤 이 렌탈을 받은 계정으로 다시 들어와 주세요.",
   notCustomer: "고객 계정으로 로그인해 주세요. 로그아웃한 뒤 QR을 다시 열어 주세요.",
   retry: "QR을 확인하지 못했습니다. 잠시 뒤 다시 시도해 주세요.",
 };
 
-function entryErrorOf(e: unknown): EntryError {
+export function entryErrorOf(e: unknown): EntryError {
   if (!(e instanceof ApiError)) return "retry";
   if (e.status === 410) return "invalid";
   if (e.status === 409) return "otherAccount";
@@ -63,7 +63,7 @@ export function CaptureEntryPage() {
   if (error) {
     return (
       <main className="page">
-        <p role="alert">{MESSAGE[error]}</p>
+        <p role="alert">{ENTRY_MESSAGE[error]}</p>
         {(error === "otherAccount" || error === "notCustomer") && <Button onClick={() => void logout()}>로그아웃</Button>}
         {error === "retry" && <Button onClick={() => setAttempt((n) => n + 1)}>다시 시도</Button>}
       </main>
