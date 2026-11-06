@@ -82,8 +82,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string, expected: SessionRole | "ANY" = "ADMIN") => {
+      // 이미 다른 계정 세션이 있던 탭이면 그 계정의 캐시(내 렌탈 등)가 새 계정에 보이지 않게 지운다
+      const hadSession = tokenStore.get() !== null;
       const token = await withRefreshExclusive(() => unwrap(api.POST("/api/v1/auth/login", { body: { email, password } })));
       captureTokenStore.clear();
+      if (hadSession) queryClient.clear();
       tokenStore.set(token);
       // 고객 화면에는 관리자도 들어올 수 있다(시연 확인용). 관리자 화면에는 관리자만
       const allowed = expected === "ADMIN" ? token.role === "ADMIN" : isSessionRole(token.role);
@@ -96,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(token.role);
       setStatus("authenticated");
     },
-    [logout],
+    [logout, queryClient],
   );
 
   const clearSession = useCallback(() => endSession(null), [endSession]);
