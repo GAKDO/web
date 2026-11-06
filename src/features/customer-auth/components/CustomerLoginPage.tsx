@@ -40,6 +40,9 @@ export function CustomerLoginPage({ demoEmails = demoCustomerEmails() }: { demoE
       <p>대여받을 때 쓴 계정으로 로그인해 주세요.</p>
       {params.get("verified") === "1" && <p role="status">메일 인증이 끝났습니다. 로그인해 주세요.</p>}
       {notice && <p role="status">{LOGIN_NOTICE[notice]}</p>}
+      {params.get("loggedOut") === "partial" && (
+        <p role="alert">이 화면에서는 로그아웃했지만 서버에 알리지 못했습니다. 공용 PC라면 브라우저를 모두 닫아 주세요.</p>
+      )}
       {demoEmails.length > 0 && (
         <div className="demo-accounts" role="group" aria-label="시연용 계정">
           {demoEmails.map((d) => (

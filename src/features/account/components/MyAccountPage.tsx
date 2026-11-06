@@ -13,8 +13,9 @@ export function MyAccountPage() {
   const reportArchived = isArchived("report");
 
   async function signOut() {
-    await logout();
-    navigate("/", { replace: true });
+    const confirmed = await logout();
+    // 서버가 로그아웃을 확인하지 못했으면 리프레시가 남았을 수 있으니 로그인 화면에서 알린다
+    navigate(confirmed ? "/" : "/login?loggedOut=partial", { replace: true });
   }
 
   return (
