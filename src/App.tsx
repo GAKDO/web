@@ -1,6 +1,7 @@
 // 화면 라우트. 관리자 화면(WE1)은 /admin 아래, 고객 폰 촬영·3D 리포트·검증 페이지는 이 아래에 더한다
 import { Navigate, type RouteObject } from "react-router-dom";
 import { HomePage } from "./features/home/components/HomePage";
+import { BoothPage } from "./features/booth/components/BoothPage";
 import { PasswordResetPage } from "./features/account/components/PasswordResetPage";
 import { WithdrawnPage, WithdrawPage } from "./features/account/components/WithdrawPage";
 import { MyAccountPage } from "./features/account/components/MyAccountPage";
@@ -10,6 +11,7 @@ import { VerifyEmailPage } from "./features/signup/components/VerifyEmailPage";
 import { CaptureEntryPage } from "./features/capture/components/CaptureEntryPage";
 import { CustomerLoginPage } from "./features/customer-auth/components/CustomerLoginPage";
 import { DeviceCreatePage } from "./features/devices/components/DeviceCreatePage";
+import { DeviceDetailPage } from "./features/devices/components/DeviceDetailPage";
 import { DeviceListPage } from "./features/devices/components/DeviceListPage";
 import { InspectionDetailPage } from "./features/inspections/components/InspectionDetailPage";
 import { InspectionListPage } from "./features/inspections/components/InspectionListPage";
@@ -37,6 +39,8 @@ function CaptureOrClaim() {
 export const routes: RouteObject[] = [
   { path: "/", element: <HomePage /> },
   { path: "/admin/login", element: <LoginPage /> },
+  // 부스 옆 태블릿 화면(11/6 강사님 피드백 3번). 관리자 틀(메뉴) 없이 화면 전체를 쓴다
+  { path: "/booth", element: <BoothPage /> },
   { path: "/verify/:verifyToken", element: <ArchivedRoute features={["report"]}><VerifyPage /></ArchivedRoute> },
   { path: "/login", element: <ArchivedRoute features={["phoneCapture", "report", "account"]}><CustomerLoginPage /></ArchivedRoute> },
   { path: "/password/reset", element: <ArchivedRoute features={["account"]}><PasswordResetPage /></ArchivedRoute> },
@@ -66,6 +70,8 @@ export const routes: RouteObject[] = [
       { index: true, element: <Navigate to="devices" replace /> },
       { path: "devices", element: <DeviceListPage /> },
       { path: "devices/new", element: <DeviceCreatePage /> },
+      // 기기 상세 + 기기별 렌탈 이력(11/6)
+      { path: "devices/:deviceId", element: <DeviceDetailPage /> },
       { path: "models", element: <ModelListPage /> },
       { path: "models/new", element: <ModelEditPage /> },
       { path: "models/:modelCode/edit", element: <ModelEditPage /> },

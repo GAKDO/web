@@ -42,7 +42,10 @@ function DeviceCard({ device }: { device: Device }) {
     <DataRow label={device.serial}>
       <DataCells>
         <span>{device.modelName}</span>
-        <strong title="시리얼(뒤 4자리)">{maskSerial(device.serial)}</strong>
+        {/* 화면에는 뒤 4자리만, 읽어 주기는 행 이름(DataRow)과 같은 전체 시리얼 */}
+        <Link className="text-info underline-offset-4 hover:underline" to={`/admin/devices/${device.deviceId}`} aria-label={device.serial}>
+          <strong title="시리얼(뒤 4자리)">{maskSerial(device.serial)}</strong>
+        </Link>
         <Badge variant={STATUS_VARIANT[device.status]}>{DEVICE_STATUS_LABEL[device.status]}</Badge>
         <span className="text-muted-foreground tabular-nums">{formatDate(device.createdAt)}</span>
       </DataCells>
@@ -70,6 +73,9 @@ function DeviceCard({ device }: { device: Device }) {
               <div className="flex flex-wrap items-start gap-2">
                 <StatusMenu device={device} />
                 <Button onClick={() => setEditing(true)}>고치기</Button>
+                <Link className={buttonVariants({ variant: "outline" })} to={`/admin/devices/${device.deviceId}`}>
+                  렌탈 이력
+                </Link>
               </div>
             </>
           )}
