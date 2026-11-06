@@ -87,7 +87,7 @@ function media(checkpointId: string, faces: CaptureFace[], crops: string[], tint
   };
 }
 
-function run(collectedAt: string, maxCapacityPct: number, cycleCount: number): RunSummary {
+function run(collectedAt: string, maxCapacityPct: number, cycleCount: number, speed = 1): RunSummary {
   return {
     runId: nanoid(),
     collectedAt,
@@ -95,7 +95,13 @@ function run(collectedAt: string, maxCapacityPct: number, cycleCount: number): R
     battery: { cycleCount, designCapacity: 4382, fullChargeCapacity: Math.round((4382 * maxCapacityPct) / 100), capacityUnit: "mAh", maxCapacityPct, condition: "NORMAL", skippedReason: null },
     ssd: { percentUsed: null, availableSparePct: null, criticalWarning: null, powerOnHours: null, mediaErrors: null, skippedReason: "NO_PERMISSION" },
     components: [{ kind: "CPU", identifier: "Apple M2" }],
-    benchmarks: [{ metric: "CPU_SINGLE", median: 2580 }],
+    benchmarks: [
+      { metric: "CPU_SINGLE", median: Math.round(2580 * speed) },
+      { metric: "CPU_MULTI", median: Math.round(9720 * speed) },
+      { metric: "MEM_COPY", median: Math.round(61200 * speed) },
+      { metric: "DISK_READ", median: Math.round(2950 * speed) },
+      { metric: "DISK_WRITE", median: Math.round(2410 * (speed < 1 ? 0.86 : 1)) },
+    ],
   };
 }
 
@@ -188,7 +194,7 @@ export function customerFixtures(customerId: string, devices: [Device, Device]):
   state.diagnostics.set(out.checkpointId, { checkpointId: out.checkpointId, current: outRun, previous: null, flags: [] });
   state.diagnostics.set(rcv.checkpointId, {
     checkpointId: rcv.checkpointId,
-    current: run("2026-11-12T13:20:00+09:00", 84.0, 112),
+    current: run("2026-11-12T13:20:00+09:00", 84.0, 112, 0.97),
     previous: outRun,
     flags: [{ kind: "CAPACITY_DROP", baseRunId: outRun.runId, detail: {} }],
   });

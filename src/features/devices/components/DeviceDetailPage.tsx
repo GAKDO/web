@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { ChartColumn, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import type { DeviceStatus, RentalSummary } from "../../../shared/api/types";
@@ -87,11 +87,16 @@ export function DeviceDetailPage() {
           </span>
         }
         actions={
-          data.status === "ACTIVE" ? (
-            <Link className={buttonVariants()} to="/admin/rentals/new" state={{ deviceId: data.deviceId }}>
-              <Plus aria-hidden="true" />이 기기로 렌탈 만들기
+          <>
+            <Link className={buttonVariants({ variant: "outline" })} to={`/admin/benchmark?deviceId=${data.deviceId}`}>
+              <ChartColumn aria-hidden="true" />진단 성능 비교
             </Link>
-          ) : undefined
+            {data.status === "ACTIVE" && (
+              <Link className={buttonVariants()} to="/admin/rentals/new" state={{ deviceId: data.deviceId }}>
+                <Plus aria-hidden="true" />이 기기로 렌탈 만들기
+              </Link>
+            )}
+          </>
         }
       />
       <p className="mb-4">
