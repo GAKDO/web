@@ -71,7 +71,13 @@ test("폐기로 바꾸기를 누르면 확인 창이 먼저 뜨고, 폐기 뒤�
 test("폐기 기기의 상태 메뉴는 수리 중으로 되돌리기만 고를 수 있고, 확인 창 뒤 수리 중으로 바뀐다", async () => {
   const user = await openList();
   const retired = await openDetail(user, "C02PRO0002");
-  expect(within(retired).getAllByRole("button").map((b) => b.textContent)).toEqual(["닫기", "수리 중으로 되돌리기", "고치기"]);
+  // 시리얼 눈 버튼은 빼고 본다
+  expect(
+    within(retired)
+      .getAllByRole("button")
+      .filter((b) => !b.getAttribute("aria-label")?.startsWith("시리얼"))
+      .map((b) => b.textContent),
+  ).toEqual(["닫기", "수리 중으로 되돌리기", "고치기"]);
   await user.click(within(retired).getByRole("button", { name: "수리 중으로 되돌리기" }));
   await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "수리 중으로 되돌리기" }));
   await waitFor(() => expect(within(card("C02PRO0002")).getByText("수리 중")).toBeInTheDocument());
@@ -131,4 +137,17 @@ test("목록 한 줄에는 기기명·시리얼번호·상태·등록일이 보�
   expect(within(row).getByRole("button", { name: "닫기" })).toHaveAttribute("aria-expanded", "true");
   await user.click(within(row).getByRole("button", { name: "닫기" }));
   expect(within(row).queryByText("TR-0201")).not.toBeInTheDocument();
+});
+
+test("목록과 펼친 상세 모두 시리얼을 가려 두고, 눈 버튼을 눌러야 전체 시리얼이 보인다", async () => {
+  const user = await openList();
+  const row = card("LGGRAM0001");
+  expect(within(row).queryByText("LGGRAM0001")).not.toBeInTheDocument();
+  expect(within(row).getByText("••••••0001")).toBeInTheDocument();
+  await openDetail(user, "LGGRAM0001");
+  expect(within(row).queryByText("LGGRAM0001")).not.toBeInTheDocument();
+  await user.click(within(row).getByRole("button", { name: "시리얼 보기" }));
+  expect(within(row).getByText("LGGRAM0001")).toBeInTheDocument();
+  await user.click(within(row).getByRole("button", { name: "시리얼 가리기" }));
+  expect(within(row).queryByText("LGGRAM0001")).not.toBeInTheDocument();
 });

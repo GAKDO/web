@@ -1,4 +1,5 @@
 import { maskSerial } from "../../../shared/ui/maskSerial";
+import { MaskedSerial } from "../../../shared/ui/MaskedSerial";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
@@ -63,6 +64,8 @@ function DeviceCard({ device }: { device: Device }) {
             <>
               <InfoList
                 items={[
+                  // 펼친 상세에서도 가려 두고 눈 버튼을 눌러야 전체가 보인다
+                  ["시리얼", <MaskedSerial key="serial" serial={device.serial} />],
                   ["OS", DEVICE_OS_LABEL[device.os]],
                   ["색상", device.color ?? "없음"],
                   ["자산번호", device.assetNo ?? "없음"],
