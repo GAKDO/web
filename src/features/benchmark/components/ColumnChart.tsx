@@ -69,7 +69,7 @@ export function ColumnChart({
             </div>
           )}
           {columns.map((c, i) => (
-            <div key={c.label} tabIndex={0} aria-label={`${c.label}: ${series.map((s, j) => `${s.name} ${c.values[j]}${unit}`).join(", ")}`} className="group relative flex h-full min-w-0 flex-1 cursor-default flex-col justify-end outline-none">
+            <div key={`${c.label}-${i}`} tabIndex={0} aria-label={`${c.label}: ${series.map((s, j) => `${s.name} ${c.values[j]}${unit}`).join(", ")}`} className="group relative flex h-full min-w-0 flex-1 cursor-default flex-col justify-end outline-none">
               <div className="mx-auto flex w-full max-w-10 flex-col-reverse gap-[2px]">
                 {c.values.map((v, j) =>
                   v > 0 ? (
@@ -93,8 +93,8 @@ export function ColumnChart({
         </div>
       </div>
       <div className="ml-7 flex gap-1 text-[0.6875rem] text-muted-foreground" aria-hidden="true">
-        {columns.map((c) => (
-          <span key={c.label} className="min-w-0 flex-1 truncate text-center">
+        {columns.map((c, i) => (
+          <span key={`${c.label}-${i}`} className="min-w-0 flex-1 truncate text-center">
             {c.label}
           </span>
         ))}
@@ -113,8 +113,8 @@ export function ColumnChart({
             </tr>
           </thead>
           <tbody>
-            {columns.map((c) => (
-              <tr key={c.label} className="border-t">
+            {columns.map((c, i) => (
+              <tr key={`${c.label}-${i}`} className="border-t">
                 <td className="py-1">{c.label}</td>
                 {c.values.map((v, j) => (
                   <td key={series[j].name} className="py-1">

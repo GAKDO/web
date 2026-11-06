@@ -1,3 +1,5 @@
+import { render, screen } from "@testing-library/react";
+import { ColumnChart } from "../components/ColumnChart";
 import { describe, expect, it } from "vitest";
 import type { CaptureBenchmark } from "../../../shared/api/types";
 import { buildTiming, median } from "./timing";
@@ -35,5 +37,12 @@ describe("처리 시간 집계", () => {
   it("값이 없으면 중간값은 null", () => {
     expect(median([])).toBeNull();
     expect(buildTiming([]).boothMedianMs).toBeNull();
+  });
+});
+
+describe("같은 분에 만든 세트", () => {
+  it("라벨이 같아도 막대가 모두 그려진다", () => {
+    render(<ColumnChart title="t" unit="초" columns={[{ label: "11-06 14:02", values: [20] }, { label: "11-06 14:02", values: [25] }]} series={[{ name: "a", color: "#000" }]} />);
+    expect(screen.getAllByRole("row")).toHaveLength(3);
   });
 });
