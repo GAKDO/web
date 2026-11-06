@@ -21,7 +21,8 @@ export function RentalCreatePage() {
   const devices = useDevices(showAll ? { limit: 100 } : { status: "ACTIVE", limit: 100 });
   const list: Device[] = devices.data?.pages.flatMap((page) => page.items) ?? [];
   // 기기 상세의 "이 기기로 렌탈 만들기"가 넘긴 기기를 미리 고른다
-  const [deviceId, setDeviceId] = useState((useLocation().state as { deviceId?: string } | null)?.deviceId ?? "");
+  const location = useLocation();
+  const [deviceId, setDeviceId] = useState((location.state as { deviceId?: string } | null)?.deviceId ?? "");
   const [renterRef, setRenterRef] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
   const picked = list.find((d) => d.deviceId === deviceId);
