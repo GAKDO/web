@@ -20,7 +20,8 @@ interface AuthValue {
   notice: AuthNotice;
   /** expected와 다른 역할이면 로그아웃하고 notice로 알린다. 기본은 관리자(WE1) */
   login(email: string, password: string, expected?: SessionRole): Promise<void>;
-  logout(): Promise<void>;
+  /** 이 화면의 세션은 항상 지운다. 서버가 로그아웃(리프레시 폐기)을 확인했으면 true */
+  logout(): Promise<boolean>;
   /** 서버가 이미 세션을 끝냈을 때(탈퇴 등): 서버를 부르지 않고 이 화면의 세션만 지운다 */
   clearSession(): void;
 }
@@ -71,8 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await waitForRefresh();
-    await unwrap(api.POST("/api/v1/auth/logout")).catch(() => undefined);
+    const confirmed = await unwrap(api.POST("/api/v1/auth/logout")).then(
+      () => true,
+      () => false,
+    );
     endSession(null);
+    return confirmed;
   }, [endSession]);
 
   const login = useCallback(

@@ -2,6 +2,10 @@ import { screen, within } from "@testing-library/react";
 import { nanoid } from "nanoid";
 import { renderApp, renderAsAdmin, renderAsCustomer } from "../../test/renderApp";
 import { db } from "../mocks/db";
+import { customerHome } from "./customerHome";
+import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
+import { server } from "../mocks/node";
 
 // 보관 기능(VITE_ARCHIVED_FEATURES)은 코드를 그대로 두고 메뉴·링크만 숨긴다(11/3 방향 전환)
 
@@ -135,4 +139,37 @@ test("계정 기능을 다시 켜면 폰 촬영·리포트가 숨겨져 있어�
   const { router } = renderApp("/login");
   await screen.findByRole("heading", { level: 1 });
   expect(router.state.location.pathname).toBe("/login");
+});
+
+test("계정 기능을 보이고 리포트는 숨긴 배포에서는 첫 화면에 고객 로그인·회원가입이 있고, 가입·인증 뒤 내 계정 화면으로 간다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "phoneCapture,diagnostics,report,pilot");
+  renderApp("/");
+  expect(await screen.findByRole("link", { name: "고객 로그인" })).toHaveAttribute("href", "/login");
+  expect(screen.getByRole("link", { name: "고객 회원가입" })).toHaveAttribute("href", "/signup");
+  expect(customerHome()).toBe("/my/account");
+});
+
+test("MVP 배포(계정 숨김)에서는 첫 화면에 고객 로그인·회원가입이 없다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", MVP_ARCHIVED);
+  renderApp("/");
+  await screen.findByRole("link", { name: /관리자 화면 열기/ });
+  expect(screen.queryByRole("link", { name: "고객 로그인" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "고객 회원가입" })).not.toBeInTheDocument();
+});
+
+test("리포트를 숨긴 배포에서 고객은 내 계정 화면에서 탈퇴로 갈 수 있고 내 렌탈 링크는 없다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "phoneCapture,diagnostics,report,pilot");
+  renderAsCustomer("/my/account");
+  expect(await screen.findByRole("heading", { name: "내 계정" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "계정 탈퇴" })).toHaveAttribute("href", "/my/account/withdraw");
+  expect(screen.queryByRole("link", { name: "내 렌탈" })).not.toBeInTheDocument();
+});
+
+test("내 계정에서 로그아웃할 때 서버가 확인하지 못하면 로그인 화면에서 알린다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "phoneCapture,diagnostics,report,pilot");
+  server.use(http.post("*/api/v1/auth/logout", () => HttpResponse.error()));
+  const user = userEvent.setup();
+  renderAsCustomer("/my/account");
+  await user.click(await screen.findByRole("button", { name: "로그아웃" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("서버에 알리지 못했습니다");
 });

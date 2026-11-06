@@ -7,6 +7,7 @@ import { Button } from "../../../shared/ui/Button";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { Field } from "../../../shared/ui/Field";
 import { withdraw } from "../api";
+import { customerHome } from "../../../shared/config/customerHome";
 
 /** 계정 탈퇴 `/my/account/withdraw`(FR-USR-04). 비밀번호를 확인하고 한 번 더 물은 뒤 탈퇴한다 */
 export function WithdrawPage() {
@@ -73,7 +74,7 @@ export function WithdrawPage() {
         <ConfirmDialog message="정말 탈퇴할까요? 되돌릴 수 없습니다." confirmLabel="탈퇴" busy={busy} onConfirm={() => void confirm()} onCancel={() => setAsking(false)} />
       )}
       <p>
-        <Link to="/my/rentals">내 렌탈로 돌아가기</Link>
+        <Link to={customerHome()}>{customerHome() === "/my/rentals" ? "내 렌탈로 돌아가기" : "내 계정으로 돌아가기"}</Link>
       </p>
     </main>
   );

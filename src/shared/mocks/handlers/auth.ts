@@ -26,11 +26,25 @@ export const authHandlers = [
   http.post("*/api/v1/auth/email/verify", async ({ request }) => {
     const { email, code } = (await request.json()) as EmailVerifyRequest;
     const account = db.accounts.find((a) => a.email === email && a.pending);
-    if (!account || code !== MOCK_EMAIL_CODE) return problem(400, "CODE_INVALID", "인증 코드가 맞지 않습니다");
+    if (!account) return problem(400, "CODE_INVALID", "인증 코드가 맞지 않습니다");
+    // 5번 틀린 코드는 다시 받을 때까지 맞아도 받지 않는다(auth-server: 폐기)
+    if ((account.verifyMisses ?? 0) >= 5) return problem(410, "CODE_EXPIRED", "인증 코드가 만료되었습니다");
+    if (code !== MOCK_EMAIL_CODE) {
+      // auth-server(AU2)처럼 틀릴 때마다 남은 시도 횟수를 싣는다(5번 틀리면 폐기)
+      account.verifyMisses = (account.verifyMisses ?? 0) + 1;
+      const response = { type: "about:blank", title: "인증 코드가 맞지 않습니다", status: 400, code: "CODE_INVALID", remainingAttempts: Math.max(0, 5 - account.verifyMisses) };
+      return HttpResponse.json(response, { status: 400, headers: { "Content-Type": "application/problem+json" } });
+    }
     account.pending = false;
     return new HttpResponse(null, { status: 204 });
   }),
-  http.post("*/api/v1/auth/email/resend", () => new HttpResponse(null, { status: 202 })),
+  http.post("*/api/v1/auth/email/resend", async ({ request }) => {
+    const { email } = (await request.json()) as { email: string };
+    // 새 코드를 보내면 틀린 횟수도 새로 센다
+    const account = db.accounts.find((a) => a.email === email && a.pending);
+    if (account) account.verifyMisses = 0;
+    return new HttpResponse(null, { status: 202 });
+  }),
   http.post("*/api/v1/auth/login", async ({ request }) => {
     const { email, password } = (await request.json()) as LoginRequest;
     const account = db.accounts.find((a) => a.email === email && a.password === password);

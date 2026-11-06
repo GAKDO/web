@@ -8,8 +8,19 @@ import { Button } from "../../../shared/ui/Button";
 import { Field } from "../../../shared/ui/Field";
 import { safeNext } from "../../customer-auth/safeNext";
 import { looksLikeEmail, pendingSignup } from "../pendingSignup";
+import { customerHome } from "../../../shared/config/customerHome";
 
 const failText = (e: unknown, fallback: string) => (e instanceof ApiError && e.status !== 0 ? messageFor(e) : fallback);
+
+/** 인증 실패 문장. 코드가 틀리면 남은 시도를, 다 쓰면 다시 받으라고 알린다(auth-server remainingAttempts) */
+function verifyFailText(e: unknown): string {
+  if (e instanceof ApiError && e.code === "CODE_INVALID" && e.remainingAttempts !== null) {
+    return e.remainingAttempts > 0
+      ? `인증 코드가 맞지 않습니다. ${e.remainingAttempts}번 더 시도할 수 있습니다.`
+      : "시도 횟수를 다 썼습니다. 코드 다시 받기를 눌러 주세요.";
+  }
+  return failText(e, "인증하지 못했습니다. 잠시 뒤 다시 시도해 주세요.");
+}
 
 /** 메일 인증 `/signup/verify?next=`. 가입 직후면 바로 로그인해 next로, 아니면 로그인 화면으로.
  * 이메일은 주소에 넣지 않는다. 메모리에 없으면(새 탭·새로 고침) 직접 입력받는다 */
@@ -19,7 +30,7 @@ export function VerifyEmailPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState(() => pendingSignup.email() ?? "");
   const [knownEmail] = useState(() => pendingSignup.email() !== null);
-  const next = safeNext(params.get("next"), "/my/rentals");
+  const next = safeNext(params.get("next"), customerHome());
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -33,7 +44,7 @@ export function VerifyEmailPage() {
     try {
       await unwrap(api.POST("/api/v1/auth/email/verify", { body: { email, code } }));
     } catch (e) {
-      setError(failText(e, "인증하지 못했습니다. 잠시 뒤 다시 시도해 주세요."));
+      setError(verifyFailText(e));
       setBusy(false);
       return;
     }

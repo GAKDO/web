@@ -3,6 +3,7 @@ import { Navigate, type RouteObject } from "react-router-dom";
 import { HomePage } from "./features/home/components/HomePage";
 import { PasswordResetPage } from "./features/account/components/PasswordResetPage";
 import { WithdrawnPage, WithdrawPage } from "./features/account/components/WithdrawPage";
+import { MyAccountPage } from "./features/account/components/MyAccountPage";
 import { LoginPage } from "./features/auth/components/LoginPage";
 import { SignupPage } from "./features/signup/components/SignupPage";
 import { VerifyEmailPage } from "./features/signup/components/VerifyEmailPage";
@@ -45,7 +46,10 @@ export const routes: RouteObject[] = [
   },
   {
     element: <ArchivedRoute features={["account"]}><RequireCustomer /></ArchivedRoute>,
-    children: [{ path: "/my/account/withdraw", element: <WithdrawPage /> }],
+    children: [
+      { path: "/my/account", element: <MyAccountPage /> },
+      { path: "/my/account/withdraw", element: <WithdrawPage /> },
+    ],
   },
   {
     path: "/admin",

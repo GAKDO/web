@@ -8,13 +8,14 @@ import { Button } from "../../../shared/ui/Button";
 import { Field } from "../../../shared/ui/Field";
 import { safeNext } from "../../customer-auth/safeNext";
 import { looksLikeEmail, pendingSignup } from "../pendingSignup";
+import { customerHome } from "../../../shared/config/customerHome";
 
 /** 고객 가입 `/signup?next=`. 수령 QR → 가입 → 메일 인증 → 촬영(WE2 FR-004a). 이메일·비밀번호는 모듈 메모리로만 넘긴다 */
 export function SignupPage() {
   const { status } = useAuth();
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const next = safeNext(params.get("next"), "/my/rentals");
+  const next = safeNext(params.get("next"), customerHome());
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

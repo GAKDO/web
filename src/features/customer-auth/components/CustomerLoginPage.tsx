@@ -8,12 +8,13 @@ import { demoCustomerEmails } from "../../../shared/config/demoAccounts";
 import { isArchived } from "../../../shared/config/features";
 import { pendingSignup } from "../../signup/pendingSignup";
 import { safeNext } from "../safeNext";
+import { customerHome } from "../../../shared/config/customerHome";
 
 /** 고객 로그인 `/login?next=<돌아올 경로>`. 수령 QR(WE2)·내 렌탈(WE3)이 로그인 뒤 돌아오는 입구 */
 export function CustomerLoginPage({ demoEmails = demoCustomerEmails() }: { demoEmails?: string[] }) {
   const { status, notice, login } = useAuth();
   const [params] = useSearchParams();
-  const next = safeNext(params.get("next"), "/my/rentals");
+  const next = safeNext(params.get("next"), customerHome());
   // 가입·인증 화면에서 넘어온 이메일(주소에는 넣지 않음)
   const [email, setEmail] = useState(() => pendingSignup.email() ?? "");
   // 이메일 칸을 새로 채우려면 폼을 다시 만든다(데모 계정 고르기)
@@ -39,6 +40,9 @@ export function CustomerLoginPage({ demoEmails = demoCustomerEmails() }: { demoE
       <p>대여받을 때 쓴 계정으로 로그인해 주세요.</p>
       {params.get("verified") === "1" && <p role="status">메일 인증이 끝났습니다. 로그인해 주세요.</p>}
       {notice && <p role="status">{LOGIN_NOTICE[notice]}</p>}
+      {params.get("loggedOut") === "partial" && (
+        <p role="alert">이 화면에서는 로그아웃했지만 서버에 알리지 못했습니다. 공용 PC라면 브라우저를 모두 닫아 주세요.</p>
+      )}
       {demoEmails.length > 0 && (
         <div className="demo-accounts" role="group" aria-label="시연용 계정">
           {demoEmails.map((d) => (
