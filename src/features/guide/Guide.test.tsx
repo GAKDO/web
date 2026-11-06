@@ -48,3 +48,11 @@ test("리포트(report)를 숨긴 배포에서는 이용 안내 주소가 첫 �
   expect(screen.queryByRole("heading", { level: 1, name: "TRACE로 노트북 빌리는 방법" })).not.toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "빌리는 방법 보기" })).not.toBeInTheDocument();
 });
+
+test("고객 계정이 보이는 배포의 첫 화면에는 장점·이용 4단계·마이페이지·판정 기준·자주 묻는 질문·가입 유도가 있다", async () => {
+  renderApp("/");
+  for (const name of ["빌릴 때도, 돌려줄 때도 마음 편하게", "대여부터 반납까지 4단계", "가입하면 이런 걸 볼 수 있어요", "판정 기준", "자주 묻는 질문", "지금 가입하고 렌탈을 연결하세요"]) {
+    expect(await screen.findByRole("heading", { level: 2, name })).toBeInTheDocument();
+  }
+  expect(screen.getByRole("navigation", { name: "바로 가기" })).toBeInTheDocument();
+});
