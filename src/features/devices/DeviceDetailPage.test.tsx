@@ -1,7 +1,9 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { renderAsAdmin } from "../../test/renderApp";
 import { db } from "../../shared/mocks/db";
+import { server } from "../../shared/mocks/node";
 
 const deviceOf = (serial: string) => db.devices.find((d) => d.serial === serial)!;
 
@@ -58,4 +60,20 @@ test("기기 상세에서 '이 기기로 렌탈 만들기'를 누르면 렌탈 �
   renderAsAdmin(`/admin/devices/${device.deviceId}`);
   await user.click(await screen.findByRole("link", { name: "이 기기로 렌탈 만들기" }));
   await waitFor(() => expect(screen.getByLabelText("기기")).toHaveValue(device.deviceId));
+});
+
+test("넘겨받은 기기가 기기 목록 첫 쪽에 없어도 렌탈 만들기 선택지에 그 기기가 보이고 골라져 있다", async () => {
+  const user = userEvent.setup();
+  const device = deviceOf("C02AIR0002");
+  // 사용 가능 기기가 100대를 넘어 첫 쪽에 이 기기가 빠진 경우
+  server.use(
+    http.get("*/api/v1/devices", () =>
+      HttpResponse.json({ items: db.devices.filter((d) => d.deviceId !== device.deviceId), nextCursor: "100" }),
+    ),
+  );
+  renderAsAdmin(`/admin/devices/${device.deviceId}`);
+  await user.click(await screen.findByRole("link", { name: "이 기기로 렌탈 만들기" }));
+  const select = await screen.findByLabelText("기기");
+  await waitFor(() => expect(select).toHaveValue(device.deviceId));
+  expect(within(select).getByRole("option", { selected: true })).toHaveValue(device.deviceId);
 });
