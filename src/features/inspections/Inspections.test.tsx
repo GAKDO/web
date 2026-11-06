@@ -1,3 +1,4 @@
+import { maskSerial } from "../../shared/ui/maskSerial";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http } from "msw";
@@ -88,7 +89,7 @@ test("등급 B~D면 목록에 문제 있음과 등급이 보이고, 결과 보�
   const bad = await card("C02AIR0002");
   expect(await within(bad).findByText("문제 있음 · C등급")).toBeInTheDocument();
   await user.click(within(bad).getByRole("link", { name: "결과 보기" }));
-  expect(await screen.findByRole("heading", { name: "C02AIR0002 출고 검사 결과" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: `${maskSerial("C02AIR0002")} 출고 검사 결과` })).toBeInTheDocument();
   const verdict = screen.getByRole("status", { name: "판정" });
   expect(verdict).toHaveTextContent("문제 있음 · C등급");
   expect(verdict).toHaveTextContent("찍힘·긁힘 5개 이상");
@@ -110,7 +111,7 @@ test("A 등급 시점의 상세는 문제 없음과 흠집이 없다는 문장�
   const rental = db.rentals.find((r) => db.devices.find((d) => d.deviceId === r.deviceId)?.serial === "LGGRAM0001");
   const out = rental?.checkpoints[0];
   renderAsAdmin(`/admin/inspections/${rental?.rentalId}/${out?.checkpointId}`);
-  expect(await screen.findByRole("heading", { name: "LGGRAM0001 출고 검사 결과" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: `${maskSerial("LGGRAM0001")} 출고 검사 결과` })).toBeInTheDocument();
   expect(screen.getByRole("status", { name: "판정" })).toHaveTextContent("문제 없음");
   expect(screen.getByText(/발견된 문제 없음/)).toBeInTheDocument();
   expect(within(screen.getByRole("status", { name: "수리 필요 여부" })).getByText(/수리 필요/, { selector: ".verdict-title" })).toHaveTextContent(
@@ -179,7 +180,7 @@ test("검사 결과가 아직 없는 시점의 상세는 판정 대기 안내를
   const rental = db.rentals.find((r) => r.checkpoints.length === 3);
   const ret = rental?.checkpoints[2];
   renderAsAdmin(`/admin/inspections/${rental?.rentalId}/${ret?.checkpointId}`);
-  expect(await screen.findByRole("heading", { name: "C02PRO0001 반납 검사 결과" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: `${maskSerial("C02PRO0001")} 반납 검사 결과` })).toBeInTheDocument();
   expect(screen.getByRole("status", { name: "판정" })).toHaveTextContent("판정 대기");
   expect(screen.getByText(/등급이 매겨지면 여기에 보입니다/)).toBeInTheDocument();
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -239,7 +240,7 @@ test("주소의 시점이 그 렌탈에 없으면 검사 결과를 읽지 않고
   const graded = db.rentals.find((r) => r.checkpoints.length === 1);
   const other = graded?.checkpoints[0]?.checkpointId;
   const { client } = renderAsAdmin(`/admin/inspections/${none?.rentalId}/${other}`);
-  expect(await screen.findByRole("heading", { name: "C02AIR0001 검사 결과" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: `${maskSerial("C02AIR0001")} 검사 결과` })).toBeInTheDocument();
   expect(screen.getByRole("status", { name: "판정" })).toHaveTextContent("검사 전");
   // 다른 렌탈의 시점으로 검사 결과 쿼리를 만들지 않았다
   expect(client.getQueryCache().find({ queryKey: ["inspections", other] })).toBeUndefined();
@@ -356,7 +357,7 @@ test("렌탈 상세의 검사 이력에서 결과 보기를 누르면 그 검사
   expect(await within(row).findByText("문제 있음 · B등급")).toBeInTheDocument();
   expect(within(row).getByText("수리 필요")).toBeInTheDocument();
   await user.click(within(row).getByRole("link", { name: "결과 보기" }));
-  expect(await screen.findByRole("heading", { name: "C02AIR0002 출고 검사 결과" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: `${maskSerial("C02AIR0002")} 출고 검사 결과` })).toBeInTheDocument();
   // B 등급인데 흠집 위치 기록이 비었으면 "문제 없음"이라고 하지 않는다
   expect(await screen.findByText(/등록된 흠집 위치 없음/)).toBeInTheDocument();
   expect(screen.queryByText(/발견된 문제 없음/)).not.toBeInTheDocument();

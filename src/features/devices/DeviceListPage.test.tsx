@@ -93,8 +93,11 @@ test("기기 정보에서 색상·자산번호·OS를 고치면 저장되고, �
   const user = await openList();
   await openDetail(user, "LGGRAM0002");
   await user.click(within(card("LGGRAM0002")).getByRole("button", { name: "고치기" }));
-  const form = screen.getByRole("form", { name: "LGGRAM0002 고치기" });
-  expect(within(form).getByLabelText("시리얼")).toBeDisabled();
+  const form = screen.getByRole("form", { name: "••••••0002 고치기" });
+  // 시리얼은 고칠 칸이 아니라 가려진 글자로 보이고, 눈 버튼을 누르면 전체가 보인다
+  expect(within(form).queryByRole("textbox", { name: "시리얼" })).not.toBeInTheDocument();
+  await user.click(within(form).getByRole("button", { name: "시리얼 보기" }));
+  expect(within(form).getByText("LGGRAM0002")).toBeInTheDocument();
   expect(within(form).getByLabelText("기종")).toBeDisabled();
   await user.type(within(form).getByLabelText("색상"), "실버");
   await user.type(within(form).getByLabelText("자산번호"), "TR-0202");

@@ -1,3 +1,5 @@
+import { maskSerial } from "../../../shared/ui/maskSerial";
+import { MaskedSerial } from "../../../shared/ui/MaskedSerial";
 import { useState, type FormEvent } from "react";
 import type { Device, DeviceOs } from "../../../shared/api/types";
 import { ApiError } from "../../../shared/api/problem";
@@ -29,8 +31,11 @@ export function DeviceEditor({ device, onDone }: { device: Device; onDone: () =>
   }
 
   return (
-    <form className="grid gap-x-3 md:grid-cols-2" onSubmit={submit} aria-label={`${device.serial} 고치기`}>
-      <Field label="시리얼" value={device.serial} readOnly disabled />
+    <form className="grid gap-x-3 md:grid-cols-2" onSubmit={submit} aria-label={`${maskSerial(device.serial)} 고치기`}>
+      <div className="mb-4 grid gap-2">
+        <span className="text-sm font-medium">시리얼</span>
+        <MaskedSerial serial={device.serial} className="min-h-9" />
+      </div>
       <Field label="기종" value={device.modelName} readOnly disabled />
       <SelectField label="OS" value={os} onChange={(e) => setOs(e.target.value as DeviceOs)}>
         {Object.entries(DEVICE_OS_LABEL).map(([value, label]) => (
