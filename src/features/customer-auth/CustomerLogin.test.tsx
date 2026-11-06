@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { AppProviders, createQueryClient } from "../../AppProviders";
@@ -84,4 +84,18 @@ test("고객으로 로그인한 채 관리자 로그인에서 비밀번호를 �
   expect(await screen.findByText(/이메일 또는 비밀번호가 맞지 않습니다/)).toBeInTheDocument();
   await router.navigate("/my");
   expect(await screen.findByText("내 화면")).toBeInTheDocument();
+});
+
+test("next 없이 관리자 계정으로 로그인하면 관리자 화면으로 간다", async () => {
+  const router = renderWithCustomerRoute("/login");
+  await login(MOCK_ADMIN.email, MOCK_ADMIN.password);
+  await screen.findByRole("heading", { name: /기기/ });
+  expect(router.state.location.pathname).toBe("/admin/devices");
+});
+
+test("로그인 화면에 회원가입 버튼이 있고 관리자 로그인은 맨 아래 링크로만 있다", async () => {
+  renderWithCustomerRoute("/login?next=/my");
+  await screen.findByRole("heading", { name: "로그인" });
+  expect(screen.getByRole("link", { name: "이메일로 회원가입" })).toHaveAttribute("href", `/signup?next=${encodeURIComponent("/my")}`);
+  expect(within(screen.getByRole("contentinfo")).getByRole("link", { name: "관리자 로그인" })).toHaveAttribute("href", "/admin/login");
 });
