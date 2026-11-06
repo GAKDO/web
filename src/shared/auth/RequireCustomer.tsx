@@ -24,7 +24,7 @@ export function RequireCustomer({ customerOnly = false }: { customerOnly?: boole
       <SiteBar>
         {!isArchived("report") && (
           <NavLink to="/my/rentals" className={({ isActive }) => cn(NAV, isActive && "bg-white/10 text-white")}>
-            내 렌탈
+            마이페이지
           </NavLink>
         )}
         {!isArchived("report") && (
@@ -38,7 +38,7 @@ export function RequireCustomer({ customerOnly = false }: { customerOnly?: boole
           </NavLink>
         ) : !isArchived("account") && (
           <NavLink to="/my/account" end className={({ isActive }) => cn(NAV, isActive && "bg-white/10 text-white")}>
-            내 계정
+            내 정보
           </NavLink>
         )}
       </SiteBar>

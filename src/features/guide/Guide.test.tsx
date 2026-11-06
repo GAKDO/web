@@ -37,8 +37,8 @@ test("렌탈이 없는 고객은 내 렌탈에서 이용 안내로 갈 수 있�
   renderAsCustomer("/my/rentals");
   await u.click(await screen.findByRole("link", { name: "이용 안내 보기" }));
   expect(await screen.findByRole("heading", { level: 1, name: "TRACE로 노트북 빌리는 방법" })).toBeInTheDocument();
-  await u.click(screen.getByRole("link", { name: /내 렌탈 열기/ }));
-  expect(await screen.findByRole("heading", { level: 1, name: "내 렌탈" })).toBeInTheDocument();
+  await u.click(screen.getByRole("link", { name: /마이페이지 열기/ }));
+  expect(await screen.findByRole("heading", { level: 1, name: "마이페이지" })).toBeInTheDocument();
 });
 
 test("리포트(report)를 숨긴 배포에서는 이용 안내 주소가 첫 화면으로 돌아간다", async () => {

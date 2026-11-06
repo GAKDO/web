@@ -30,7 +30,7 @@ test("같은 로그인 화면에 고객 계정을 넣으면 내 계정 화면으
   vi.stubEnv("VITE_ARCHIVED_FEATURES", ACCOUNT_ON);
   const { router } = renderApp("/admin/login");
   await signIn(MOCK_CUSTOMER.email, MOCK_CUSTOMER.password);
-  expect(await screen.findByRole("heading", { name: "내 계정" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "내 정보" })).toBeInTheDocument();
   expect(router.state.location.pathname).toBe("/my/account");
 });
 
@@ -52,6 +52,6 @@ test("고객 A 세션이 남은 탭에서 고객 B로 로그인하면 A의 렌�
   const key = [...REPORT, "rentals"];
   client.setQueryData(key, ["고객 A의 렌탈"]);
   await signIn(other.email, other.password);
-  expect(await screen.findByRole("heading", { name: "내 계정" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "내 정보" })).toBeInTheDocument();
   expect(client.getQueryData(key)).toBeUndefined();
 });

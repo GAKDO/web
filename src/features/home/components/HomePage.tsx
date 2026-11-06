@@ -28,7 +28,7 @@ export function HomePage() {
   const { status, role } = useAuth();
   const signedIn = status === "authenticated";
   const myHome = role === "ADMIN" ? "/admin/devices" : customerHome();
-  const myHomeLabel = role === "ADMIN" ? "관리자 화면" : myHome === "/my/rentals" ? "내 렌탈" : "내 계정";
+  const myHomeLabel = role === "ADMIN" ? "관리자 화면" : myHome === "/my/rentals" ? "마이페이지" : "내 정보";
   return (
     <div className="min-h-svh bg-background">
       <section className="relative isolate overflow-hidden bg-sidebar text-white">

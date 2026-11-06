@@ -10,6 +10,11 @@ function firstRentalId(): string {
   return [...db.report.owners.keys()][0];
 }
 
+/** 마이페이지 '내 노트북' 목록의 카드(카드 안 검사 단계 목록은 세지 않는다) */
+function deviceCards(): Element[] {
+  return [...screen.getByRole("list", { name: "내 노트북" }).children];
+}
+
 describe("내 렌탈 목록", () => {
   test("렌탈이 2개 있는 고객이 로그인하면 내 렌탈 2개가 기종 이름·렌탈 상태·최근 시점과 함께 보인다", async () => {
     renderAsCustomer("/my/rentals");
@@ -18,7 +23,7 @@ describe("내 렌탈 목록", () => {
     expect(await within(card).findByText(/최근 반납 · 검사 중/)).toBeInTheDocument();
     const other = screen.getByRole("listitem", { name: "LG gram 16 (2024)" });
     expect(await within(other).findByText(/최근 출고 · 등급 A/)).toBeInTheDocument();
-    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    expect(deviceCards()).toHaveLength(2);
   });
 
   test("렌탈이 한 쪽보다 많으면 더 보기로 나머지 렌탈을 불러온다", async () => {
@@ -32,10 +37,10 @@ describe("내 렌탈 목록", () => {
       db.report.owners.set(rentalId, owner);
     }
     renderAsCustomer("/my/rentals");
-    await screen.findAllByRole("listitem");
-    expect(screen.getAllByRole("listitem")).toHaveLength(MY_RENTALS_PAGE_SIZE);
+    await screen.findByRole("list", { name: "내 노트북" });
+    expect(deviceCards()).toHaveLength(MY_RENTALS_PAGE_SIZE);
     await u.click(screen.getByRole("button", { name: "더 보기" }));
-    await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(MY_RENTALS_PAGE_SIZE + 2));
+    await waitFor(() => expect(deviceCards()).toHaveLength(MY_RENTALS_PAGE_SIZE + 2));
     expect(screen.queryByRole("button", { name: "더 보기" })).not.toBeInTheDocument();
   });
 

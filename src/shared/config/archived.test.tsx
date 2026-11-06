@@ -163,9 +163,9 @@ test("MVP 배포(계정 숨김)에서는 첫 화면에 고객 로그인·회원�
 test("리포트를 숨긴 배포에서 고객은 내 계정 화면에서 탈퇴로 갈 수 있고 내 렌탈 링크는 없다", async () => {
   vi.stubEnv("VITE_ARCHIVED_FEATURES", "phoneCapture,diagnostics,report,pilot");
   renderAsCustomer("/my/account");
-  expect(await screen.findByRole("heading", { name: "내 계정" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "내 정보" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "계정 탈퇴" })).toHaveAttribute("href", "/my/account/withdraw");
-  expect(screen.queryByRole("link", { name: "내 렌탈" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "마이페이지" })).not.toBeInTheDocument();
 });
 
 test("내 계정에서 로그아웃할 때 서버가 확인하지 못하면 로그인 화면에서 알린다", async () => {

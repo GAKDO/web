@@ -70,8 +70,8 @@ describe("비밀번호 재설정", () => {
 });
 
 describe("계정 탈퇴", () => {
-  test("내 렌탈 화면에서 탈퇴 화면으로 갈 수 있다", async () => {
-    renderAsCustomer("/my/rentals");
+  test("내 정보 화면 아래 위험 구역에서 탈퇴 화면으로 갈 수 있다", async () => {
+    renderAsCustomer("/my/account");
     expect(await screen.findByRole("link", { name: "계정 탈퇴" })).toHaveAttribute("href", "/my/account/withdraw");
   });
 
