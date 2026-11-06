@@ -48,7 +48,7 @@ export function LoginPage() {
           {/* 검사 막대가 노트북을 훑는 그림(장식). 폰에서는 입력칸이 먼저 보이게 뺀다.
               768px 이상에서는 화면 높이에 맞춰 그림 높이를 줄여(글자·단계 약 37rem을 뺀 나머지, 최대 16:9) 스크롤 없이 한 화면에 들어오게 하고,
               높이가 아주 낮은 창(680px 이하)에서는 그림을 뺀다 */}
-          <ScanVisual className="mt-8 hidden md:block md:aspect-auto md:h-[clamp(6rem,calc(100svh-37rem),16.875rem)] [@media(max-height:680px)]:md:hidden" />
+          <ScanVisual className="mt-8 hidden md:block md:aspect-auto md:h-[clamp(0rem,calc(100svh-37rem),16.875rem)] [@media(max-height:760px)]:md:hidden" />
           <ol className="m-0 mt-8 hidden list-none gap-3 p-0 md:grid">
             {STEPS.map(({ icon: Icon, text }, i) => (
               <li
