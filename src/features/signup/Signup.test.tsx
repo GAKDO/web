@@ -117,3 +117,13 @@ test("시연용 계정 환경 변수는 쉼표로 나누고 이메일 모양만 
   expect(demoCustomerEmails("")).toEqual([]);
   expect(demoCustomerEmails(" a@example.com, ,not-email,a@example.com,b@example.com ")).toEqual(["a@example.com", "b@example.com"]);
 });
+
+test("메일 인증 코드를 틀리면 남은 시도 횟수를 알려 준다", async () => {
+  const user = userEvent.setup();
+  renderAt("/signup");
+  await fillSignup(user);
+  await user.click(screen.getByRole("button", { name: "가입하고 인증 코드 받기" }));
+  await user.type(await screen.findByLabelText("인증 코드"), "000000");
+  await user.click(screen.getByRole("button", { name: "인증하기" }));
+  expect(await screen.findByText("인증 코드가 맞지 않습니다. 4번 더 시도할 수 있습니다.")).toBeInTheDocument();
+});

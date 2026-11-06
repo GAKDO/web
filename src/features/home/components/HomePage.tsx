@@ -4,6 +4,7 @@ import { ArrowRight, Camera, CircleCheck, CircleX, ScanSearch, ShieldCheck } fro
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ScanVisual } from "../../../shared/ui/ScanVisual";
+import { isArchived } from "../../../shared/config/features";
 
 const STEPS = [
   { icon: Camera, title: "부스 촬영", text: "기기를 부스에 올리면 윗면·바닥을 카메라 2대, 조명 3개로 12장 찍습니다." },
@@ -12,10 +13,11 @@ const STEPS = [
 ];
 
 /**
- * 첫 화면(gakdo.site). MVP(11/3)는 관리자만 쓰므로 들어가는 곳은 관리자 로그인 하나다(고객 가입·폰 촬영은 11/10 뒤).
+ * 첫 화면(gakdo.site). 관리자 로그인이 기본 입구이고, 고객 계정(AU2)을 보이는 배포에서는 고객 로그인·회원가입도 둔다.
  * 어두운 첫 칸에 검사 막대 그림, 아래에 세 단계와 판정 기준. 내용은 순서대로 살짝 떠오르며 나타난다
  */
 export function HomePage() {
+  const showAccount = !isArchived("account");
   return (
     <div className="min-h-svh bg-background">
       <section className="relative isolate overflow-hidden bg-sidebar text-white">
@@ -31,9 +33,16 @@ export function HomePage() {
             </span>
             <h1 className="m-0 text-lg font-bold tracking-[0.12em]">TRACE</h1>
           </span>
-          <Link to="/admin/login" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-zinc-300 hover:bg-white/10 hover:text-white")}>
-            관리자 로그인
-          </Link>
+          <nav className="flex items-center gap-1" aria-label="로그인">
+            {showAccount && (
+              <Link to="/login" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-zinc-300 hover:bg-white/10 hover:text-white")}>
+                고객 로그인
+              </Link>
+            )}
+            <Link to="/admin/login" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-zinc-300 hover:bg-white/10 hover:text-white")}>
+              관리자 로그인
+            </Link>
+          </nav>
         </header>
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 pt-8 pb-16 md:grid-cols-[1.1fr_1fr] md:px-8 md:pt-16 md:pb-24">
           <div>
@@ -54,6 +63,11 @@ export function HomePage() {
                 관리자 화면 열기
                 <ArrowRight aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-1" />
               </Link>
+              {showAccount && (
+                <Link to="/signup" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white")}>
+                  고객 회원가입
+                </Link>
+              )}
             </div>
           </div>
           <ScanVisual className="mx-auto max-w-[28.75rem]" />

@@ -8,12 +8,13 @@ import { demoCustomerEmails } from "../../../shared/config/demoAccounts";
 import { isArchived } from "../../../shared/config/features";
 import { pendingSignup } from "../../signup/pendingSignup";
 import { safeNext } from "../safeNext";
+import { customerHome } from "../../../shared/config/customerHome";
 
 /** 고객 로그인 `/login?next=<돌아올 경로>`. 수령 QR(WE2)·내 렌탈(WE3)이 로그인 뒤 돌아오는 입구 */
 export function CustomerLoginPage({ demoEmails = demoCustomerEmails() }: { demoEmails?: string[] }) {
   const { status, notice, login } = useAuth();
   const [params] = useSearchParams();
-  const next = safeNext(params.get("next"), "/my/rentals");
+  const next = safeNext(params.get("next"), customerHome());
   // 가입·인증 화면에서 넘어온 이메일(주소에는 넣지 않음)
   const [email, setEmail] = useState(() => pendingSignup.email() ?? "");
   // 이메일 칸을 새로 채우려면 폼을 다시 만든다(데모 계정 고르기)

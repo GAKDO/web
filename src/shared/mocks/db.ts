@@ -18,6 +18,8 @@ interface Account {
   role: TokenRole;
   /** 가입 뒤 메일 인증 전이면 true(로그인 403 EMAIL_NOT_VERIFIED) */
   pending?: boolean;
+  /** 메일 인증 코드를 틀린 횟수(목 서버) */
+  verifyMisses?: number;
 }
 
 interface MockState {
