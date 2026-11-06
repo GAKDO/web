@@ -107,12 +107,16 @@ function includesAll(name: string, words: string[]): boolean {
  */
 export function matchModel(reading: LabelReading, models: DeviceModelSummary[]): string | null {
   const num = reading.modelNumber?.toLowerCase();
+  let numberHits: DeviceModelSummary[] = [];
   let direct: DeviceModelSummary[] = [];
   if (num) {
     // 다른 코드의 일부(예: P54G ⊂ XP54G7)는 맞춘 것으로 보지 않는다. 앞뒤가 영숫자가 아니어야 한다(괄호·띄어쓰기·하이픈은 경계)
     const escaped = num.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const bounded = new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`);
-    direct = models.filter((m) => bounded.test(m.modelCode.toLowerCase()) || bounded.test(m.name.toLowerCase()));
+    numberHits = models.filter((m) => bounded.test(m.modelCode.toLowerCase()) || bounded.test(m.name.toLowerCase()));
+    // 제조사를 읽었다면 제조사가 다른 기종은 직접 일치로 보지 않는다(Dell 라벨에 다른 회사 기종이 골라지지 않게)
+    const maker = reading.manufacturer?.toLowerCase();
+    direct = maker ? numberHits.filter((m) => m.manufacturer?.toLowerCase() === maker) : numberHits;
     if (direct.length === 1) return direct[0]!.modelCode;
     const hints = APPLE_MODEL_HINTS[reading.modelNumber!];
     if (hints) {
@@ -123,7 +127,7 @@ export function matchModel(reading: LabelReading, models: DeviceModelSummary[]):
   if (reading.manufacturer) {
     const same = models.filter((m) => m.manufacturer?.toLowerCase() === reading.manufacturer!.toLowerCase());
     // 모델 번호가 여러 기종과 맞았다면 그중 하나일 때만 제조사로 고른다(맞은 기종 밖의 기종을 고르지 않음)
-    if (same.length === 1 && (direct.length === 0 || direct.includes(same[0]!))) return same[0]!.modelCode;
+    if (same.length === 1 && (numberHits.length === 0 || direct.includes(same[0]!))) return same[0]!.modelCode;
   }
   return null;
 }

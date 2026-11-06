@@ -73,3 +73,9 @@ test("모델 번호가 여러 기종과 맞으면 제조사만 같은 다른 기
   ];
   expect(matchModel({ serial: null, modelNumber: "Z900", manufacturer: "LG", os: "WINDOWS" }, list)).toBeNull();
 });
+
+test("제조사를 읽었으면 모델 번호가 맞아도 제조사가 다른 기종은 고르지 않는다", () => {
+  const list = [{ modelCode: "X1-B", name: "Other Z900", manufacturer: "Other", formFactor: "CLAMSHELL" as const }];
+  expect(matchModel({ serial: null, modelNumber: "Z900", manufacturer: "Dell", os: "WINDOWS" }, list)).toBeNull();
+  expect(matchModel({ serial: null, modelNumber: "Z900", manufacturer: null, os: null }, list)).toBe("X1-B");
+});
