@@ -64,3 +64,12 @@ test("Serial 머리말 뒤 값이 비고 다음 줄이 Model이면 모델 글자
   expect(r.serial).toBeNull();
   expect(r.modelNumber).toBe("A2681");
 });
+
+test("모델 번호가 여러 기종과 맞으면 제조사만 같은 다른 기종을 고르지 않는다", () => {
+  const list = [
+    { modelCode: "X1-A", name: "Acme Z900", manufacturer: "Acme", formFactor: "CLAMSHELL" as const },
+    { modelCode: "X1-B", name: "Other Z900", manufacturer: "Other", formFactor: "CLAMSHELL" as const },
+    { modelCode: "LG-1", name: "LG gram", manufacturer: "LG", formFactor: "CLAMSHELL" as const },
+  ];
+  expect(matchModel({ serial: null, modelNumber: "Z900", manufacturer: "LG", os: "WINDOWS" }, list)).toBeNull();
+});
