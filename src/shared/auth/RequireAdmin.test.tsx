@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderAsAdmin } from "../../test/renderApp";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -17,4 +18,13 @@ test("대시보드 주소가 없으면 '파일럿 추이' 메뉴를 숨긴다", 
   renderAsAdmin("/admin/devices");
   await screen.findByRole("link", { name: "기기" });
   expect(screen.queryByRole("link", { name: /파일럿 추이/ })).not.toBeInTheDocument();
+});
+
+test("왼쪽 위 TRACE 로고를 누르면 관리자 첫 화면(기기 목록)으로 간다", async () => {
+  const user = userEvent.setup();
+  renderAsAdmin("/admin/inspections");
+  const logo = await screen.findByRole("link", { name: "TRACE 관리자 홈" });
+  expect(logo).toHaveAttribute("href", "/admin");
+  await user.click(logo);
+  expect(await screen.findByRole("heading", { level: 1, name: /기기/ })).toBeInTheDocument();
 });

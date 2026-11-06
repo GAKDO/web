@@ -1,4 +1,4 @@
-import { Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   ClipboardCheck,
   ExternalLink,
@@ -33,10 +33,14 @@ const TAB =
 const TAB_ACTIVE =
   "text-foreground before:absolute before:top-0 before:h-0.5 before:w-8 before:rounded-full before:bg-brand";
 
-/** 로고: 빨간 네모 안 T + TRACE 글자 */
+/** 로고: 빨간 네모 안 T + TRACE 글자. 누르면 관리자 첫 화면(/admin)으로 */
 function Brand() {
   return (
-    <span className="inline-flex items-center gap-2.5">
+    <Link
+      to="/admin"
+      aria-label="TRACE 관리자 홈"
+      className="inline-flex items-center gap-2.5 rounded-lg no-underline select-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand"
+    >
       <span
         aria-hidden="true"
         className="grid size-8 place-items-center rounded-lg bg-brand text-base font-black text-white shadow-[0_0_24px_-4px_var(--brand)]"
@@ -46,7 +50,7 @@ function Brand() {
       <strong className="text-lg font-bold tracking-[0.12em] text-white">
         TRACE
       </strong>
-    </span>
+    </Link>
   );
 }
 
