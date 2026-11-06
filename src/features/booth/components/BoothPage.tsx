@@ -54,10 +54,11 @@ function BoothBoard({ onLogout }: { onLogout(): void }) {
   // 오래전에 만든 렌탈의 시점도 빠지지 않게 다음 쪽을 이어서 읽는다(부스 rentals.py처럼 최대 MAX_PAGES쪽)
   const pageCount = rentals.data?.pages.length ?? 0;
   // 다음 쪽 읽기가 실패하면 바로 다시 부르지 않는다(5초 주기 갱신이 오류를 지우면 그때 다시 읽음)
-  const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } = rentals;
+  // 전체 갱신 중이거나 실패한 동안에도 부르지 않는다(다음 쪽 요청이 진행 중인 갱신을 취소하지 않게)
+  const { hasNextPage, isFetching, isError, isFetchNextPageError, fetchNextPage } = rentals;
   useEffect(() => {
-    if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError && pageCount < MAX_PAGES) void fetchNextPage();
-  }, [hasNextPage, isFetchingNextPage, isFetchNextPageError, pageCount, fetchNextPage]);
+    if (hasNextPage && !isFetching && !isError && !isFetchNextPageError && pageCount < MAX_PAGES) void fetchNextPage();
+  }, [hasNextPage, isFetching, isError, isFetchNextPageError, pageCount, fetchNextPage]);
   const { waiting, judged } = boothQueue(items);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = items.find((r) => r.rentalId === selectedId) ?? null;
