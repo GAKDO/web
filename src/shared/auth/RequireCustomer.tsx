@@ -27,6 +27,11 @@ export function RequireCustomer({ customerOnly = false }: { customerOnly?: boole
             내 렌탈
           </NavLink>
         )}
+        {!isArchived("report") && (
+          <NavLink to="/guide" className={NAV}>
+            이용 안내
+          </NavLink>
+        )}
         {role === "ADMIN" ? (
           <NavLink to="/admin/devices" className={NAV}>
             관리자 화면
