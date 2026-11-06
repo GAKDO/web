@@ -130,7 +130,10 @@ export function matchModel(reading: LabelReading, models: DeviceModelSummary[]):
   if (reading.manufacturer) {
     const same = models.filter((m) => m.manufacturer?.toLowerCase() === reading.manufacturer!.toLowerCase());
     // 모델 번호가 여러 기종과 맞았다면 그중 하나일 때만 제조사로 고른다(맞은 기종 밖의 기종을 고르지 않음)
-    if (same.length === 1 && (numberHits.length === 0 || direct.includes(same[0]!))) return same[0]!.modelCode;
+    // 아는 Apple 모델 번호(예: M1의 A2337)인데 표로 못 골랐다면, 제조사만 같은 다른 기종(M2)을 채우지 않는다
+    const knownAppleNumber = reading.modelNumber != null && APPLE_MODEL_HINTS[reading.modelNumber] != null;
+    if (same.length === 1 && !knownAppleNumber && (numberHits.length === 0 || direct.includes(same[0]!)))
+      return same[0]!.modelCode;
   }
   return null;
 }

@@ -88,3 +88,9 @@ test("Apple 모델 번호 표로 고를 때도 제조사가 다른 기종은 고
   const odd = [{ modelCode: "ODD", name: "MacBook Air (M2, 2022)", manufacturer: "Dell", formFactor: "CLAMSHELL" as const }];
   expect(matchModel({ serial: null, modelNumber: "A2681", manufacturer: "Apple", os: "MACOS" }, odd)).toBeNull();
 });
+
+test("아는 Apple 모델 번호가 등록된 기종과 맞지 않으면 제조사만으로 다른 기종을 채우지 않는다", () => {
+  const onlyM2 = [{ modelCode: "MBA13-M2", name: "MacBook Air (M2, 2022)", manufacturer: "Apple", formFactor: "CLAMSHELL" as const }];
+  expect(matchModel({ serial: null, modelNumber: "A2337", manufacturer: "Apple", os: "MACOS" }, onlyM2)).toBeNull();
+  expect(matchModel({ serial: null, modelNumber: "A2681", manufacturer: "Apple", os: "MACOS" }, onlyM2)).toBe("MBA13-M2");
+});
