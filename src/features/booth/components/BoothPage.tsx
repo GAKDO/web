@@ -114,7 +114,7 @@ function BoothBoard({ onLogout }: { onLogout(): void }) {
         </div>
         <section id="booth-panel" aria-label="고른 기기" className="min-w-0 scroll-mt-20">
           {selected ? (
-            <BoothDevicePanel rental={selected} modelName={modelName(selected.modelCode)} />
+            <BoothDevicePanel key={selected.rentalId} rental={selected} modelName={modelName(selected.modelCode)} />
           ) : (
             <div className="grid min-h-60 place-items-center rounded-xl border border-dashed p-6 text-center text-muted-foreground">
               왼쪽에서 기기를 고르세요.

@@ -53,3 +53,18 @@ test("찍은 기기는 최근 판정에 있고, 고르면 큰 판정 글자(문�
   expect(await within(verdict).findByText(/문제 있음/)).toBeInTheDocument();
   expect(within(verdict).getByText(/스크래치 2개/)).toBeInTheDocument();
 });
+
+test("기기 A에 발급한 부스 코드는 기기 B를 고르면 사라진다(다른 기기로 잘못 찍지 않게)", async () => {
+  addRental("C02AIR0002", "OPEN");
+  addRental("LGGRAM0003", "OPEN");
+  const u = userEvent.setup();
+  renderAsAdmin("/booth");
+  const waiting = await screen.findByRole("region", { name: "검사 기다리는 기기" });
+  await u.click(await within(waiting).findByRole("button", { name: /C02AIR0002/ }));
+  const panel = screen.getByRole("region", { name: "고른 기기" });
+  await u.click(within(panel).getByRole("button", { name: "부스 코드 발급" }));
+  await within(panel).findByLabelText("부스 코드 6자리");
+  await u.click(within(waiting).getByRole("button", { name: /LGGRAM0003/ }));
+  expect(within(panel).queryByLabelText("부스 코드 6자리")).not.toBeInTheDocument();
+  expect(within(panel).getByRole("button", { name: "부스 코드 발급" })).toBeInTheDocument();
+});
