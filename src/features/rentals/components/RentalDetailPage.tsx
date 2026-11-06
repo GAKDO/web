@@ -1,3 +1,5 @@
+import { maskSerial } from "../../../shared/ui/maskSerial";
+import { MaskedSerial } from "../../../shared/ui/MaskedSerial";
 import { PageHeader, SectionTitle } from "../../../shared/ui/PageHeader";
 import { InfoList } from "../../../shared/ui/InfoList";
 import { Badge } from "@/components/ui/badge";
@@ -128,7 +130,7 @@ export function RentalDetailPage() {
   return (
     <section>
       <PageHeader
-        title={`렌탈 ${serial ?? ""}`}
+        title={`렌탈 ${serial ? maskSerial(serial) : ""}`}
         description={
           <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
             대여자 참조 번호 {data.renterRef} · <Badge variant={RENTAL_STATUS_VARIANT[data.status]}>{RENTAL_STATUS_LABEL[data.status]}</Badge> · 만든 날{" "}
@@ -143,7 +145,7 @@ export function RentalDetailPage() {
         className="rounded-xl border bg-card p-5 shadow-xs"
         items={[
           ["대여자 참조 번호", data.renterRef],
-          ["기기 시리얼", serial ?? "—"],
+          ["기기 시리얼", serial ? <MaskedSerial serial={serial} /> : "—"],
           ["현재 상태", RENTAL_STATUS_LABEL[data.status]],
           ["시작", formatDateTime(data.startedAt)],
           ["종료", formatDateTime(data.endedAt)],
