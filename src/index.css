@@ -173,4 +173,18 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
+  /* 어두운 바탕 위 유리 카드(로그인): 이 안에서만 글자·칸 색 변수를 어두운 값으로 바꾼다 */
+  .surface-dark {
+    --background: rgb(255 255 255 / 0.04);
+    --foreground: #f4f4f5;
+    --card: rgb(24 24 30 / 0.72);
+    --card-foreground: #f4f4f5;
+    --muted-foreground: #a1a1aa;
+    --border: rgb(255 255 255 / 0.12);
+    --input: rgb(255 255 255 / 0.16);
+    --destructive: #ff6b66;
+    --warning: #fbbf24;
+    --ring: #ff5a5f;
+    color-scheme: dark;
+  }
 }
