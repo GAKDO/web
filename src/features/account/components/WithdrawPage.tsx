@@ -74,7 +74,7 @@ export function WithdrawPage() {
         <ConfirmDialog message="정말 탈퇴할까요? 되돌릴 수 없습니다." confirmLabel="탈퇴" busy={busy} onConfirm={() => void confirm()} onCancel={() => setAsking(false)} />
       )}
       <p>
-        <Link to={customerHome()}>{customerHome() === "/my/rentals" ? "내 렌탈로 돌아가기" : "내 계정으로 돌아가기"}</Link>
+        <Link to={customerHome()}>{customerHome() === "/my/rentals" ? "마이페이지로 돌아가기" : "내 정보로 돌아가기"}</Link>
       </p>
     </main>
   );

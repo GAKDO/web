@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "../../shared/api/client";
 
 // 비밀번호 재설정(FR-USR-06)·탈퇴(FR-USR-04). auth-server 계약 그대로 부른다
@@ -15,4 +16,13 @@ export function resetPassword(email: string, code: string, newPassword: string):
 /** 비밀번호를 확인한 뒤 개인정보를 지우고 탈퇴한다. 렌탈 기록은 남는다 */
 export function withdraw(password: string): Promise<unknown> {
   return unwrap(api.DELETE("/api/v1/auth/me", { body: { password } }));
+}
+
+/** 내 정보(이름·이메일·상태·연결된 렌탈 ID). 마이페이지·내 정보 화면이 같이 쓴다 */
+export function useMe() {
+  return useQuery({
+    queryKey: ["account", "me"],
+    queryFn: () => unwrap(api.GET("/api/v1/auth/me")),
+    staleTime: 60_000,
+  });
 }

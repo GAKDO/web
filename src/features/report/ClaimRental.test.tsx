@@ -49,9 +49,9 @@ test("렌탈이 없는 고객이 연결 QR을 열면 카메라 없이 렌탈이 
   expect(captureTokenStore.get()).toBeNull();
   const u = userEvent.setup();
   await u.click(screen.getByRole("link", { name: "내 렌탈 목록" }));
-  const list = await screen.findAllByRole("listitem");
+  const list = [...(await screen.findByRole("list", { name: "내 노트북" })).children];
   expect(list).toHaveLength(1);
-  expect(within(list[0]).getByRole("link", { name: "리포트 보기" })).toHaveAttribute("href", `/my/rentals/${rental.rentalId}`);
+  expect(within(list[0] as HTMLElement).getByRole("link", { name: "리포트 보기" })).toHaveAttribute("href", `/my/rentals/${rental.rentalId}`);
 });
 
 test("다른 고객에게 이미 연결된 렌탈의 QR을 열면 다른 계정이라는 문장과 로그아웃 버튼이 보인다", async () => {

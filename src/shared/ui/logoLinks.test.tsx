@@ -16,7 +16,7 @@ test.each(["/my/account", "/my/rentals", "/my/account/withdraw"])("고객 화면
   vi.stubEnv("VITE_ARCHIVED_FEATURES", "");
   renderAsCustomer(path);
   expect(await screen.findByRole("link", { name: "TRACE 첫 화면" })).toHaveAttribute("href", "/");
-  expect(screen.getByRole("link", { name: "내 계정" })).toHaveAttribute("href", "/my/account");
+  expect(screen.getByRole("link", { name: "내 정보" })).toHaveAttribute("href", "/my/account");
 });
 
 test("검증 화면에도 첫 화면으로 가는 로고가 있다", async () => {
@@ -30,7 +30,7 @@ test("고객이 로고를 눌러 첫 화면에 오면 위쪽 버튼으로 내 �
   const user = userEvent.setup();
   renderAsCustomer("/my/account");
   await user.click(await screen.findByRole("link", { name: "TRACE 첫 화면" }));
-  const back = await screen.findByRole("link", { name: "내 렌탈" });
+  const back = await screen.findByRole("link", { name: "마이페이지" });
   expect(back).toHaveAttribute("href", "/my/rentals");
   expect(screen.queryByRole("link", { name: "회원가입" })).not.toBeInTheDocument();
 });
