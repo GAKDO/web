@@ -50,7 +50,7 @@ export function MyRentalsPage() {
           onRetry={() => void (rentals.isFetchNextPageError ? rentals.fetchNextPage() : rentals.refetch())}
         />
       )}
-      {rentals.isSuccess && items.length === 0 && <p>아직 렌탈 기록이 없습니다.</p>}
+      {rentals.isSuccess && items.length === 0 && <p>아직 연결된 렌탈이 없습니다. 노트북을 빌리면 출고·수령·반납 검사 결과가 여기에 쌓입니다.</p>}
       <ul className="cards">
         {items.map((rental) => <RentalCard key={rental.rentalId} rental={rental} />)}
       </ul>

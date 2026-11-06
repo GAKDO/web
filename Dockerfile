@@ -10,8 +10,8 @@ ENV VITE_PILOT_DASHBOARD_URL=$VITE_PILOT_DASHBOARD_URL
 # 시연용 고객 계정 이메일(쉼표 구분). 로그인 화면에 고르기 버튼으로만 보이고, 비밀번호는 넣지 않는다
 ARG VITE_DEMO_CUSTOMER_EMAILS=gakdoauth+demo@gmail.com
 ENV VITE_DEMO_CUSTOMER_EMAILS=$VITE_DEMO_CUSTOMER_EMAILS
-# MVP 배포(11/3 방향 전환)에서 숨기는 보관 기능. 코드는 그대로고 메뉴·링크만 숨긴다. 재도입할 기능은 여기서 빼면 된다(account는 11/6 auth_server #7 배포 뒤 다시 보임)
-ARG VITE_ARCHIVED_FEATURES=phoneCapture,diagnostics,report,pilot
+# MVP 배포(11/3 방향 전환)에서 숨기는 보관 기능. 코드는 그대로고 메뉴·링크만 숨긴다. 재도입할 기능은 여기서 빼면 된다(account는 11/6 auth_server #7 배포 뒤, report는 11/6 report-server·diagnostics-server가 학교 서버에서 응답해 다시 보임)
+ARG VITE_ARCHIVED_FEATURES=phoneCapture,diagnostics,pilot
 ENV VITE_ARCHIVED_FEATURES=$VITE_ARCHIVED_FEATURES
 RUN npm run build
 # 배포 워크플로의 연기 시험이 /version.txt로 새 화면이 떴는지 확인한다
