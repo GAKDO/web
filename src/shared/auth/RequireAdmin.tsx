@@ -34,12 +34,12 @@ const TAB =
 const TAB_ACTIVE =
   "text-foreground before:absolute before:top-0 before:h-0.5 before:w-8 before:rounded-full before:bg-brand";
 
-/** 로고: TRACE 글자 로고. 누르면 관리자 첫 화면(/admin)으로 */
+/** 로고: TRACE 글자 로고. 누르면 다른 화면처럼 첫 화면(/)으로 */
 function Brand() {
   return (
     <Link
-      to="/admin"
-      aria-label="TRACE 관리자 홈"
+      to="/"
+      aria-label="TRACE 첫 화면"
       className="inline-flex items-center rounded-lg no-underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand"
     >
       <TraceLogo className="h-11" />
