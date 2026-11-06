@@ -34,9 +34,11 @@ export function RentalCreatePage() {
 
   function submit(event: FormEvent) {
     event.preventDefault();
+    // 선택지에 보이는 기기만 제출한다(넘겨받은 기기를 아직 못 읽었거나 못 읽은 경우 막음)
+    if (!picked) return;
     setError(null);
     create.mutate(
-      { deviceId, renterRef: renterRef.trim() },
+      { deviceId: picked.deviceId, renterRef: renterRef.trim() },
       {
         onSuccess: (rental) => navigate(`/admin/rentals/${rental.rentalId}`, { state: { serial: picked?.serial, notice: "렌탈을 만들었습니다." } }),
         onError: (e) => setError(e instanceof ApiError ? e : networkError()),
@@ -51,6 +53,9 @@ export function RentalCreatePage() {
         <ErrorBanner message={messageFor(error, { deviceStatus: picked?.status })}>
           {error.code === "RENTAL_OPEN_EXISTS" && <Link to="/admin/rentals?status=OPEN">진행 중인 렌탈 보기</Link>}
         </ErrorBanner>
+      )}
+      {prefilled.isError && (
+        <ErrorBanner message="넘겨받은 기기를 불러오지 못했습니다. 다시 시도하거나 목록에서 기기를 고르세요." onRetry={() => void prefilled.refetch()} />
       )}
       <FormCard onSubmit={submit}>
         <label className="mb-4 flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium">
@@ -85,7 +90,7 @@ export function RentalCreatePage() {
           <Link className={buttonVariants({ variant: "outline" })} to="/admin/rentals">
             취소
           </Link>
-          <Button type="submit" busy={create.isPending} disabled={!deviceId || !renterRef.trim()}>
+          <Button type="submit" busy={create.isPending} disabled={!picked || !renterRef.trim()}>
             렌탈 만들기
           </Button>
         </FormActions>

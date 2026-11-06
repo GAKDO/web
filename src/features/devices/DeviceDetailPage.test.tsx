@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { renderAsAdmin } from "../../test/renderApp";
@@ -76,4 +76,21 @@ test("넘겨받은 기기가 기기 목록 첫 쪽에 없어도 렌탈 만들기
   const select = await screen.findByLabelText("기기");
   await waitFor(() => expect(select).toHaveValue(device.deviceId));
   expect(within(select).getByRole("option", { selected: true })).toHaveValue(device.deviceId);
+});
+
+test("넘겨받은 기기를 읽지 못하면 오류와 다시 시도가 보이고 렌탈 만들기 버튼은 눌리지 않는다", async () => {
+  const user = userEvent.setup();
+  const device = deviceOf("C02AIR0002");
+  // 새로 고침 등으로 기기 상세 캐시가 없고, 첫 쪽 목록에도 없고, 상세 조회가 실패한 경우
+  server.use(
+    http.get("*/api/v1/devices", () =>
+      HttpResponse.json({ items: db.devices.filter((d) => d.deviceId !== device.deviceId), nextCursor: "100" }),
+    ),
+    http.get("*/api/v1/devices/:deviceId", () => new HttpResponse(null, { status: 500 })),
+  );
+  const { router } = renderAsAdmin("/admin/rentals");
+  await act(() => router.navigate("/admin/rentals/new", { state: { deviceId: device.deviceId } }));
+  expect(await screen.findByRole("button", { name: "다시 시도" })).toBeInTheDocument();
+  await user.type(screen.getByLabelText("대여자 참조 번호"), "R-1");
+  expect(screen.getByRole("button", { name: "렌탈 만들기" })).toBeDisabled();
 });
