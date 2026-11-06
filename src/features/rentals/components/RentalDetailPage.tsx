@@ -21,6 +21,8 @@ import { PairingCodePanel } from "./PairingCodePanel";
 import { formatDate, RENTAL_STATUS_VARIANT } from "./RentalListPage";
 import { InspectionHistory } from "../../inspections/components/InspectionHistory";
 import { formatDateTime } from "../../../shared/ui/format";
+import { MaskedSerial } from "../../../shared/ui/MaskedSerial";
+import { maskSerial } from "../../../shared/ui/maskSerial";
 
 const STEPS: CheckpointType[] = ["OUT", "RCV", "RET"];
 const BEFORE: Record<CheckpointType, string> = { OUT: "출고를", RCV: "수령을", RET: "반납을" };
@@ -128,7 +130,7 @@ export function RentalDetailPage() {
   return (
     <section>
       <PageHeader
-        title={`렌탈 ${serial ?? ""}`}
+        title={`렌탈 ${serial ? maskSerial(serial) : ""}`}
         description={
           <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
             대여자 참조 번호 {data.renterRef} · <Badge variant={RENTAL_STATUS_VARIANT[data.status]}>{RENTAL_STATUS_LABEL[data.status]}</Badge> · 만든 날{" "}
@@ -145,9 +147,13 @@ export function RentalDetailPage() {
           ["대여자 참조 번호", data.renterRef],
           [
             "기기 시리얼",
-            <Link key="serial" className="text-info underline-offset-4 hover:underline" to={`/admin/devices/${data.deviceId}`}>
-              {serial ?? "기기 보기"}
-            </Link>,
+            // 시리얼은 가려 두고 눈 아이콘으로 보인다(11/6 민서 요청). 기기 상세(렌탈 이력)로 가는 링크를 옆에 둔다
+            <span key="serial" className="inline-flex flex-wrap items-center gap-x-3">
+              {serial ? <MaskedSerial serial={serial} /> : "—"}
+              <Link className="text-info underline-offset-4 hover:underline" to={`/admin/devices/${data.deviceId}`}>
+                기기 보기
+              </Link>
+            </span>,
           ],
           ["현재 상태", RENTAL_STATUS_LABEL[data.status]],
           ["시작", formatDateTime(data.startedAt)],

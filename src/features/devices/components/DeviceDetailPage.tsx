@@ -18,6 +18,8 @@ import { InfoList } from "../../../shared/ui/InfoList";
 import { PageHeader, SectionTitle } from "../../../shared/ui/PageHeader";
 import { Pager, usePaged } from "../../../shared/ui/Pager";
 import { formatDate, formatDateTime } from "../../../shared/ui/format";
+import { MaskedSerial } from "../../../shared/ui/MaskedSerial";
+import { maskSerial } from "../../../shared/ui/maskSerial";
 import { RENTAL_STATUS_VARIANT } from "../../rentals/components/RentalListPage";
 import { useDevice, useDeviceRentals } from "../api/devices";
 
@@ -78,7 +80,7 @@ export function DeviceDetailPage() {
   return (
     <section>
       <PageHeader
-        title={`기기 ${data.serial}`}
+        title={`기기 ${maskSerial(data.serial)}`}
         description={
           <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
             {data.modelName} · <Badge variant={STATUS_VARIANT[data.status]}>{DEVICE_STATUS_LABEL[data.status]}</Badge>
@@ -101,7 +103,7 @@ export function DeviceDetailPage() {
       <InfoList
         className="rounded-xl border bg-card p-5 shadow-xs"
         items={[
-          ["시리얼", data.serial],
+          ["시리얼", <MaskedSerial key="serial" serial={data.serial} />],
           ["기종", data.modelName],
           ["OS", DEVICE_OS_LABEL[data.os]],
           ["색상", data.color ?? "없음"],
