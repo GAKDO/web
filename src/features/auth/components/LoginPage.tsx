@@ -6,6 +6,7 @@ import { useAuth } from "../../../shared/auth/AuthProvider";
 import { LoginForm } from "../../../shared/auth/LoginForm";
 import { LOGIN_NOTICE } from "../../../shared/auth/loginNotice";
 import { ScanVisual } from "../../../shared/ui/ScanVisual";
+import { TraceLogo } from "../../../shared/ui/TraceLogo";
 import { customerHome } from "../../../shared/config/customerHome";
 import { isArchived } from "../../../shared/config/features";
 
@@ -17,7 +18,7 @@ const STEPS = [
 ];
 
 /**
- * 관리자 로그인: 768px 이상은 왼쪽 어두운 브랜드 면 + 오른쪽 입력, 375px은 위아래.
+ * 관리자 로그인: 화면 전체를 어두운 바탕 하나로 잇고, 768px 이상은 왼쪽 소개 + 오른쪽 흰 입력 카드, 375px은 위아래.
  * 디자인 도구(ui-ux-pro-max) 추천대로 장식은 격자 무늬와 빨간 빛 하나만 두고, 2560px에서도 양쪽 내용 폭을 묶어 비지 않게 한다
  */
 export function LoginPage() {
@@ -31,29 +32,26 @@ export function LoginPage() {
   if (unified && submitted && status === "authenticated" && role === "CUSTOMER") return <Navigate to={customerHome()} replace />;
 
   return (
-    <div className="grid min-h-svh grid-rows-[auto_1fr] bg-background md:grid-cols-[1.1fr_1fr] md:grid-rows-none">
-      <section aria-label="TRACE 소개" className="relative isolate flex flex-col justify-center overflow-hidden bg-sidebar px-5 py-8 text-white md:px-12 md:py-12">
+    <div className="relative isolate grid min-h-svh grid-rows-[auto_1fr] overflow-hidden bg-sidebar md:grid-cols-[1.1fr_1fr] md:grid-rows-none">
+      <section aria-label="TRACE 소개" className="flex flex-col justify-center px-5 py-8 text-white md:px-12 md:py-12">
         {/* 장식: 격자 무늬 + 빨간 빛(읽는 내용 없음) */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(255_255_255/0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgb(255_255_255/0.05)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_at_center,black_35%,transparent_80%)]"
+          className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(255_255_255/0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgb(255_255_255/0.05)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_85%)]"
         />
         <div aria-hidden="true" className="absolute -top-24 -left-24 -z-10 size-[26.25rem] rounded-full bg-brand/35 blur-[120px]" />
         <div className="mx-auto w-full max-w-[30rem]">
-          <span className="inline-flex animate-enter items-center gap-3">
-            <span aria-hidden="true" className="grid size-10 place-items-center rounded-xl bg-brand text-lg font-black shadow-[0_0_32px_-4px_var(--brand)]">
-              T
-            </span>
-            <span className="text-2xl font-bold tracking-[0.14em]">TRACE</span>
-          </span>
+          <TraceLogo className="h-12 animate-enter md:h-14" />
           <p className="stagger mt-6 mb-3 animate-enter text-[1.625rem] leading-tight font-bold tracking-tight md:mt-10 md:text-[2.5rem]" style={{ "--i": 1 } as CSSProperties}>
             노트북 상태를
             <br />
-            <span className="bg-gradient-to-r from-brand to-[#ff5a5f] bg-clip-text text-transparent">투명하게</span>, 정확하게
+            투명하고 정확하게
           </p>
-          <p className="m-0 text-zinc-400">렌탈 기기 검사 · 관리 시스템</p>
-          {/* 검사 막대가 노트북을 훑는 그림(장식). 폰에서는 입력칸이 먼저 보이게 뺀다 */}
-          <ScanVisual className="mt-8 hidden aspect-[16/9] md:block" />
+          <p className="m-0 text-zinc-400">부스 사진으로 렌탈 노트북의 흠집을 찾고 기록합니다.</p>
+          {/* 검사 막대가 노트북을 훑는 그림(장식). 폰에서는 입력칸이 먼저 보이게 뺀다.
+              768px 이상에서는 화면 높이에 맞춰 그림 높이를 줄여(로고·글자·단계 약 38rem을 뺀 나머지, 최대 16:9) 스크롤 없이 한 화면에 들어오게 하고,
+              높이가 낮은 창(760px 이하)에서는 그림을 뺀다 */}
+          <ScanVisual className="mt-8 hidden md:block md:aspect-auto md:h-[clamp(0rem,calc(100svh-38rem),16.875rem)] [@media(max-height:760px)]:md:hidden" />
           <ol className="m-0 mt-8 hidden list-none gap-3 p-0 md:grid">
             {STEPS.map(({ icon: Icon, text }, i) => (
               <li
@@ -73,14 +71,10 @@ export function LoginPage() {
           </ol>
         </div>
       </section>
-      <main className="relative isolate flex flex-col items-center justify-start gap-4 overflow-hidden px-4 py-6 md:justify-center md:py-8">
-        {/* 장식: 넓은 화면에서 입력 쪽이 텅 비어 보이지 않게 옅은 점 무늬와 빨간 빛(읽는 내용 없음) */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 -z-10 hidden bg-[radial-gradient(rgb(16_24_40/0.07)_1px,transparent_1px)] bg-[size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_70%)] md:block"
-        />
-        <div aria-hidden="true" className="absolute top-1/2 left-1/2 -z-10 hidden size-[32rem] -translate-1/2 rounded-full bg-brand/[0.06] blur-[120px] md:block" />
-        <Card className="w-full max-w-[26rem] animate-enter [animation-delay:120ms] gap-5 py-7 shadow-[0_8px_40px_-12px_rgb(16_24_40/0.18)]">
+      <main className="flex flex-col items-center justify-start gap-4 px-4 pt-2 pb-8 md:justify-center md:py-8">
+        {/* 장식: 카드 뒤 옅은 빨간 빛. 왼쪽과 같은 어두운 바탕을 이어 써서 화면이 둘로 갈라져 보이지 않게 한다(읽는 내용 없음) */}
+        <div aria-hidden="true" className="absolute right-[12%] bottom-[-10%] -z-10 hidden size-[30rem] rounded-full bg-brand/20 blur-[140px] md:block" />
+        <Card className="surface-dark w-full max-w-[26rem] animate-enter [animation-delay:120ms] gap-5 border-white/10 py-7 shadow-[0_24px_80px_-24px_rgb(0_0_0/0.9),inset_0_1px_0_rgb(255_255_255/0.06)] backdrop-blur-xl">
           <CardHeader className="px-7">
             <h1 className="m-0 text-2xl font-bold tracking-tight">{unified ? "로그인" : "관리자 로그인"}</h1>
             <CardDescription>
@@ -106,7 +100,7 @@ export function LoginPage() {
             />
           </CardContent>
         </Card>
-        <p className="m-0 text-xs text-muted-foreground">TRACE Rental Management System</p>
+        <p className="m-0 text-xs text-zinc-500">TRACE Rental Management System</p>
       </main>
     </div>
   );
