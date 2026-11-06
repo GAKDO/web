@@ -17,6 +17,7 @@ import { useRentalLive, type LiveState } from "../api/useRentalLive";
 import { nextAction } from "../nextAction";
 import { BoothIdsPanel } from "./BoothIdsPanel";
 import { CaptureLinkPanel } from "./CaptureLinkPanel";
+import { DiagnosticsPanel } from "./DiagnosticsPanel";
 import { PairingCodePanel } from "./PairingCodePanel";
 import { formatDate, RENTAL_STATUS_VARIANT } from "./RentalListPage";
 import { InspectionHistory } from "../../inspections/components/InspectionHistory";
@@ -67,6 +68,8 @@ function CheckpointSteps({ rental, serial, onError }: { rental: Rental; serial?:
                     deviceSerial={serial}
                   />
                 )}
+                {/* 올라온 진단은 봉인 뒤에도 보인다. 리포트를 숨긴 배포에서도 여기서 확인한다 */}
+                {!isArchived("diagnostics") && <DiagnosticsPanel checkpointId={checkpoint.checkpointId} live={checkpoint.status === "OPEN"} />}
               </>
             ) : (
               <>

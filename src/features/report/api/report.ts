@@ -57,11 +57,13 @@ export function useCheckpointMedia(checkpointId: string | undefined) {
   });
 }
 
-export function useDiagnostics(checkpointId: string | undefined) {
+/** pollMs: 진단이 아직 없을 때(404 등) 이 간격으로 다시 읽는다. 렌탈 상세에서 에이전트가 올리는 순간 보이게 한다 */
+export function useDiagnostics(checkpointId: string | undefined, pollMs?: number) {
   return useQuery({
     queryKey: [...REPORT, "diagnostics", checkpointId],
     queryFn: () => unwrap(api.GET("/api/v1/diagnostics/checkpoints/{checkpointId}", { params: { path: { checkpointId: checkpointId ?? "" } } })),
     enabled: !!checkpointId,
     retry: false,
+    refetchInterval: (query) => (pollMs && !query.state.data ? pollMs : false),
   });
 }
