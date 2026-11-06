@@ -10,13 +10,13 @@ import { maskSerial } from "./maskSerial";
 export function MaskedSerial({ serial, className }: { serial: string; className?: string }) {
   const [shown, setShown] = useState(false);
   return (
-    <span className={cn("inline-flex items-center gap-1.5", className)}>
-      <span className="font-mono tabular-nums" aria-live="polite">
+    <span className={cn("inline-flex max-w-full items-center gap-1.5", className)}>
+      <span className="min-w-0 break-all font-mono tabular-nums" aria-live="polite">
         {shown ? serial : maskSerial(serial)}
       </span>
       <button
         type="button"
-        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+        className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
         aria-label={shown ? "시리얼 가리기" : "시리얼 보기"}
         aria-pressed={shown}
         onClick={() => setShown((v) => !v)}
