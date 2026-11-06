@@ -130,7 +130,7 @@ test("MVP 배포에서도 관리자 화면 주소는 그대로 열린다", async
 test("리포트만 숨기면 로그인하지 않은 사람이 내 렌탈 주소를 쳐도 로그인 화면이 아니라 첫 화면으로 간다", async () => {
   vi.stubEnv("VITE_ARCHIVED_FEATURES", "report");
   const { router } = renderApp("/my/rentals");
-  await screen.findByRole("link", { name: /관리자 화면 열기/ });
+  await screen.findByRole("link", { name: /회원가입하고 시작하기/ });
   expect(router.state.location.pathname).toBe("/");
 });
 
@@ -141,11 +141,14 @@ test("계정 기능을 다시 켜면 폰 촬영·리포트가 숨겨져 있어�
   expect(router.state.location.pathname).toBe("/login");
 });
 
-test("계정 기능을 보이고 리포트는 숨긴 배포에서는 첫 화면에 고객 로그인·회원가입이 있고, 가입·인증 뒤 내 계정 화면으로 간다", async () => {
+test("계정 기능을 보이면 첫 화면은 회원가입·로그인이 먼저이고, 관리자 로그인은 맨 아래 작은 링크로만 있다", async () => {
   vi.stubEnv("VITE_ARCHIVED_FEATURES", "phoneCapture,diagnostics,report,pilot");
   renderApp("/");
-  expect(await screen.findByRole("link", { name: "고객 로그인" })).toHaveAttribute("href", "/login");
-  expect(screen.getByRole("link", { name: "고객 회원가입" })).toHaveAttribute("href", "/signup");
+  expect(await screen.findByRole("link", { name: /회원가입하고 시작하기/ })).toHaveAttribute("href", "/signup");
+  expect(screen.getByRole("link", { name: "회원가입" })).toHaveAttribute("href", "/signup");
+  for (const link of screen.getAllByRole("link", { name: "로그인" })) expect(link).toHaveAttribute("href", "/login");
+  expect(screen.queryByRole("link", { name: /관리자 화면 열기/ })).not.toBeInTheDocument();
+  expect(within(screen.getByRole("contentinfo")).getByRole("link", { name: "관리자 로그인" })).toHaveAttribute("href", "/admin/login");
   expect(customerHome()).toBe("/my/account");
 });
 
@@ -153,8 +156,8 @@ test("MVP 배포(계정 숨김)에서는 첫 화면에 고객 로그인·회원�
   vi.stubEnv("VITE_ARCHIVED_FEATURES", MVP_ARCHIVED);
   renderApp("/");
   await screen.findByRole("link", { name: /관리자 화면 열기/ });
-  expect(screen.queryByRole("link", { name: "고객 로그인" })).not.toBeInTheDocument();
-  expect(screen.queryByRole("link", { name: "고객 회원가입" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "회원가입" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: /회원가입하고 시작하기/ })).not.toBeInTheDocument();
 });
 
 test("리포트를 숨긴 배포에서 고객은 내 계정 화면에서 탈퇴로 갈 수 있고 내 렌탈 링크는 없다", async () => {

@@ -1,6 +1,8 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../shared/auth/AuthProvider";
 import { isArchived } from "../../../shared/config/features";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Button } from "../../../shared/ui/Button";
 
 /**
@@ -21,23 +23,28 @@ export function MyAccountPage() {
   return (
     <main className="page narrow">
       <h1>내 계정</h1>
-      <p role="status">로그인되어 있습니다.</p>
-      <p>
-        {reportArchived
-          ? "노트북을 빌리면 관리자가 부스에서 상태를 검사하고 결과를 기록합니다."
-          : "빌린 노트북의 검사 결과는 내 렌탈에서 볼 수 있습니다."}
-      </p>
-      <ul>
+      <section aria-label="계정 상태" className="rounded-2xl border border-border bg-card p-5 md:p-6">
+        <p role="status" className="m-0 inline-flex items-center gap-2 text-sm font-semibold">
+          <span aria-hidden="true" className="size-2 rounded-full bg-emerald-500" />
+          로그인되어 있습니다
+        </p>
+        <p className="m-0 mt-2 text-sm text-muted-foreground">
+          {reportArchived
+            ? "노트북을 빌리면 관리자가 부스에서 상태를 검사하고 결과를 기록합니다."
+            : "빌린 노트북의 검사 사진과 흠집 기록은 내 렌탈에서 볼 수 있습니다."}
+        </p>
         {!reportArchived && (
-          <li>
-            <Link to="/my/rentals">내 렌탈</Link>
-          </li>
+          <Link to="/my/rentals" className={cn(buttonVariants({ size: "lg" }), "mt-4 w-full no-underline sm:w-auto")}>
+            내 렌탈 보기
+          </Link>
         )}
-        <li>
-          <Link to="/my/account/withdraw">계정 탈퇴</Link>
-        </li>
-      </ul>
-      <Button onClick={() => void signOut()}>로그아웃</Button>
+      </section>
+      <section aria-label="계정 관리" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-5 md:p-6">
+        <Button onClick={() => void signOut()}>로그아웃</Button>
+        <Link to="/my/account/withdraw" className="text-sm text-muted-foreground">
+          계정 탈퇴
+        </Link>
+      </section>
     </main>
   );
 }

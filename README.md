@@ -32,7 +32,7 @@ npm run dev
 |---|---|---|
 | `VITE_API_BASE` | gateway 주소. 비우면 같은 출처의 `/api`(개발은 vite 프록시) | 비움 |
 | `VITE_USE_MOCK` | `true`면 브라우저에서 MSW 목 서버를 켠다 | 비움 |
-| `VITE_ARCHIVED_FEATURES` | MVP 배포에서 메뉴·링크를 숨기는 보관 기능(쉼표 구분): `phoneCapture`(수령 QR) `diagnostics`(페어링 코드) `report`(리포트 보기) `account`(가입·재설정) `pilot`(Grafana) `laterCheckpoints`(수령·반납 시작·렌탈 종료, MVP는 렌탈당 출고 검사 1번). 코드·주소는 그대로다 | 개발·테스트 비움, Docker 이미지는 `phoneCapture,diagnostics,report,pilot`(수령·반납은 11/6부터 부스 빠른 검사로 보임, 가입·재설정·탈퇴 `account`는 auth_server #7 배포 뒤 11/6부터 보임) |
+| `VITE_ARCHIVED_FEATURES` | MVP 배포에서 메뉴·링크를 숨기는 보관 기능(쉼표 구분): `phoneCapture`(수령 QR) `diagnostics`(페어링 코드) `report`(리포트 보기) `account`(가입·재설정) `pilot`(Grafana) `laterCheckpoints`(수령·반납 시작·렌탈 종료, MVP는 렌탈당 출고 검사 1번). 코드·주소는 그대로다 | 개발·테스트 비움, Docker 이미지는 `phoneCapture,pilot`(수령·반납은 11/6부터 부스 빠른 검사로 보임, 가입·재설정·탈퇴 `account`와 리포트·내 렌탈·검증 `report`는 서버가 학교 서버에 올라가 11/6부터 보임, 진단 페어링 코드 `diagnostics`도 11/6부터 보임) |
 | `VITE_PILOT_DASHBOARD_URL` | 파일럿 추이 Grafana 주소. 비우면 메뉴를 숨긴다 | 비움 |
 | `VITE_DEMO_CUSTOMER_EMAILS` | 시연용 고객 계정 이메일(쉼표 구분). 비밀번호는 넣지 않는다 | Docker 이미지만 기본값 있음 |
 

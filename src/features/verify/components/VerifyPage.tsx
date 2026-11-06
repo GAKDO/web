@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { ApiError } from "../../../shared/api/client";
 import type { VerifyRecord, VerifyResponse } from "../../../shared/api/types";
 import { CHECKPOINT_TYPE_LABEL, INSPECTION_GRADE_LABEL } from "../../../shared/codes/labels";
+import { SiteBar } from "../../../shared/ui/SiteBar";
 import { isVerifyToken, useVerify } from "../api/verify";
 import { formatKst, shortHash } from "../format";
 
@@ -30,10 +31,13 @@ export function VerifyPage() {
   }
 
   return (
-    <main className="page narrow verify">
-      <h1>TRACE 기록 검증</h1>
-      {content}
-    </main>
+    <div className="min-h-svh bg-background">
+      <SiteBar />
+      <main className="page narrow verify">
+        <h1>TRACE 기록 검증</h1>
+        {content}
+      </main>
+    </div>
   );
 }
 
