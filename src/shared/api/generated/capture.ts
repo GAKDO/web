@@ -206,6 +206,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/captures/benchmarks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 세트별 처리 시간(성능 그래프)
+         * @description 관리자 화면 성능 그래프용. 최근 촬영 세트부터 세트마다 걸린 시간을 돌려준다(11/6 추가, C 요청).
+         *     `inferenceMs`는 부스가 탐지 결과와 함께 보낸 Jetson 탐지 시간이고, 보내지 않았거나 폰 세트면 null이다.
+         *     `completedToGradedMs`는 촬영 완료 요청부터 등급까지(탐지·업로드 대기·비교 포함), 아직 등급이 없거나 11/6 전 세트면 null.
+         *     `boothTotalMs`는 부스 촬영 시작 버튼부터 부스 화면 판정까지(부스가 보낸 값), `models`는 모델별 mAP(학습 뒤 설정한 숫자)다.
+         *     세트별 시각은 `createdAt`(세트 생성)·`completedAt`·`detectionsReceivedAt`(탐지 받음)·`gradedAt`(등급)이다.
+         *     시험 데이터 지우기(trace.checkpoint.purged)로 지운 세트는 나오지 않는다. (FR-INS-01)
+         */
+        get: operations["listCaptureBenchmarks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -319,6 +344,47 @@ export interface components {
             detections: components["schemas"]["Detection"][];
             /** @description 이 요청으로 분석을 마친 사진(선택 필드, 11/3 추가). 빠른 검사(QUICK) 세트는 필수이고, 필수 면(TOP·BOT)의 세트 사진을 모두 담아야 한다. 빠지면 400 VALIDATION_FAILED(field analyzedPhotos). 흠집이 없는 사진은 여기에만 넣고 detections에는 넣지 않는다. 그래서 받은 요청은 늘 세트 전체의 결과이고, 일부만 분석한 요청으로 등급이 나지 않는다 */
             analyzedPhotos?: components["schemas"]["PhotoRef"][];
+            /** @description 이 요청의 탐지에 걸린 시간 ms(선택 필드, 11/6 추가). 엔진을 올린 뒤 세트 사진 전체를 탐지한 시간이고 업로드·엔진 올리기는 뺀다. 성능 그래프(GET /api/v1/captures/benchmarks)에 그대로 나온다 */
+            inferenceMs?: number;
+            /** @description 부스에서 촬영 시작 버튼부터 화면에 판정(문제 있음/없음)이 나올 때까지 ms(선택 필드, 11/6 추가, C 요청). 촬영·탐지를 모두 포함하고 서버 업로드는 뺀다. 성능 그래프에 그대로 나온다 */
+            boothTotalMs?: number;
+        };
+        CaptureBenchmarkList: {
+            items: components["schemas"]["CaptureBenchmark"][];
+            /** @description 탐지 모델별 평가 점수(선택 필드, 11/6 추가, C 요청). 학습이 끝난 뒤 검증 데이터로 잰 숫자를 서버 설정에 넣으면 나온다. 설정이 없으면 빈 배열이다. 서버는 항상 보낸다 */
+            models?: components["schemas"]["ModelMetric"][];
+        };
+        ModelMetric: {
+            /** @description CaptureBenchmark.modelVersion과 같은 값 */
+            modelVersion: string;
+            /** @description 검증 데이터 mAP@0.5(마스크). 아직 없으면 null */
+            map50: number | null;
+            /** @description 검증 데이터 mAP@0.5:0.95(마스크). 아직 없으면 null */
+            map50To95: number | null;
+        };
+        CaptureBenchmark: {
+            captureSetId: components["schemas"]["PublicId"];
+            checkpointId: components["schemas"]["PublicId"];
+            source: components["schemas"]["CaptureSource"];
+            profile: components["schemas"]["CaptureProfile"];
+            boothId: string | null;
+            /** @description 부스 탐지 모델 버전. 탐지가 아직 없으면 null */
+            modelVersion: string | null;
+            /** @description 올라간 사진 수 */
+            photoCount: number;
+            /** @description 부스가 보낸 탐지 시간 ms. 안 보냈으면 null */
+            inferenceMs: number | null;
+            createdAt: components["schemas"]["DateTime"];
+            /** @description 촬영 완료 요청 시각. 아직이거나 11/6 전 세트면 null */
+            completedAt: components["schemas"]["DateTime"] | null;
+            /** @description 부스 탐지를 받은 시각. 없으면 null */
+            detectionsReceivedAt: components["schemas"]["DateTime"] | null;
+            /** @description 등급을 매긴 시각. 없으면 null */
+            gradedAt: components["schemas"]["DateTime"] | null;
+            /** @description completedAt부터 gradedAt까지 ms. 둘 중 하나라도 없으면 null */
+            completedToGradedMs: number | null;
+            /** @description 부스가 보낸 촬영 시작 버튼→판정 ms(선택 필드, 11/6 추가, 서버는 항상 보냄). 안 보냈거나 폰 세트면 null */
+            boothTotalMs?: number | null;
         };
         PhotoRef: {
             face: components["schemas"]["CaptureFace"];
@@ -579,6 +645,7 @@ export interface components {
         CheckpointId: components["schemas"]["PublicId"];
         /** @description 같은 키로 다시 보내면 처음 응답을 그대로 돌려준다. 같은 키에 다른 본문이면 422 IDEMPOTENCY_KEY_CONFLICT. */
         IdempotencyKey: string;
+        Limit: number;
     };
     requestBodies: never;
     headers: never;
@@ -1123,6 +1190,62 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listCaptureBenchmarks: {
+        parameters: {
+            query?: {
+                /** @description 이 촬영 출처의 세트만 */
+                source?: components["schemas"]["CaptureSource"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 최근 세트부터 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "captureSetId": "U4aNk9bKxZfIZRBgSN2Uj",
+                     *           "checkpointId": "h40b9AN9xMQhXRHrOyJWB",
+                     *           "source": "BOOTH",
+                     *           "profile": "QUICK",
+                     *           "boothId": "booth-01",
+                     *           "modelVersion": "yolo11s-seg-v001-trt-fp16",
+                     *           "photoCount": 12,
+                     *           "inferenceMs": 28400,
+                     *           "createdAt": "2026-11-09T14:02:10+09:00",
+                     *           "completedAt": "2026-11-09T14:03:05+09:00",
+                     *           "detectionsReceivedAt": "2026-11-09T14:03:36+09:00",
+                     *           "gradedAt": "2026-11-09T14:03:37+09:00",
+                     *           "completedToGradedMs": 32000,
+                     *           "boothTotalMs": 91500
+                     *         }
+                     *       ],
+                     *       "models": [
+                     *         {
+                     *           "modelVersion": "yolo11s-seg-v001-trt-fp16",
+                     *           "map50": 0.71,
+                     *           "map50To95": 0.48
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CaptureBenchmarkList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
 }
