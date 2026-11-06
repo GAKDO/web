@@ -7,6 +7,7 @@ import { server } from "../../shared/mocks/node";
 import { problem } from "../../shared/mocks/handlers/problem";
 import type { Rental } from "../../shared/api/types";
 import { RENTAL_ACTIVE_MS, RENTAL_IDLE_MS, rentalPollMs } from "./api/rentals";
+import { LIVE_MAX_RETRIES } from "./api/useRentalLive";
 
 const base = (checkpoints: Rental["checkpoints"], status: Rental["status"] = "OPEN") =>
   ({ rentalId: "r", deviceId: "d", renterRef: "R", status, startedAt: null, endedAt: null, createdAt: "2026-11-06T00:00:00Z", checkpoints }) as Rental;
@@ -37,4 +38,26 @@ test("report-server가 없으면(404) SSE를 접고 '자동으로 다시 읽는 
   server.use(http.get("*/api/v1/reports/rentals/:rentalId/stream", () => problem(404, "NOT_FOUND", "없음")));
   renderAsAdmin(`/admin/rentals/${pushRental()}`);
   await waitFor(() => expect(screen.getByText("자동으로 다시 읽는 중")).toBeInTheDocument());
+});
+
+test("report-server가 5번 연달아 5xx면 SSE를 접고 더는 다시 붙지 않는다", async () => {
+  let calls = 0;
+  server.use(
+    http.get("*/api/v1/reports/rentals/:rentalId/stream", () => {
+      calls += 1;
+      return problem(503, "INTERNAL_ERROR", "잠시 뒤");
+    }),
+  );
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    renderAsAdmin(`/admin/rentals/${pushRental()}`);
+    for (let i = 0; i < 8; i += 1) await vi.advanceTimersByTimeAsync(2_100);
+    await waitFor(() => expect(screen.getByText("자동으로 다시 읽는 중")).toBeInTheDocument());
+    const after = calls;
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(calls).toBe(after);
+    expect(calls).toBeLessThanOrEqual(LIVE_MAX_RETRIES + 1);
+  } finally {
+    vi.useRealTimers();
+  }
 });

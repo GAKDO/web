@@ -42,7 +42,9 @@ export function useRentalLive(rentalId: string, enabled: boolean): LiveState {
           if (!reconnecting) return;
           misses += 1;
           if (misses >= LIVE_MAX_RETRIES) {
-            controller.abort();
+            // onReconnecting은 fetch-event-source의 onerror 안에서 불리고, 라이브러리는 그 뒤에 재시도 타이머를 만든다.
+            // 지금 abort하면 그 타이머가 남아 다시 붙으므로, 타이머가 생긴 다음 차례에 abort해 타이머까지 지운다
+            setTimeout(() => controller.abort(), 0);
             setState("polling");
           } else setState("connecting");
         },
