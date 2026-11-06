@@ -69,7 +69,12 @@ function CheckpointSteps({ rental, serial, onError }: { rental: Rental; serial?:
                   />
                 )}
                 {/* 올라온 진단은 봉인 뒤에도 보인다. 리포트를 숨긴 배포에서도 여기서 확인한다 */}
-                {!isArchived("diagnostics") && <DiagnosticsPanel checkpointId={checkpoint.checkpointId} live={checkpoint.status === "OPEN"} />}
+                {/* 폴링으로 결과가 바뀌면 화면 읽기 프로그램에 알린다. 알림 영역은 결과보다 먼저 있어야 한다 */}
+                {!isArchived("diagnostics") && (
+                  <div aria-live="polite" className="w-full">
+                    <DiagnosticsPanel checkpointId={checkpoint.checkpointId} live={checkpoint.status === "OPEN"} />
+                  </div>
+                )}
               </>
             ) : (
               <>

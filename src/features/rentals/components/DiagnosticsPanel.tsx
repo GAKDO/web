@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { ApiError } from "../../../shared/api/problem";
 import { formatDateTime } from "../../../shared/ui/format";
 import { useDiagnostics } from "../../report/api/report";
@@ -13,6 +14,13 @@ function ReadingText({ reading }: { reading: Reading }) {
  */
 export function DiagnosticsPanel({ checkpointId, live }: { checkpointId: string; live: boolean }) {
   const diag = useDiagnostics(checkpointId, live ? 5_000 : undefined);
+  // 봉인으로 폴링이 멈출 때 아직 진단이 없으면 마지막으로 한 번 더 읽는다(봉인 직전에 올라온 진단을 놓치지 않게)
+  const wasLive = useRef(live);
+  const { refetch, data } = diag;
+  useEffect(() => {
+    if (wasLive.current && !live && !data) void refetch();
+    wasLive.current = live;
+  }, [live, data, refetch]);
   if (diag.isPending) return null;
   const notFound = diag.isError && diag.error instanceof ApiError && diag.error.status === 404;
   if (notFound) {
