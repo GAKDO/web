@@ -23,6 +23,7 @@ import { ReportPage } from "./features/report/components/ReportPage";
 import { VerifyPage } from "./features/verify/components/VerifyPage";
 import { RequireAdmin } from "./shared/auth/RequireAdmin";
 import { RequireCustomer } from "./shared/auth/RequireCustomer";
+import { BenchmarkPage } from "./features/benchmark/components/BenchmarkPage";
 import { ArchivedRoute } from "./shared/config/ArchivedRoute";
 
 
@@ -67,6 +68,8 @@ export const routes: RouteObject[] = [
       // MVP(11/3): 부스 검사 결과 조회
       { path: "inspections", element: <InspectionListPage /> },
       { path: "inspections/:rentalId/:checkpointId", element: <InspectionDetailPage /> },
+      // 11/6: Grafana 대신 검사 결과 통계 그래프
+      { path: "benchmark", element: <BenchmarkPage /> },
     ],
   },
 ];
