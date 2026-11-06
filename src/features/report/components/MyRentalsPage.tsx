@@ -61,7 +61,11 @@ function EmptyRentals({ onRefresh, refreshing }: { onRefresh: () => void; refres
           </li>
         ))}
       </ol>
-      <p className="m-0 mt-5 text-sm">렌탈을 받은 뒤에도 비어 있으면 새로 고침을 눌러 보세요. 연결되면 바로 여기에 보입니다.</p>
+      <p className="m-0 mt-5 text-sm">
+        노트북은 렌탈 창구에서 빌리고, 받을 때 직원이 보여 주는 QR을 폰으로 찍으면 이 계정에 연결됩니다.{" "}
+        <Link to="/guide">이용 안내 보기</Link>
+      </p>
+      <p className="m-0 mt-2 text-sm">렌탈을 받은 뒤에도 비어 있으면 새로 고침을 눌러 보세요. 연결되면 바로 여기에 보입니다.</p>
       <div className="mt-3">
         <Button busy={refreshing} disabled={refreshing} onClick={onRefresh}>
           새로 고침
