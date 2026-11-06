@@ -107,6 +107,7 @@ function includesAll(name: string, words: string[]): boolean {
  */
 export function matchModel(reading: LabelReading, models: DeviceModelSummary[]): string | null {
   const num = reading.modelNumber?.toLowerCase();
+  const maker = reading.manufacturer?.toLowerCase();
   let numberHits: DeviceModelSummary[] = [];
   let direct: DeviceModelSummary[] = [];
   if (num) {
@@ -115,11 +116,11 @@ export function matchModel(reading: LabelReading, models: DeviceModelSummary[]):
     const bounded = new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`);
     numberHits = models.filter((m) => bounded.test(m.modelCode.toLowerCase()) || bounded.test(m.name.toLowerCase()));
     // 제조사를 읽었다면 제조사가 다른 기종은 직접 일치로 보지 않는다(Dell 라벨에 다른 회사 기종이 골라지지 않게)
-    const maker = reading.manufacturer?.toLowerCase();
     direct = maker ? numberHits.filter((m) => m.manufacturer?.toLowerCase() === maker) : numberHits;
     if (direct.length === 1) return direct[0]!.modelCode;
     const hints = APPLE_MODEL_HINTS[reading.modelNumber!];
-    if (hints) {
+    // Apple 모델 번호 표는 제조사를 못 읽었거나 Apple로 읽었을 때만 쓴다
+    if (hints && (!maker || maker === "apple")) {
       const hinted = models.filter((m) => includesAll(m.name, hints));
       if (hinted.length === 1) return hinted[0]!.modelCode;
     }
