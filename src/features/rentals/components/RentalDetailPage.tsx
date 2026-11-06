@@ -17,8 +17,7 @@ import { useRentalLive, type LiveState } from "../api/useRentalLive";
 import { nextAction } from "../nextAction";
 import { BoothIdsPanel } from "./BoothIdsPanel";
 import { CaptureLinkPanel } from "./CaptureLinkPanel";
-import { DiagnosticsPanel } from "./DiagnosticsPanel";
-import { PairingCodePanel } from "./PairingCodePanel";
+import { CheckpointDiagnostics } from "./DiagnosticsPanel";
 import { formatDate, RENTAL_STATUS_VARIANT } from "./RentalListPage";
 import { InspectionHistory } from "../../inspections/components/InspectionHistory";
 import { formatDateTime } from "../../../shared/ui/format";
@@ -59,21 +58,9 @@ function CheckpointSteps({ rental, serial, onError }: { rental: Rental; serial?:
                 {type !== "OUT" && checkpoint.status === "OPEN" && isArchived("phoneCapture") && (
                   <small className="text-muted-foreground">부스 빠른 검사 목록에서 이 기기를 누르거나 위 부스 코드를 넣어 찍으세요</small>
                 )}
-                {/* 진단 에이전트는 시점마다 붙는다. 봉인 전(OPEN)에만 코드를 만든다. MVP 배포에서는 보관(숨김) */}
-                {checkpoint.status === "OPEN" && !isArchived("diagnostics") && (
-                  <PairingCodePanel
-                    key={`${rental.rentalId}:${checkpoint.checkpointId}`}
-                    rentalId={rental.rentalId}
-                    checkpointId={checkpoint.checkpointId}
-                    deviceSerial={serial}
-                  />
-                )}
-                {/* 올라온 진단은 봉인 뒤에도 보인다. 리포트를 숨긴 배포에서도 여기서 확인한다 */}
-                {/* 폴링으로 결과가 바뀌면 화면 읽기 프로그램에 알린다. 알림 영역은 결과보다 먼저 있어야 한다 */}
+                {/* 진단 에이전트는 시점마다 붙는다. 봉인 전에만 코드를 만들고, 올라온 진단은 봉인 뒤에도 보인다. MVP 배포에서는 보관(숨김) */}
                 {!isArchived("diagnostics") && (
-                  <div aria-live="polite" className="w-full">
-                    <DiagnosticsPanel checkpointId={checkpoint.checkpointId} live={checkpoint.status === "OPEN"} />
-                  </div>
+                  <CheckpointDiagnostics rentalId={rental.rentalId} checkpointId={checkpoint.checkpointId} open={checkpoint.status === "OPEN"} serial={serial} />
                 )}
               </>
             ) : (
