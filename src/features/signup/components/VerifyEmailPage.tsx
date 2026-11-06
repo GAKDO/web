@@ -67,7 +67,7 @@ export function VerifyEmailPage() {
     setNotice(null);
     try {
       await unwrap(api.POST("/api/v1/auth/email/resend", { body: { email } }));
-      setNotice("인증 코드를 다시 보냈습니다. 메일함을 확인해 주세요.");
+      setNotice("인증 코드를 다시 보냈습니다. 메일함과 스팸함을 확인해 주세요.");
     } catch (e) {
       setError(failText(e, "다시 보내지 못했습니다. 잠시 뒤 다시 시도해 주세요."));
     } finally {
@@ -79,6 +79,7 @@ export function VerifyEmailPage() {
     <main className="page login">
       <h1>메일 인증</h1>
       <p>{knownEmail ? `${email}로 보낸 6자리 코드를 입력해 주세요.` : "가입한 이메일과 메일로 받은 6자리 코드를 입력해 주세요."}</p>
+      <p className="text-sm text-muted-foreground">메일이 보이지 않으면 스팸함(Gmail은 스팸·프로모션)도 확인해 주세요.</p>
       {notice && <p role="status">{notice}</p>}
       <form onSubmit={verify} noValidate>
         {!knownEmail && (
