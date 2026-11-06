@@ -25,4 +25,11 @@ describe("성능 화면(기기별 진단 렌탈 전·후 비교)", () => {
     expect(within(cpu).queryByText(/떨어짐/)).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "이 기기의 진단 기록" })).toBeInTheDocument();
   });
+
+  it("기기 상세의 링크(?deviceId)로 열면 그 기기를 골라 둔다", async () => {
+    const pro = db.devices.find((d) => d.serial === "C02PRO0001")!;
+    renderAsAdmin(`/admin/benchmark?deviceId=${pro.deviceId}`);
+    expect(await screen.findByRole("heading", { name: "렌탈 전·후 비교" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "기기" })).toHaveValue(pro.deviceId);
+  });
 });

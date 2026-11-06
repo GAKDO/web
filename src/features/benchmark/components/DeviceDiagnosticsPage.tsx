@@ -9,7 +9,7 @@ import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { PageHeader } from "../../../shared/ui/PageHeader";
 import { formatDateTime } from "../../../shared/ui/format";
 import { maskSerial } from "../../../shared/ui/maskSerial";
-import { useDeviceModels, useDevices } from "../../devices/api/devices";
+import { useDevice, useDeviceModels, useDevices } from "../../devices/api/devices";
 import { useDeviceDiagnostics } from "../api/deviceDiagnostics";
 import {
   changePct,
@@ -196,13 +196,23 @@ export function DeviceDiagnosticsPage() {
   const [params, setParams] = useSearchParams();
   const devices = useDevices({ limit: 100 });
   const models = useDeviceModels();
-  const deviceList = devices.data?.pages.flatMap((p) => p.items) ?? [];
-  const deviceId = params.get("deviceId") ?? deviceList[0]?.deviceId;
+  const firstPage = devices.data?.pages.flatMap((p) => p.items) ?? [];
+  const urlDeviceId = params.get("deviceId");
+  // 기기 상세에서 넘어온 기기가 첫 100대에 없으면 따로 읽어 선택지에 더한다(다른 기기가 고른 것처럼 보이지 않게)
+  const urlDevice = useDevice(urlDeviceId ?? "", !!urlDeviceId && !devices.isPending && !firstPage.some((d) => d.deviceId === urlDeviceId));
+  const deviceList = urlDevice.data && !firstPage.some((d) => d.deviceId === urlDevice.data.deviceId) ? [urlDevice.data, ...firstPage] : firstPage;
+  const deviceId = urlDeviceId ?? deviceList[0]?.deviceId;
   const data = useDeviceDiagnostics(deviceId);
   const rentalIds = [...new Set(data.diagnosed.map((d) => d.rentalId))].reverse();
-  const rentalId = params.get("rentalId") && rentalIds.includes(params.get("rentalId")!) ? params.get("rentalId")! : rentalIds[0];
+  const urlRentalId = params.get("rentalId");
+  const rentalId = urlRentalId && rentalIds.includes(urlRentalId) ? urlRentalId : rentalIds[0];
   const pair = rentalId ? pairOf(rentalId, data.diagnosed) : { before: null, after: null };
   const modelName = (code: string) => models.data?.find((m) => m.modelCode === code)?.name ?? code;
+  // 측정을 건너뛴 시점은 0으로 그리지 않고 뺀다
+  const batteryColumns = data.diagnosed.flatMap((d) => {
+    const v = d.diagnostics.current.battery?.maxCapacityPct;
+    return v == null ? [] : [{ label: pointLabel(d), values: [v] }];
+  });
   const historyMetric = METRICS.find((m) => data.diagnosed.some((d) => metricValue(d.diagnostics.current, m) !== null));
   const select = (key: string, value: string) => {
     const next = new URLSearchParams(params);
@@ -229,6 +239,7 @@ export function DeviceDiagnosticsPage() {
         <label className="grid gap-1 text-sm font-medium">
           기기
           <NativeSelect value={deviceId ?? ""} onChange={(e) => select("deviceId", e.target.value)} disabled={!deviceList.length}>
+            {deviceId && !deviceList.some((d) => d.deviceId === deviceId) && <option value={deviceId}>불러오는 중…</option>}
             {deviceList.map((d) => (
               <option key={d.deviceId} value={d.deviceId}>
                 {d.assetNo ? `${d.assetNo} · ` : ""}{maskSerial(d.serial)} · {modelName(d.modelCode)}
@@ -263,20 +274,20 @@ export function DeviceDiagnosticsPage() {
           <Compare before={pair.before} after={pair.after} />
           <h2 className="mt-8 mb-3 text-lg font-semibold tracking-tight">이 기기의 진단 기록</h2>
           <div className="grid gap-3 md:grid-cols-2">
-            <Card title="배터리 최대 용량" note="진단을 올린 시점마다(오래된 것부터)">
-              <ColumnChart
-                title="배터리 최대 용량"
-                unit="%"
-                columns={data.diagnosed.map((d) => ({ label: pointLabel(d), values: [d.diagnostics.current.battery?.maxCapacityPct ?? 0] }))}
-                series={[{ name: "최대 용량", color: BEFORE }]}
-              />
-            </Card>
+            {batteryColumns.length > 0 && (
+              <Card title="배터리 최대 용량" note="진단을 올린 시점마다(오래된 것부터), 측정을 건너뛴 시점은 뺌">
+                <ColumnChart title="배터리 최대 용량" unit="%" columns={batteryColumns} series={[{ name: "최대 용량", color: BEFORE }]} />
+              </Card>
+            )}
             {historyMetric && (
               <Card title={`${METRIC_LABEL[historyMetric]} 기록`} note="진단을 올린 시점마다 벤치마크 중앙값(오래된 것부터)">
                 <ColumnChart
                   title={METRIC_LABEL[historyMetric]}
                   unit=""
-                  columns={data.diagnosed.map((d) => ({ label: pointLabel(d), values: [metricValue(d.diagnostics.current, historyMetric) ?? 0] }))}
+                  columns={data.diagnosed.flatMap((d) => {
+                    const v = metricValue(d.diagnostics.current, historyMetric);
+                    return v === null ? [] : [{ label: pointLabel(d), values: [v] }];
+                  })}
                   series={[{ name: METRIC_LABEL[historyMetric], color: BEFORE }]}
                 />
               </Card>
