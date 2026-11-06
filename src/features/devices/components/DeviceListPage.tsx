@@ -41,7 +41,9 @@ function DeviceCard({ device }: { device: Device }) {
     <DataRow label={device.serial}>
       <DataCells>
         <span>{device.modelName}</span>
-        <strong>{device.serial}</strong>
+        <Link className="text-info underline-offset-4 hover:underline" to={`/admin/devices/${device.deviceId}`}>
+          <strong>{device.serial}</strong>
+        </Link>
         <Badge variant={STATUS_VARIANT[device.status]}>{DEVICE_STATUS_LABEL[device.status]}</Badge>
         <span className="text-muted-foreground tabular-nums">{formatDate(device.createdAt)}</span>
       </DataCells>
@@ -69,6 +71,9 @@ function DeviceCard({ device }: { device: Device }) {
               <div className="flex flex-wrap items-start gap-2">
                 <StatusMenu device={device} />
                 <Button onClick={() => setEditing(true)}>고치기</Button>
+                <Link className={buttonVariants({ variant: "outline" })} to={`/admin/devices/${device.deviceId}`}>
+                  렌탈 이력
+                </Link>
               </div>
             </>
           )}

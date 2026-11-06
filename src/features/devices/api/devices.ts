@@ -22,6 +22,25 @@ export function useDevices(filters: DeviceFilters) {
   });
 }
 
+/** 기기 하나(기기별 렌탈 이력 화면 머리글, contracts #28) */
+export function useDevice(deviceId: string) {
+  return useQuery({
+    queryKey: [...DEVICES, "detail", deviceId],
+    queryFn: () => unwrap(api.GET("/api/v1/devices/{deviceId}", { params: { path: { deviceId } } })),
+  });
+}
+
+/** 기기별 렌탈 이력: 그 기기의 렌탈만 최근 생성 순, 커서로 이어 붙인다 */
+export function useDeviceRentals(deviceId: string) {
+  return useInfiniteQuery({
+    queryKey: ["rentals", "list", "device", deviceId],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
+      unwrap(api.GET("/api/v1/rentals", { params: { query: { deviceId, cursor: pageParam } } })),
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+  });
+}
+
 export function useDeviceModels() {
   return useQuery({
     queryKey: ["deviceModels"],

@@ -2,7 +2,7 @@ import { PageHeader } from "../../../shared/ui/PageHeader";
 import { FormActions, FormCard } from "../../../shared/ui/FormCard";
 import { buttonVariants } from "@/components/ui/button";
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { Device } from "../../../shared/api/types";
 import { ApiError, networkError } from "../../../shared/api/problem";
 import { messageFor } from "../../../shared/api/errorMessages";
@@ -20,7 +20,8 @@ export function RentalCreatePage() {
   const [showAll, setShowAll] = useState(false);
   const devices = useDevices(showAll ? { limit: 100 } : { status: "ACTIVE", limit: 100 });
   const list: Device[] = devices.data?.pages.flatMap((page) => page.items) ?? [];
-  const [deviceId, setDeviceId] = useState("");
+  // 기기 상세의 "이 기기로 렌탈 만들기"가 넘긴 기기를 미리 고른다
+  const [deviceId, setDeviceId] = useState((useLocation().state as { deviceId?: string } | null)?.deviceId ?? "");
   const [renterRef, setRenterRef] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
   const picked = list.find((d) => d.deviceId === deviceId);

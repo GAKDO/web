@@ -42,17 +42,30 @@ export const rentalHandlers = [
     if (no) return no;
     const url = new URL(request.url);
     const status = url.searchParams.get("status");
+    const deviceId = url.searchParams.get("deviceId");
     const limit = Number(url.searchParams.get("limit") ?? 20);
     const start = Number(url.searchParams.get("cursor") ?? 0);
     const matched = [...db.rentals]
       .reverse()
       .filter((r) => !status || r.status === status)
+      .filter((r) => !deviceId || r.deviceId === deviceId)
       .filter((r) => !owner || db.report.owners.get(r.rentalId) === owner);
     const items = matched.slice(start, start + limit).map((r) => {
       const device = db.devices.find((d) => d.deviceId === r.deviceId);
       // 지금 시점 = 시작된 시점 중 가장 뒤(OUT→RCV→RET 순으로 쌓이므로 마지막), 없으면 null
       const currentCheckpoint = r.checkpoints.at(-1) ?? null;
-      return { rentalId: r.rentalId, deviceId: r.deviceId, serial: device?.serial ?? "", modelCode: device?.modelCode ?? "", status: r.status, createdAt: r.createdAt, currentCheckpoint };
+      return {
+        rentalId: r.rentalId,
+        deviceId: r.deviceId,
+        serial: device?.serial ?? "",
+        modelCode: device?.modelCode ?? "",
+        renterRef: r.renterRef,
+        status: r.status,
+        startedAt: r.startedAt,
+        endedAt: r.endedAt,
+        createdAt: r.createdAt,
+        currentCheckpoint,
+      };
     });
     const body: RentalPage = { items, nextCursor: start + limit < matched.length ? String(start + limit) : null };
     return HttpResponse.json(body);

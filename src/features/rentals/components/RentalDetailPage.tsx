@@ -143,7 +143,12 @@ export function RentalDetailPage() {
         className="rounded-xl border bg-card p-5 shadow-xs"
         items={[
           ["대여자 참조 번호", data.renterRef],
-          ["기기 시리얼", serial ?? "—"],
+          [
+            "기기 시리얼",
+            <Link key="serial" className="text-info underline-offset-4 hover:underline" to={`/admin/devices/${data.deviceId}`}>
+              {serial ?? "기기 보기"}
+            </Link>,
+          ],
           ["현재 상태", RENTAL_STATUS_LABEL[data.status]],
           ["시작", formatDateTime(data.startedAt)],
           ["종료", formatDateTime(data.endedAt)],

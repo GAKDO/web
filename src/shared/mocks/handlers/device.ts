@@ -46,6 +46,15 @@ export const deviceHandlers = [
     return HttpResponse.json(device, { status: 201 });
   }),
 
+  // 기기 상세(contracts #28): 기기별 렌탈 이력 화면 머리글
+  http.get("*/api/v1/devices/:deviceId", ({ request, params }) => {
+    const no = denied(request);
+    if (no) return no;
+    const device = db.devices.find((d) => d.deviceId === params.deviceId);
+    if (!device) return problem(404, "NOT_FOUND", "기기가 없습니다");
+    return HttpResponse.json(device);
+  }),
+
   http.patch("*/api/v1/devices/:deviceId", async ({ request, params }) => {
     const no = denied(request);
     if (no) return no;

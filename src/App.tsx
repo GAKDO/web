@@ -10,6 +10,7 @@ import { VerifyEmailPage } from "./features/signup/components/VerifyEmailPage";
 import { CaptureEntryPage } from "./features/capture/components/CaptureEntryPage";
 import { CustomerLoginPage } from "./features/customer-auth/components/CustomerLoginPage";
 import { DeviceCreatePage } from "./features/devices/components/DeviceCreatePage";
+import { DeviceDetailPage } from "./features/devices/components/DeviceDetailPage";
 import { DeviceListPage } from "./features/devices/components/DeviceListPage";
 import { InspectionDetailPage } from "./features/inspections/components/InspectionDetailPage";
 import { InspectionListPage } from "./features/inspections/components/InspectionListPage";
@@ -58,6 +59,8 @@ export const routes: RouteObject[] = [
       { index: true, element: <Navigate to="devices" replace /> },
       { path: "devices", element: <DeviceListPage /> },
       { path: "devices/new", element: <DeviceCreatePage /> },
+      // 기기 상세 + 기기별 렌탈 이력(11/6)
+      { path: "devices/:deviceId", element: <DeviceDetailPage /> },
       { path: "models", element: <ModelListPage /> },
       { path: "models/new", element: <ModelEditPage /> },
       { path: "models/:modelCode/edit", element: <ModelEditPage /> },
