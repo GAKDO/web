@@ -87,7 +87,7 @@ export function PasswordResetPage() {
       {step === "code" && (
         <form onSubmit={submit} noValidate>
           {/* 계정이 있는지 드러내지 않도록 늘 같은 문장 */}
-          <p role="status">{email.trim()}이(가) 가입된 이메일이면 재설정 코드를 보냈습니다. 메일함을 확인해 주세요.</p>
+          <p role="status">{email.trim()}이(가) 가입된 이메일이면 재설정 코드를 보냈습니다. 메일함과 스팸함을 확인해 주세요.</p>
           <Field
             label="재설정 코드(6자리)"
             inputMode="numeric"

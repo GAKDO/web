@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { Navigate } from "react-router-dom";
 import { Camera, ScanSearch, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -7,6 +7,8 @@ import { LoginForm } from "../../../shared/auth/LoginForm";
 import { LOGIN_NOTICE } from "../../../shared/auth/loginNotice";
 import { ScanVisual } from "../../../shared/ui/ScanVisual";
 import { TraceLogo } from "../../../shared/ui/TraceLogo";
+import { customerHome } from "../../../shared/config/customerHome";
+import { isArchived } from "../../../shared/config/features";
 
 // 왼쪽 면에 적는 세 단계(MVP 흐름: 부스 촬영 → 흠집 판정 → 결과 확인). 장식이라 읽는 내용만 짧게
 const STEPS = [
@@ -21,8 +23,13 @@ const STEPS = [
  */
 export function LoginPage() {
   const { status, role, notice, login } = useAuth();
+  // 고객 계정(AU2)을 보이는 배포에서는 한 화면으로 로그인한다: 관리자는 관리자 화면, 고객은 내 계정으로
+  const unified = !isArchived("account");
+  // 이 화면에서 방금 로그인했을 때만 고객을 내 계정으로 보낸다. 이미 고객으로 로그인한 채 들어오면 관리자 계정으로 바꿔 로그인할 수 있게 둔다
+  const [submitted, setSubmitted] = useState(false);
 
   if (status === "authenticated" && role === "ADMIN") return <Navigate to="/admin/devices" replace />;
+  if (unified && submitted && status === "authenticated" && role === "CUSTOMER") return <Navigate to={customerHome()} replace />;
 
   return (
     <div className="relative isolate grid min-h-svh grid-rows-[auto_1fr] overflow-hidden bg-sidebar md:grid-cols-[1.1fr_1fr] md:grid-rows-none">
@@ -42,8 +49,8 @@ export function LoginPage() {
           </p>
           <p className="m-0 text-zinc-400">부스 사진으로 렌탈 노트북의 흠집을 찾고 기록합니다.</p>
           {/* 검사 막대가 노트북을 훑는 그림(장식). 폰에서는 입력칸이 먼저 보이게 뺀다.
-              768px 이상에서는 화면 높이에 맞춰 그림 높이를 줄여(글자·단계 약 37rem을 뺀 나머지, 최대 16:9) 스크롤 없이 한 화면에 들어오게 하고,
-              높이가 아주 낮은 창(680px 이하)에서는 그림을 뺀다 */}
+              768px 이상에서는 화면 높이에 맞춰 그림 높이를 줄여(로고·글자·단계 약 38rem을 뺀 나머지, 최대 16:9) 스크롤 없이 한 화면에 들어오게 하고,
+              높이가 낮은 창(760px 이하)에서는 그림을 뺀다 */}
           <ScanVisual className="mt-8 hidden md:block md:aspect-auto md:h-[clamp(0rem,calc(100svh-38rem),16.875rem)] [@media(max-height:760px)]:md:hidden" />
           <ol className="m-0 mt-8 hidden list-none gap-3 p-0 md:grid">
             {STEPS.map(({ icon: Icon, text }, i) => (
@@ -69,8 +76,10 @@ export function LoginPage() {
         <div aria-hidden="true" className="absolute right-[12%] bottom-[-10%] -z-10 hidden size-[30rem] rounded-full bg-brand/20 blur-[140px] md:block" />
         <Card className="surface-dark w-full max-w-[26rem] animate-enter [animation-delay:120ms] gap-5 border-white/10 py-7 shadow-[0_24px_80px_-24px_rgb(0_0_0/0.9),inset_0_1px_0_rgb(255_255_255/0.06)] backdrop-blur-xl">
           <CardHeader className="px-7">
-            <h1 className="m-0 text-2xl font-bold tracking-tight">관리자 로그인</h1>
-            <CardDescription>관리자 계정 이메일과 비밀번호를 넣어 주세요.</CardDescription>
+            <h1 className="m-0 text-2xl font-bold tracking-tight">{unified ? "로그인" : "관리자 로그인"}</h1>
+            <CardDescription>
+              {unified ? "관리자 계정이면 관리자 화면으로, 고객 계정이면 내 계정으로 이동합니다." : "관리자 계정 이메일과 비밀번호를 넣어 주세요."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2 px-7">
             {status === "authenticated" && role !== "ADMIN" && (
@@ -83,7 +92,12 @@ export function LoginPage() {
                 {LOGIN_NOTICE[notice]}
               </p>
             )}
-            <LoginForm onLogin={(email, password) => login(email, password)} />
+            <LoginForm
+              onLogin={async (email, password) => {
+                await login(email, password, unified ? "ANY" : "ADMIN");
+                setSubmitted(true);
+              }}
+            />
           </CardContent>
         </Card>
         <p className="m-0 text-xs text-zinc-500">TRACE Rental Management System</p>

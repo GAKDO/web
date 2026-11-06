@@ -13,6 +13,7 @@ import { Button } from "../../../shared/ui/Button";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { useCloseRental, useRental, useStartCheckpoint } from "../api/rentals";
+import { useRentalLive, type LiveState } from "../api/useRentalLive";
 import { nextAction } from "../nextAction";
 import { BoothIdsPanel } from "./BoothIdsPanel";
 import { CaptureLinkPanel } from "./CaptureLinkPanel";
@@ -89,10 +90,28 @@ function CheckpointSteps({ rental, serial, onError }: { rental: Rental; serial?:
   );
 }
 
+const LIVE_TEXT: Record<LiveState, string> = {
+  live: "실시간 반영 중",
+  connecting: "실시간 연결 중…",
+  polling: "자동으로 다시 읽는 중",
+};
+
+/** 화면이 스스로 바뀐다는 표시. SSE가 붙으면 '실시간', 아니면 주기적 다시 읽기 */
+function LiveBadge({ state }: { state: LiveState }) {
+  return (
+    <span className="inline-flex items-center gap-2 self-center text-sm text-muted-foreground">
+      <span aria-hidden="true" className={`size-2 rounded-full ${state === "live" ? "bg-success animate-pulse" : "bg-muted-foreground/50"}`} />
+      {LIVE_TEXT[state]}
+    </span>
+  );
+}
+
 export function RentalDetailPage() {
   const { rentalId = "" } = useParams();
   const hint = (useLocation().state as { serial?: string } | null)?.serial;
   const rental = useRental(rentalId);
+  // 종료된 렌탈은 더 바뀌지 않으므로 실시간 연결을 열지 않는다
+  const live = useRentalLive(rentalId, !!rental.data && rental.data.status === "OPEN");
   const close = useCloseRental(rentalId);
   const [asking, setAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -158,6 +177,7 @@ export function RentalDetailPage() {
             <RefreshCw aria-hidden="true" />
             새로 고침
           </Button>
+          <LiveBadge state={live} />
           {/* 종료는 반납 봉인 뒤에만 되므로 수령·반납을 보관한 MVP에서는 숨긴다(다시 검사하려면 렌탈을 새로 만든다) */}
           {!laterArchived && (
             <Button disabled={action.kind !== "close"} onClick={() => setAsking(true)}>
