@@ -1,5 +1,6 @@
 import { Link, Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
+  Camera,
   ClipboardCheck,
   ExternalLink,
   FileText,
@@ -97,6 +98,11 @@ export function RequireAdmin() {
                   {label}
                 </NavLink>
               ))}
+              {/* 부스 옆 태블릿 화면(/booth). 메뉴 틀 없이 열려 새 탭으로 */}
+              <a href="/booth" target="_blank" rel="noopener noreferrer" className={ITEM}>
+                <Camera aria-hidden="true" className="size-[1.125rem]" />
+                부스 화면 <ExternalLink aria-hidden="true" className="size-4" />
+              </a>
               {/* 파일럿 추이는 학교 Grafana에 있어 새 탭으로 연다(FR-PIL-02) */}
               {pilotUrl && (
                 <a
