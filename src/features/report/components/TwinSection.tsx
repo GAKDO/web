@@ -7,6 +7,8 @@ import { CheckpointSlider } from "./CheckpointSlider";
 import { PinDetail } from "./PinDetail";
 import { PinList } from "./PinList";
 import { TwinFallback } from "./TwinFallback";
+import { PhotoGrid } from "../../inspections/components/PhotoGrid";
+import { faceGrids, photoDefectsOf } from "../../inspections/model/photos";
 
 const TwinViewer = lazy(() => import("./TwinViewer"));
 
@@ -49,6 +51,11 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
   const [webgl] = useState(hasWebGL);
   const pending = orderedCheckpoints(checkpoints).filter((c) => c.status !== "SEALED");
   const pins = current?.pins ?? [];
+  // 부스 빠른 검사(QUICK)는 면 사진(textures)이 없고 흠집이 원본 사진 px(photoDefects)다.
+  // 9면 3D·면별 사진으로는 '사진 없음'만 보이므로 관리자 검사 결과와 같은 원본 사진 격자로 보여 준다
+  const photoDefects = photoDefectsOf(inspection.data);
+  const photos = media.data?.photos ?? [];
+  const quick = photoDefects.length > 0 || (photos.length > 0 && (media.data?.textures ?? []).length === 0);
 
   const fallbackReason = !webgl
     ? "이 브라우저에서는 3D를 볼 수 없어 면별 사진으로 보여 드립니다."
@@ -60,7 +67,10 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
 
   return (
     <section aria-labelledby="twin-title" className="twin">
-      <h2 id="twin-title">3D로 보기{current ? ` · ${CHECKPOINT_TYPE_LABEL[current.type]}` : ""}</h2>
+      <h2 id="twin-title">
+        {quick ? "부스 사진" : "3D로 보기"}
+        {current ? ` · ${CHECKPOINT_TYPE_LABEL[current.type]}` : ""}
+      </h2>
       <CheckpointSlider
         checkpoints={sealed}
         index={Math.min(index, Math.max(0, sealed.length - 1))}
@@ -78,7 +88,16 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
         // 흠집이 없는 검사도 어떤 규칙으로 판정했는지 보이도록 핀 선택과 상관없이 둔다(defect_match.rule_version)
         <p className="muted">판정 규칙: {inspection.data.ruleVersion}</p>
       )}
-      {current && (
+      {current && quick && (
+        <div>
+          <p className="muted">
+            부스에서 찍은 사진 {photos.length}장
+            {photoDefects.length > 0 ? ` · 흠집 표시 ${photoDefects.length}곳` : " · 표시된 흠집 없음"}
+          </p>
+          <PhotoGrid grids={faceGrids(photos, photoDefects)} />
+        </div>
+      )}
+      {current && !quick && (
         <div className="twin-body">
           {media.isError && (
             <div role="alert" className="notice">

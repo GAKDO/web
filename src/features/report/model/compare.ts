@@ -43,9 +43,8 @@ export function flagText(kind: DiagnosticsFlagKind): string {
   return FLAG_LABEL[kind];
 }
 
-/** diagFailed: 진단 요청이 404가 아닌 오류로 실패함(기록 없음과 구분) */
-export function compareColumn(checkpoint: TimelineCheckpoint, diag: CheckpointDiagnostics | null | undefined, diagFailed = false): CompareColumn {
-  const current = diag?.current;
+/** 진단 한 번의 배터리·충전 횟수·SSD 읽은 값. 진단이 없으면(또는 못 불러오면) 그 사유를 넣는다. 렌탈 상세의 진단 결과 칸도 쓴다 */
+export function diagnosticsReadings(current: CheckpointDiagnostics["current"] | null | undefined, diagFailed = false): { battery: Reading; cycles: Reading; ssd: Reading } {
   const none = diagFailed ? DIAG_FAILED : NO_DIAG;
   const battery = current ? (current.battery ? percent(current.battery.maxCapacityPct) : { kind: "missing" as const, reason: "배터리를 읽지 못함" }) : none;
   const cycleCount = current?.battery?.cycleCount;
@@ -57,6 +56,13 @@ export function compareColumn(checkpoint: TimelineCheckpoint, diag: CheckpointDi
     else if (s.skippedReason) ssd = { kind: "missing", reason: SKIPPED_REASON_LABEL[s.skippedReason] };
     else ssd = ssdReading(s);
   }
+  return { battery, cycles, ssd };
+}
+
+/** diagFailed: 진단 요청이 404가 아닌 오류로 실패함(기록 없음과 구분) */
+export function compareColumn(checkpoint: TimelineCheckpoint, diag: CheckpointDiagnostics | null | undefined, diagFailed = false): CompareColumn {
+  const current = diag?.current;
+  const { battery, cycles, ssd } = diagnosticsReadings(current, diagFailed);
   const now = current?.battery?.maxCapacityPct ?? checkpoint.diagnosticsSummary?.maxCapacityPct ?? null;
   const before = diag?.previous?.battery?.maxCapacityPct ?? null;
   const flagKinds = diag ? diag.flags.map((f) => f.kind) : (checkpoint.diagnosticsSummary?.flags ?? []);

@@ -492,6 +492,66 @@ paths:
           $ref: './components/common.yaml#/components/responses/Forbidden'
         '404':
           $ref: './components/common.yaml#/components/responses/NotFound'
+  /api/v1/captures/benchmarks:
+    get:
+      tags: [검사]
+      operationId: listCaptureBenchmarks
+      summary: 세트별 처리 시간(성능 그래프)
+      description: |
+        관리자 화면 성능 그래프용. 최근 촬영 세트부터 세트마다 걸린 시간을 돌려준다(11/6 추가, C 요청).
+        `inferenceMs`는 부스가 탐지 결과와 함께 보낸 Jetson 탐지 시간이고, 보내지 않았거나 폰 세트면 null이다.
+        `completedToGradedMs`는 촬영 완료 요청부터 등급까지(탐지·업로드 대기·비교 포함), 아직 등급이 없거나 11/6 전 세트면 null.
+        `boothTotalMs`는 부스 촬영 시작 버튼부터 부스 화면 판정까지(부스가 보낸 값), `models`는 모델별 mAP(학습 뒤 설정한 숫자)다.
+        세트별 시각은 `createdAt`(세트 생성)·`completedAt`·`detectionsReceivedAt`(탐지 받음)·`gradedAt`(등급)이다.
+        시험 데이터 지우기(trace.checkpoint.purged)로 지운 세트는 나오지 않는다. (FR-INS-01)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-INS-01]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      parameters:
+        - name: source
+          in: query
+          required: false
+          description: 이 촬영 출처의 세트만
+          schema:
+            $ref: './components/codes.gen.yaml#/components/schemas/CaptureSource'
+        - $ref: './components/common.yaml#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 최근 세트부터
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureBenchmarkList'
+              example:
+                items:
+                  - captureSetId: U4aNk9bKxZfIZRBgSN2Uj
+                    checkpointId: h40b9AN9xMQhXRHrOyJWB
+                    source: BOOTH
+                    profile: QUICK
+                    boothId: booth-01
+                    modelVersion: yolo11s-seg-v001-trt-fp16
+                    photoCount: 12
+                    inferenceMs: 28400
+                    createdAt: '2026-11-09T14:02:10+09:00'
+                    completedAt: '2026-11-09T14:03:05+09:00'
+                    detectionsReceivedAt: '2026-11-09T14:03:36+09:00'
+                    gradedAt: '2026-11-09T14:03:37+09:00'
+                    completedToGradedMs: 32000
+                    boothTotalMs: 91500
+                models:
+                  - modelVersion: yolo11s-seg-v001-trt-fp16
+                    map50: 0.71
+                    map50To95: 0.48
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
 components:
   securitySchemes:
     bearerJwt:
@@ -770,6 +830,105 @@ components:
             그래서 받은 요청은 늘 세트 전체의 결과이고, 일부만 분석한 요청으로 등급이 나지 않는다
           items:
             $ref: '#/components/schemas/PhotoRef'
+        inferenceMs:
+          type: integer
+          minimum: 0
+          maximum: 600000
+          description: >-
+            이 요청의 탐지에 걸린 시간 ms(선택 필드, 11/6 추가). 엔진을 올린 뒤 세트 사진 전체를 탐지한 시간이고 업로드·엔진 올리기는 뺀다.
+            성능 그래프(GET /api/v1/captures/benchmarks)에 그대로 나온다
+        boothTotalMs:
+          type: integer
+          minimum: 0
+          maximum: 3600000
+          description: >-
+            부스에서 촬영 시작 버튼부터 화면에 판정(문제 있음/없음)이 나올 때까지 ms(선택 필드, 11/6 추가, C 요청).
+            촬영·탐지를 모두 포함하고 서버 업로드는 뺀다. 성능 그래프에 그대로 나온다
+    CaptureBenchmarkList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaptureBenchmark'
+        models:
+          type: array
+          maxItems: 50
+          description: >-
+            탐지 모델별 평가 점수(선택 필드, 11/6 추가, C 요청). 학습이 끝난 뒤 검증 데이터로 잰 숫자를 서버 설정에 넣으면 나온다.
+            설정이 없으면 빈 배열이다. 서버는 항상 보낸다
+          items:
+            $ref: '#/components/schemas/ModelMetric'
+    ModelMetric:
+      type: object
+      required: [modelVersion, map50, map50To95]
+      properties:
+        modelVersion:
+          type: string
+          maxLength: 64
+          description: CaptureBenchmark.modelVersion과 같은 값
+        map50:
+          type: [number, 'null']
+          minimum: 0
+          maximum: 1
+          description: 검증 데이터 mAP@0.5(마스크). 아직 없으면 null
+        map50To95:
+          type: [number, 'null']
+          minimum: 0
+          maximum: 1
+          description: 검증 데이터 mAP@0.5:0.95(마스크). 아직 없으면 null
+    CaptureBenchmark:
+      type: object
+      required: [captureSetId, checkpointId, source, profile, boothId, modelVersion, photoCount, inferenceMs, createdAt,
+                 completedAt, detectionsReceivedAt, gradedAt, completedToGradedMs]
+      properties:
+        captureSetId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        source:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureSource'
+        profile:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureProfile'
+        boothId:
+          type: [string, 'null']
+        modelVersion:
+          type: [string, 'null']
+          description: 부스 탐지 모델 버전. 탐지가 아직 없으면 null
+        photoCount:
+          type: integer
+          minimum: 0
+          description: 올라간 사진 수
+        inferenceMs:
+          type: [integer, 'null']
+          minimum: 0
+          description: 부스가 보낸 탐지 시간 ms. 안 보냈으면 null
+        createdAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+        completedAt:
+          description: 촬영 완료 요청 시각. 아직이거나 11/6 전 세트면 null
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+        detectionsReceivedAt:
+          description: 부스 탐지를 받은 시각. 없으면 null
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+        gradedAt:
+          description: 등급을 매긴 시각. 없으면 null
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+        completedToGradedMs:
+          type: [integer, 'null']
+          minimum: 0
+          description: completedAt부터 gradedAt까지 ms. 둘 중 하나라도 없으면 null
+        boothTotalMs:
+          type: [integer, 'null']
+          minimum: 0
+          description: 부스가 보낸 촬영 시작 버튼→판정 ms(선택 필드, 11/6 추가, 서버는 항상 보냄). 안 보냈거나 폰 세트면 null
     PhotoRef:
       type: object
       additionalProperties: false

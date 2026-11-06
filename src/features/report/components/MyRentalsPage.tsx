@@ -36,6 +36,41 @@ function RentalCard({ rental }: { rental: RentalSummary }) {
   );
 }
 
+const FLOW = [
+  { title: "출고 검사", text: "노트북을 내보내기 전에 부스에서 윗면·바닥을 찍고 흠집을 찾아 둡니다." },
+  { title: "수령 확인", text: "받았을 때 상태를 한 번 더 남겨, 처음부터 있던 흠집을 구분합니다." },
+  { title: "반납 비교", text: "돌려줄 때 처음 사진과 비교해 새로 생긴 흠집만 보여 줍니다." },
+];
+
+/** 아직 렌탈이 연결되지 않은 고객에게: 고장 난 화면처럼 보이지 않게, 무엇이 쌓일지와 다음에 할 일을 보여 준다 */
+function EmptyRentals({ onRefresh, refreshing }: { onRefresh: () => void; refreshing: boolean }) {
+  return (
+    <section aria-labelledby="empty-rentals" className="rounded-2xl border border-border bg-card p-5 md:p-7">
+      <h2 id="empty-rentals" className="!mt-0 !mb-1 text-lg font-bold">
+        아직 연결된 렌탈이 없습니다
+      </h2>
+      <p className="m-0 text-sm text-muted-foreground">
+        노트북을 빌리면 그 렌탈이 이 계정에 연결되고, 아래 세 번의 검사 결과가 여기에 차례로 쌓입니다.
+      </p>
+      <ol className="m-0 mt-5 grid list-none gap-3 p-0 md:grid-cols-3">
+        {FLOW.map((step, i) => (
+          <li key={step.title} className="rounded-xl border border-border bg-background p-4">
+            <span className="inline-flex size-6 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">{i + 1}</span>
+            <strong className="mt-2 block">{step.title}</strong>
+            <span className="mt-1 block text-sm text-muted-foreground">{step.text}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="m-0 mt-5 text-sm">렌탈을 받은 뒤에도 비어 있으면 새로 고침을 눌러 보세요. 연결되면 바로 여기에 보입니다.</p>
+      <div className="mt-3">
+        <Button busy={refreshing} disabled={refreshing} onClick={onRefresh}>
+          새로 고침
+        </Button>
+      </div>
+    </section>
+  );
+}
+
 /** 고객의 내 렌탈 목록(FR-USR-03). 서버가 고객에게는 자기 렌탈만 준다 */
 export function MyRentalsPage() {
   const rentals = useMyRentals();
@@ -50,7 +85,7 @@ export function MyRentalsPage() {
           onRetry={() => void (rentals.isFetchNextPageError ? rentals.fetchNextPage() : rentals.refetch())}
         />
       )}
-      {rentals.isSuccess && items.length === 0 && <p>아직 렌탈 기록이 없습니다.</p>}
+      {rentals.isSuccess && items.length === 0 && <EmptyRentals onRefresh={() => void rentals.refetch()} refreshing={rentals.isFetching} />}
       <ul className="cards">
         {items.map((rental) => <RentalCard key={rental.rentalId} rental={rental} />)}
       </ul>

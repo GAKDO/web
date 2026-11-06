@@ -39,10 +39,10 @@ describe("내 렌탈 목록", () => {
     expect(screen.queryByRole("button", { name: "더 보기" })).not.toBeInTheDocument();
   });
 
-  test("렌탈이 없는 고객이 목록을 열면 '아직 렌탈 기록이 없습니다'가 보인다", async () => {
+  test("렌탈이 없는 고객이 목록을 열면 '아직 연결된 렌탈이 없습니다'가 보인다", async () => {
     db.report.owners.clear();
     renderAsCustomer("/my/rentals");
-    expect(await screen.findByText("아직 렌탈 기록이 없습니다.")).toBeInTheDocument();
+    expect(await screen.findByText(/아직 연결된 렌탈이 없습니다/)).toBeInTheDocument();
   });
 
   test("렌탈 하나를 누르면 리포트가 열리고 출고·수령·반납 시점이 순서대로 보인다", async () => {

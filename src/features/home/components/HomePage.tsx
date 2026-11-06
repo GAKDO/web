@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { ScanVisual } from "../../../shared/ui/ScanVisual";
 import { TraceLogo } from "../../../shared/ui/TraceLogo";
 import { isArchived } from "../../../shared/config/features";
+import { customerHome } from "../../../shared/config/customerHome";
+import { useAuth } from "../../../shared/auth/AuthProvider";
 
 const STEPS = [
   { icon: Camera, title: "부스 촬영", text: "기기를 부스에 올리면 윗면·바닥을 카메라 2대, 조명 3개로 12장 찍습니다." },
@@ -14,11 +16,19 @@ const STEPS = [
 ];
 
 /**
- * 첫 화면(gakdo.site). 관리자 로그인이 기본 입구이고, 고객 계정(AU2)을 보이는 배포에서는 고객 로그인·회원가입도 둔다.
+ * 첫 화면(gakdo.site). 고객 계정(AU2)을 보이는 배포에서는 회원가입·로그인이 기본 입구이고 관리자 로그인은 맨 아래 작은 링크로만 둔다.
+ * 고객 계정을 숨긴 배포에서는 관리자 로그인이 입구다.
  * 어두운 첫 칸에 검사 막대 그림, 아래에 세 단계와 판정 기준. 내용은 순서대로 살짝 떠오르며 나타난다
  */
 export function HomePage() {
   const showAccount = !isArchived("account");
+  // 내 렌탈(report)을 숨긴 배포에서는 가입 뒤 볼 수 있는 곳이 내 계정뿐이라 안내를 바꾼다
+  const showReport = !isArchived("report");
+  // 로그인한 채 로고를 눌러 첫 화면에 오면 위쪽 버튼을 "내 화면으로 돌아가기"로 바꾼다
+  const { status, role } = useAuth();
+  const signedIn = status === "authenticated";
+  const myHome = role === "ADMIN" ? "/admin/devices" : customerHome();
+  const myHomeLabel = role === "ADMIN" ? "관리자 화면" : myHome === "/my/rentals" ? "내 렌탈" : "내 계정";
   return (
     <div className="min-h-svh bg-background">
       <section className="relative isolate overflow-hidden bg-sidebar text-white">
@@ -29,41 +39,77 @@ export function HomePage() {
         <div aria-hidden="true" className="absolute -top-32 left-1/2 -z-10 size-[32.5rem] -translate-x-1/2 rounded-full bg-brand/30 blur-[140px]" />
         <header className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 md:px-8">
           <h1 className="m-0">
-            <TraceLogo className="h-11" />
+            <Link to="/" className="block rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand">
+              <TraceLogo className="h-11" />
+            </Link>
           </h1>
-          <nav className="flex items-center gap-1" aria-label="로그인">
-            {showAccount && (
-              <Link to="/login" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-zinc-300 hover:bg-white/10 hover:text-white")}>
-                고객 로그인
+          <nav className="flex items-center gap-1.5" aria-label="로그인">
+            {signedIn ? (
+              <Link to={myHome} className={cn(buttonVariants({ size: "sm" }), "shadow-[0_6px_24px_-8px_var(--brand)]")}>
+                {myHomeLabel}
+              </Link>
+            ) : showAccount ? (
+              <>
+                <Link to="/login" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-zinc-300 hover:bg-white/10 hover:text-white")}>
+                  로그인
+                </Link>
+                <Link to="/signup" className={cn(buttonVariants({ size: "sm" }), "shadow-[0_6px_24px_-8px_var(--brand)]")}>
+                  회원가입
+                </Link>
+              </>
+            ) : (
+              <Link to="/admin/login" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-zinc-300 hover:bg-white/10 hover:text-white")}>
+                관리자 로그인
               </Link>
             )}
-            <Link to="/admin/login" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-zinc-300 hover:bg-white/10 hover:text-white")}>
-              관리자 로그인
-            </Link>
           </nav>
         </header>
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 pt-8 pb-16 md:grid-cols-[1.1fr_1fr] md:px-8 md:pt-16 md:pb-24">
           <div>
             <p className="stagger m-0 inline-flex animate-enter items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300" style={{ "--i": 0 } as CSSProperties}>
               <span className="size-1.5 rounded-full bg-brand" />
-              렌탈 노트북 검사 · 관리
+              {showAccount ? "렌탈 노트북 상태 기록" : "렌탈 노트북 검사 · 관리"}
             </p>
             <p className="stagger mt-5 mb-4 animate-enter text-[2.125rem] leading-[1.15] font-bold tracking-tight md:text-[3.25rem]" style={{ "--i": 1 } as CSSProperties}>
-              노트북 상태를
-              <br />
-              <span className="bg-gradient-to-r from-brand to-[#ff5a5f] bg-clip-text text-transparent">투명하게</span>, 정확하게
+              {showAccount ? (
+                <>
+                  빌린 노트북 상태,
+                  <br />
+                  사진으로 남겨 드려요
+                </>
+              ) : (
+                <>
+                  노트북 상태를
+                  <br />
+                  <span className="bg-gradient-to-r from-brand to-[#ff5a5f] bg-clip-text text-transparent">투명하게</span>, 정확하게
+                </>
+              )}
             </p>
             <p className="stagger m-0 max-w-md animate-enter text-[0.9375rem] leading-relaxed text-zinc-400 md:text-base" style={{ "--i": 2 } as CSSProperties}>
-              빌려주기 전과 돌려받은 뒤, 부스에서 찍은 사진으로 흠집을 찾아 기록합니다. 누가 봐도 같은 결과를 사진과 함께 남깁니다.
+              {showAccount
+                ? `받을 때와 돌려줄 때 부스에서 찍은 사진으로 흠집을 기록합니다. ${showReport ? "가입하면 내 렌탈에서 사진과 흠집 기록을 바로 볼 수 있어요." : "미리 가입해 두면 렌탈받을 때 바로 이어서 쓸 수 있어요."}`
+                : "빌려주기 전과 돌려받은 뒤, 부스에서 찍은 사진으로 흠집을 찾아 기록합니다. 누가 봐도 같은 결과를 사진과 함께 남깁니다."}
             </p>
             <div className="stagger mt-8 flex animate-enter flex-wrap gap-3" style={{ "--i": 3 } as CSSProperties}>
-              <Link to="/admin/login" className={cn(buttonVariants({ size: "lg" }), "group shadow-[0_8px_30px_-8px_var(--brand)]")}>
-                관리자 화면 열기
-                <ArrowRight aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-1" />
-              </Link>
-              {showAccount && (
-                <Link to="/signup" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white")}>
-                  고객 회원가입
+              {signedIn ? (
+                <Link to={myHome} className={cn(buttonVariants({ size: "lg" }), "group shadow-[0_8px_30px_-8px_var(--brand)]")}>
+                  {myHomeLabel} 열기
+                  <ArrowRight aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-1" />
+                </Link>
+              ) : showAccount ? (
+                <>
+                  <Link to="/signup" className={cn(buttonVariants({ size: "lg" }), "group shadow-[0_8px_30px_-8px_var(--brand)]")}>
+                    회원가입하고 시작하기
+                    <ArrowRight aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-1" />
+                  </Link>
+                  <Link to="/login" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white")}>
+                    로그인
+                  </Link>
+                </>
+              ) : (
+                <Link to="/admin/login" className={cn(buttonVariants({ size: "lg" }), "group shadow-[0_8px_30px_-8px_var(--brand)]")}>
+                  관리자 화면 열기
+                  <ArrowRight aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-1" />
                 </Link>
               )}
             </div>
@@ -111,7 +157,15 @@ export function HomePage() {
           </li>
         </ul>
       </main>
-      <footer className="border-t py-6 text-center text-xs text-muted-foreground">TRACE Rental Management System</footer>
+      <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 border-t px-4 py-6 text-xs text-muted-foreground md:px-8">
+        <span>TRACE Rental Management System</span>
+        {/* 관리자 입구는 고객이 먼저 보이도록 맨 아래 작은 링크로만 둔다 */}
+        {showAccount && (
+          <Link to="/admin/login" className="underline-offset-4 hover:text-foreground hover:underline">
+            관리자 로그인
+          </Link>
+        )}
+      </footer>
     </div>
   );
 }

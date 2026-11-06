@@ -9,6 +9,8 @@ import { Field } from "../../../shared/ui/Field";
 import { safeNext } from "../../customer-auth/safeNext";
 import { looksLikeEmail, pendingSignup } from "../pendingSignup";
 import { customerHome } from "../../../shared/config/customerHome";
+import { AuthHeading, AuthShell } from "../../../shared/ui/AuthShell";
+import { SIGNUP_STEPS } from "./SignupPage";
 
 const failText = (e: unknown, fallback: string) => (e instanceof ApiError && e.status !== 0 ? messageFor(e) : fallback);
 
@@ -76,11 +78,16 @@ export function VerifyEmailPage() {
   }
 
   return (
-    <main className="page login">
-      <h1>메일 인증</h1>
-      <p>{knownEmail ? `${email}로 보낸 6자리 코드를 입력해 주세요.` : "가입한 이메일과 메일로 받은 6자리 코드를 입력해 주세요."}</p>
-      <p className="text-sm text-muted-foreground">메일이 보이지 않으면 스팸함(Gmail은 스팸·프로모션)도 확인해 주세요.</p>
-      {notice && <p role="status">{notice}</p>}
+    <AuthShell steps={{ current: 2, labels: SIGNUP_STEPS }}>
+      <AuthHeading title="메일 인증">
+        {knownEmail ? `${email}로 보낸 6자리 코드를 입력해 주세요.` : "가입한 이메일과 메일로 받은 6자리 코드를 입력해 주세요."}
+      </AuthHeading>
+      <p className="m-0 mb-4 text-sm text-zinc-400">메일이 보이지 않으면 스팸함(Gmail은 스팸·프로모션)도 확인해 주세요.</p>
+      {notice && (
+        <p role="status" className="m-0 mb-3 text-sm text-warning">
+          {notice}
+        </p>
+      )}
       <form onSubmit={verify} noValidate>
         {!knownEmail && (
           <Field label="이메일" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -95,13 +102,13 @@ export function VerifyEmailPage() {
           error={error}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
         />
-        <Button type="submit" busy={busy} disabled={code.length !== 6 || !looksLikeEmail(email) || resending}>
+        <Button type="submit" size="lg" className="w-full" busy={busy} disabled={code.length !== 6 || !looksLikeEmail(email) || resending}>
           인증하기
         </Button>
       </form>
-      <Button busy={resending} disabled={busy || !looksLikeEmail(email)} onClick={() => void resend()}>
+      <Button variant="ghost" className="mt-2 w-full text-zinc-300" busy={resending} disabled={busy || !looksLikeEmail(email)} onClick={() => void resend()}>
         코드 다시 받기
       </Button>
-    </main>
+    </AuthShell>
   );
 }

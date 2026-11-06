@@ -82,6 +82,8 @@ export const captureHandlers = [
     if (owner && owner !== account.accountId) return problem(409, "RENTAL_LINKED_TO_OTHER", "다른 계정에 연결된 렌탈입니다");
     link.used = true;
     captureDb.rentalOwner.set(link.rentalId, account.accountId);
+    // auth-server는 교환하면 rental_access를 만들고, 다음 토큰의 rentals에 넣는다. 목은 내 렌탈 목록의 주인으로 흉내 낸다
+    db.report.owners.set(link.rentalId, account.accountId);
     const accessToken = `cap.${nanoid()}`;
     captureDb.grants.set(accessToken, { rentalId: link.rentalId, checkpointId: link.checkpointId, accountId: account.accountId, expiresAt: Date.now() + 1800_000 });
     const body: CaptureTokenResponse = {

@@ -19,7 +19,7 @@ import { useRentalLive, type LiveState } from "../api/useRentalLive";
 import { nextAction } from "../nextAction";
 import { BoothIdsPanel } from "./BoothIdsPanel";
 import { CaptureLinkPanel } from "./CaptureLinkPanel";
-import { PairingCodePanel } from "./PairingCodePanel";
+import { CheckpointDiagnostics } from "./DiagnosticsPanel";
 import { formatDate, RENTAL_STATUS_VARIANT } from "./RentalListPage";
 import { InspectionHistory } from "../../inspections/components/InspectionHistory";
 import { formatDateTime } from "../../../shared/ui/format";
@@ -60,14 +60,9 @@ function CheckpointSteps({ rental, serial, onError }: { rental: Rental; serial?:
                 {type !== "OUT" && checkpoint.status === "OPEN" && isArchived("phoneCapture") && (
                   <small className="text-muted-foreground">부스 빠른 검사 목록에서 이 기기를 누르거나 위 부스 코드를 넣어 찍으세요</small>
                 )}
-                {/* 진단 에이전트는 시점마다 붙는다. 봉인 전(OPEN)에만 코드를 만든다. MVP 배포에서는 보관(숨김) */}
-                {checkpoint.status === "OPEN" && !isArchived("diagnostics") && (
-                  <PairingCodePanel
-                    key={`${rental.rentalId}:${checkpoint.checkpointId}`}
-                    rentalId={rental.rentalId}
-                    checkpointId={checkpoint.checkpointId}
-                    deviceSerial={serial}
-                  />
+                {/* 진단 에이전트는 시점마다 붙는다. 봉인 전에만 코드를 만들고, 올라온 진단은 봉인 뒤에도 보인다. MVP 배포에서는 보관(숨김) */}
+                {!isArchived("diagnostics") && (
+                  <CheckpointDiagnostics rentalId={rental.rentalId} checkpointId={checkpoint.checkpointId} open={checkpoint.status === "OPEN"} serial={serial} />
                 )}
               </>
             ) : (
@@ -126,6 +121,8 @@ export function RentalDetailPage() {
   const laterArchived = isArchived("laterCheckpoints");
   // 시리얼은 렌탈 상세(계약 1.0.0)에서 오고, 없거나 빈 값이면 목록·등록 화면이 넘긴 값을 쓴다
   const serial = data.serial || hint;
+  // 연결 QR은 시점 하나에 묶여 발급된다(계약). 촬영은 하지 않으므로 가장 최근 시점을 쓴다
+  const claimCheckpoint = data.checkpoints.at(-1);
 
   return (
     <section>
@@ -163,6 +160,13 @@ export function RentalDetailPage() {
             리포트 보기
           </Link>
         </p>
+      )}
+      {/* 폰 촬영을 숨긴 배포에서도 같은 QR로 렌탈을 고객 계정에 연결한다(11/6). 연결하면 고객 내 렌탈에 리포트가 보인다 */}
+      {claimCheckpoint && data.status !== "CLOSED" && isArchived("phoneCapture") && !isArchived("report") && (
+        <>
+          <SectionTitle>고객 계정 연결</SectionTitle>
+          <CaptureLinkPanel key={claimCheckpoint.checkpointId} rentalId={data.rentalId} checkpointId={claimCheckpoint.checkpointId} purpose="claim" />
+        </>
       )}
       {action.kind === "waitSeal" && action.type === "RET" && !laterArchived && (
         <p role="status" className="mt-4 text-sm text-muted-foreground">
