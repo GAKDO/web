@@ -3,6 +3,7 @@ import { ApiError } from "../../../shared/api/problem";
 import { formatDateTime } from "../../../shared/ui/format";
 import { useDiagnostics } from "../../report/api/report";
 import { diagnosticsReadings, flagText, type Reading } from "../../report/model/compare";
+import { PairingCodePanel } from "./PairingCodePanel";
 
 function ReadingText({ reading }: { reading: Reading }) {
   return reading.kind === "value" ? <>{reading.text}</> : <span className="text-muted-foreground">읽지 못함 ({reading.reason})</span>;
@@ -65,5 +66,24 @@ export function DiagnosticsPanel({ checkpointId, live }: { checkpointId: string;
         <dd>{flagLabels.length === 0 ? "없음" : flagLabels.join(", ")}</dd>
       </dl>
     </section>
+  );
+}
+
+/**
+ * 시점 칸의 진단 부분. 봉인 전(OPEN)이고 아직 진단이 없을 때만 페어링 코드를 만들 수 있다.
+ * 시점당 진단은 한 번만 올라가므로(두 번째는 409) 진단이 올라오면 다 쓴 코드는 가린다.
+ */
+export function CheckpointDiagnostics({ rentalId, checkpointId, open, serial }: { rentalId: string; checkpointId: string; open: boolean; serial?: string }) {
+  // DiagnosticsPanel과 같은 쿼리 키라 요청은 한 번만 나간다
+  const diag = useDiagnostics(checkpointId, open ? 5_000 : undefined);
+  const uploaded = !!diag.data;
+  return (
+    <>
+      {open && !uploaded && <PairingCodePanel key={`${rentalId}:${checkpointId}`} rentalId={rentalId} checkpointId={checkpointId} deviceSerial={serial} />}
+      {/* 폴링으로 결과가 바뀌면 화면 읽기 프로그램에 알린다. 알림 영역은 결과보다 먼저 있어야 한다 */}
+      <div aria-live="polite" className="w-full">
+        <DiagnosticsPanel checkpointId={checkpointId} live={open} />
+      </div>
+    </>
   );
 }

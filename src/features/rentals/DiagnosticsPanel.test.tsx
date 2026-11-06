@@ -57,3 +57,12 @@ test("봉인된 시점도 올라온 진단은 그대로 보인다", async () => 
   const step = await screen.findByRole("listitem", { name: "출고" });
   expect(await within(step).findByRole("region", { name: "진단 결과" })).toHaveTextContent("93.6%");
 });
+
+test("진단이 올라온 시점은 다 쓴 페어링 코드 버튼을 가린다", async () => {
+  const { rentalId, checkpointId } = openRental("OPEN");
+  db.report.diagnostics.set(checkpointId, diagnostics(checkpointId));
+  renderAsAdmin(`/admin/rentals/${rentalId}`);
+  const step = await screen.findByRole("listitem", { name: "출고" });
+  await within(step).findByRole("region", { name: "진단 결과" });
+  expect(within(step).queryByRole("button", { name: /페어링 코드/ })).not.toBeInTheDocument();
+});
