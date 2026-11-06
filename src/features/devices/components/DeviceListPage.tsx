@@ -1,3 +1,4 @@
+import { maskSerial } from "../../../shared/ui/maskSerial";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
@@ -41,7 +42,7 @@ function DeviceCard({ device }: { device: Device }) {
     <DataRow label={device.serial}>
       <DataCells>
         <span>{device.modelName}</span>
-        <strong>{device.serial}</strong>
+        <strong title="시리얼(뒤 4자리)">{maskSerial(device.serial)}</strong>
         <Badge variant={STATUS_VARIANT[device.status]}>{DEVICE_STATUS_LABEL[device.status]}</Badge>
         <span className="text-muted-foreground tabular-nums">{formatDate(device.createdAt)}</span>
       </DataCells>

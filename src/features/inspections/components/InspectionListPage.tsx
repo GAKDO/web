@@ -1,3 +1,4 @@
+import { maskSerial } from "../../../shared/ui/maskSerial";
 import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
@@ -66,7 +67,7 @@ export function InspectionListPage() {
             <DataRow key={r.rentalId} label={r.serial}>
               <DataCells>
                 <span className="whitespace-nowrap text-muted-foreground tabular-nums">{checkpoint ? formatDateTime(checkpoint.occurredAt) : "—"}</span>
-                <strong>{r.serial}</strong>
+                <strong>{maskSerial(r.serial)}</strong>
                 <span>{modelName(r.modelCode)}</span>
                 <span>{checkpoint ? `${CHECKPOINT_TYPE_LABEL[checkpoint.type]} · ${CHECKPOINT_STATUS_LABEL[checkpoint.status]}` : "시점 없음"}</span>
                 <VerdictBadge checkpoint={checkpoint} />
