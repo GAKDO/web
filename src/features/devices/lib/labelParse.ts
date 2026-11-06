@@ -121,7 +121,9 @@ export function matchModel(reading: LabelReading, models: DeviceModelSummary[]):
     const hints = APPLE_MODEL_HINTS[reading.modelNumber!];
     // Apple 모델 번호 표는 제조사를 못 읽었거나 Apple로 읽었을 때만 쓴다
     if (hints && (!maker || maker === "apple")) {
-      const hinted = models.filter((m) => includesAll(m.name, hints));
+      const hinted = models.filter(
+        (m) => includesAll(m.name, hints) && (!maker || m.manufacturer?.toLowerCase() === maker),
+      );
       if (hinted.length === 1) return hinted[0]!.modelCode;
     }
   }

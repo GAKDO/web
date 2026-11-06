@@ -83,3 +83,8 @@ test("제조사를 읽었으면 모델 번호가 맞아도 제조사가 다른 �
 test("Apple이 아닌 제조사로 읽었으면 Apple 모델 번호 표로 기종을 고르지 않는다", () => {
   expect(matchModel({ serial: null, modelNumber: "A2681", manufacturer: "Dell", os: "WINDOWS" }, models)).toBeNull();
 });
+
+test("Apple 모델 번호 표로 고를 때도 제조사가 다른 기종은 고르지 않는다", () => {
+  const odd = [{ modelCode: "ODD", name: "MacBook Air (M2, 2022)", manufacturer: "Dell", formFactor: "CLAMSHELL" as const }];
+  expect(matchModel({ serial: null, modelNumber: "A2681", manufacturer: "Apple", os: "MACOS" }, odd)).toBeNull();
+});
