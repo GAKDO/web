@@ -18,8 +18,8 @@ interface AuthValue {
   status: AuthStatus;
   role: SessionRole | null;
   notice: AuthNotice;
-  /** expected와 다른 역할이면 로그아웃하고 notice로 알린다. 기본은 관리자(WE1) */
-  login(email: string, password: string, expected?: SessionRole): Promise<void>;
+  /** expected와 다른 역할이면 로그아웃하고 notice로 알린다. 기본은 관리자(WE1). "ANY"면 관리자·고객 모두 받는다(통합 로그인) */
+  login(email: string, password: string, expected?: SessionRole | "ANY"): Promise<void>;
   /** 이 화면의 세션은 항상 지운다. 서버가 로그아웃(리프레시 폐기)을 확인했으면 true */
   logout(): Promise<boolean>;
   /** 서버가 이미 세션을 끝냈을 때(탈퇴 등): 서버를 부르지 않고 이 화면의 세션만 지운다 */
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [endSession]);
 
   const login = useCallback(
-    async (email: string, password: string, expected: SessionRole = "ADMIN") => {
+    async (email: string, password: string, expected: SessionRole | "ANY" = "ADMIN") => {
       const token = await withRefreshExclusive(() => unwrap(api.POST("/api/v1/auth/login", { body: { email, password } })));
       captureTokenStore.clear();
       tokenStore.set(token);

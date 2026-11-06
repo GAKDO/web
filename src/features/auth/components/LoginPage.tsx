@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { Navigate } from "react-router-dom";
 import { Camera, ScanSearch, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -6,6 +6,8 @@ import { useAuth } from "../../../shared/auth/AuthProvider";
 import { LoginForm } from "../../../shared/auth/LoginForm";
 import { LOGIN_NOTICE } from "../../../shared/auth/loginNotice";
 import { ScanVisual } from "../../../shared/ui/ScanVisual";
+import { customerHome } from "../../../shared/config/customerHome";
+import { isArchived } from "../../../shared/config/features";
 
 // 왼쪽 면에 적는 세 단계(MVP 흐름: 부스 촬영 → 흠집 판정 → 결과 확인). 장식이라 읽는 내용만 짧게
 const STEPS = [
@@ -20,8 +22,13 @@ const STEPS = [
  */
 export function LoginPage() {
   const { status, role, notice, login } = useAuth();
+  // 고객 계정(AU2)을 보이는 배포에서는 한 화면으로 로그인한다: 관리자는 관리자 화면, 고객은 내 계정으로
+  const unified = !isArchived("account");
+  // 이 화면에서 방금 로그인했을 때만 고객을 내 계정으로 보낸다. 이미 고객으로 로그인한 채 들어오면 관리자 계정으로 바꿔 로그인할 수 있게 둔다
+  const [submitted, setSubmitted] = useState(false);
 
   if (status === "authenticated" && role === "ADMIN") return <Navigate to="/admin/devices" replace />;
+  if (unified && submitted && status === "authenticated" && role === "CUSTOMER") return <Navigate to={customerHome()} replace />;
 
   return (
     <div className="grid min-h-svh grid-rows-[auto_1fr] bg-background md:grid-cols-[1.1fr_1fr] md:grid-rows-none">
@@ -75,8 +82,10 @@ export function LoginPage() {
         <div aria-hidden="true" className="absolute top-1/2 left-1/2 -z-10 hidden size-[32rem] -translate-1/2 rounded-full bg-brand/[0.06] blur-[120px] md:block" />
         <Card className="w-full max-w-[26rem] animate-enter [animation-delay:120ms] gap-5 py-7 shadow-[0_8px_40px_-12px_rgb(16_24_40/0.18)]">
           <CardHeader className="px-7">
-            <h1 className="m-0 text-2xl font-bold tracking-tight">관리자 로그인</h1>
-            <CardDescription>관리자 계정 이메일과 비밀번호를 넣어 주세요.</CardDescription>
+            <h1 className="m-0 text-2xl font-bold tracking-tight">{unified ? "로그인" : "관리자 로그인"}</h1>
+            <CardDescription>
+              {unified ? "관리자 계정이면 관리자 화면으로, 고객 계정이면 내 계정으로 이동합니다." : "관리자 계정 이메일과 비밀번호를 넣어 주세요."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2 px-7">
             {status === "authenticated" && role !== "ADMIN" && (
@@ -89,7 +98,12 @@ export function LoginPage() {
                 {LOGIN_NOTICE[notice]}
               </p>
             )}
-            <LoginForm onLogin={(email, password) => login(email, password)} />
+            <LoginForm
+              onLogin={async (email, password) => {
+                await login(email, password, unified ? "ANY" : "ADMIN");
+                setSubmitted(true);
+              }}
+            />
           </CardContent>
         </Card>
         <p className="m-0 text-xs text-muted-foreground">TRACE Rental Management System</p>
