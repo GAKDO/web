@@ -1,7 +1,9 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp, renderAsCustomer } from "../../test/renderApp";
-import { MOCK_ADMIN, MOCK_CUSTOMER } from "../../shared/mocks/db";
+import { nanoid } from "nanoid";
+import { db, MOCK_ADMIN, MOCK_CUSTOMER } from "../../shared/mocks/db";
+import { REPORT } from "../report/api/report";
 import { tokenStore } from "../../shared/auth/tokenStore";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -41,13 +43,15 @@ test("고객 계정을 숨긴 MVP 배포에서는 관리자 로그인 그대로�
   expect(router.state.location.pathname).toBe("/admin/login");
 });
 
-test("고객 세션이 남은 탭에서 다른 계정으로 로그인하면 이전 계정의 캐시를 지운다", async () => {
+test("고객 A 세션이 남은 탭에서 고객 B로 로그인하면 A의 렌탈 캐시가 B에게 남지 않는다", async () => {
   vi.stubEnv("VITE_ARCHIVED_FEATURES", ACCOUNT_ON);
+  const other = { email: "renter-b@example.com", password: "example-pass-5678" };
+  db.accounts.push({ accountId: nanoid(), ...other, role: "CUSTOMER" });
   const { client } = renderAsCustomer("/admin/login");
   await waitFor(() => expect(tokenStore.get()?.role).toBe("CUSTOMER"));
-  const key = ["my", "rentals"];
-  client.setQueryData(key, ["이전 고객의 렌탈"]);
-  await signIn(MOCK_ADMIN.email, MOCK_ADMIN.password);
-  await screen.findByRole("link", { name: "기기" });
+  const key = [...REPORT, "rentals"];
+  client.setQueryData(key, ["고객 A의 렌탈"]);
+  await signIn(other.email, other.password);
+  expect(await screen.findByRole("heading", { name: "내 계정" })).toBeInTheDocument();
   expect(client.getQueryData(key)).toBeUndefined();
 });
