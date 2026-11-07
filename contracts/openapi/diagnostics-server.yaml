@@ -291,6 +291,30 @@ components:
         detail:
           type: object
           description: 플래그별 근거(비교한 값 before·after 등)
+      description: >-
+        점검 플래그. COMPONENT_CHANGED·CAPACITY_DROP·BENCH_DROP은 같은 렌탈 앞 진단과 비교해 붙이고 baseRunId는 그 앞 진단이다.
+        ACTIVATION_LOCK_ON·DISK_ENCRYPTION_ON·DISK_HEALTH_WARNING(11/7 추가)은 이번 진단의 checks만 보고 첫 진단(출고)에도 붙이며,
+        비교 대상이 없으므로 baseRunId는 이번 진단 자신이다.
+    RunChecks:
+      type: object
+      description: 진단 JSON `checks`(11/7 추가). 못 읽었으면 각 값이 null
+      required: [activationLock, diskEncryption, osDiskHealth]
+      properties:
+        activationLock:
+          oneOf:
+            - $ref: './components/codes.gen.yaml#/components/schemas/DiagnosticsLockState'
+            - type: 'null'
+          description: macOS 활성화 잠금(나의 Mac 찾기). Windows는 null
+        diskEncryption:
+          oneOf:
+            - $ref: './components/codes.gen.yaml#/components/schemas/DiagnosticsLockState'
+            - type: 'null'
+          description: FileVault(macOS)·BitLocker(Windows C:)
+        osDiskHealth:
+          oneOf:
+            - $ref: './components/codes.gen.yaml#/components/schemas/DiagnosticsDiskHealth'
+            - type: 'null'
+          description: OS가 본 SSD SMART 상태
     DiagnosticRunCreated:
       type: object
       required: [runId, flags]
@@ -385,6 +409,11 @@ components:
                 $ref: './components/codes.gen.yaml#/components/schemas/DiagnosticsBenchmarkMetric'
               median:
                 type: number
+        checks:
+          description: 선택(11/7 추가, 서버는 항상 보냄). 진단 JSON에 checks가 없던 옛 에이전트 진단은 null
+          oneOf:
+            - $ref: '#/components/schemas/RunChecks'
+            - type: 'null'
     CheckpointDiagnostics:
       type: object
       required: [checkpointId, current, previous, flags]

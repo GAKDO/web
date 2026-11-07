@@ -84,3 +84,24 @@ test("렌탈 상세의 진단 추이에 이 기기의 진단이 날짜 순 꺾�
   expect(within(trend).getByRole("figure", { name: "CPU 단일 코어 (3회 중앙값) 추이" })).toBeInTheDocument();
   expect(trend.textContent).not.toContain(pro.serial);
 });
+
+test("활성화 잠금이 켜진 진단은 잠금·디스크 상태와 점검 알림에 잠금이 보인다", async () => {
+  const { rentalId, checkpointId } = openRental("OPEN");
+  const diag = diagnostics(checkpointId);
+  diag.current.checks = { activationLock: "ON", diskEncryption: "OFF", osDiskHealth: "OK" };
+  diag.flags = [{ kind: "ACTIVATION_LOCK_ON", baseRunId: diag.current.runId, detail: {} }];
+  db.report.diagnostics.set(checkpointId, diag);
+  renderAsAdmin(`/admin/rentals/${rentalId}`);
+  const step = await screen.findByRole("listitem", { name: "출고" });
+  const panel = await within(step).findByRole("region", { name: "진단 결과" });
+  expect(panel).toHaveTextContent("활성화 잠금 켜짐 · 디스크 암호화 꺼짐 · OS 디스크 상태 정상");
+  expect(panel).toHaveTextContent("활성화 잠금(나의 Mac 찾기)이 켜져 있습니다");
+});
+
+test("checks가 없는 이전 에이전트 진단은 잠금 상태를 '확인 안 함'으로 보인다", async () => {
+  const { rentalId, checkpointId } = openRental("OPEN");
+  db.report.diagnostics.set(checkpointId, diagnostics(checkpointId));
+  renderAsAdmin(`/admin/rentals/${rentalId}`);
+  const step = await screen.findByRole("listitem", { name: "출고" });
+  expect(await within(step).findByRole("region", { name: "진단 결과" })).toHaveTextContent("확인 안 함 (이전 버전 에이전트)");
+});

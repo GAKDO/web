@@ -241,7 +241,10 @@
       "enum": [
         "COMPONENT_CHANGED",
         "CAPACITY_DROP",
-        "BENCH_DROP"
+        "BENCH_DROP",
+        "ACTIVATION_LOCK_ON",
+        "DISK_ENCRYPTION_ON",
+        "DISK_HEALTH_WARNING"
       ],
       "description": "codes.yaml diagnostics.flag_kind"
     },
@@ -297,6 +300,22 @@
         "CRITICAL"
       ],
       "description": "codes.yaml diagnostics.thermal_state"
+    },
+    "DiagnosticsLockState": {
+      "type": "string",
+      "enum": [
+        "ON",
+        "OFF"
+      ],
+      "description": "codes.yaml diagnostics.lock_state"
+    },
+    "DiagnosticsDiskHealth": {
+      "type": "string",
+      "enum": [
+        "OK",
+        "WARNING"
+      ],
+      "description": "codes.yaml diagnostics.disk_health"
     },
     "MlSplit": {
       "type": "string",

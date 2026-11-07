@@ -9,6 +9,7 @@
 # Unreleased(2026-11-04): error_code NOT_TEST_DATA 추가(시험 렌탈 지우기). 값 추가만.
 # Unreleased(2026-11-04): error_code BOOTH_CODE_INVALID·BOOTH_CODE_EXPIRED 추가(부스 6자리 코드). 값 추가만.
 # Unreleased(2026-11-03): capture.profile·face_required_quick 추가(부스 위·아래 2면 빠른 검사, MVP). 값 추가만.
+# Unreleased(2026-11-07): diagnostics.lock_state·disk_health, flag_kind ACTIVATION_LOCK_ON·DISK_ENCRYPTION_ON·DISK_HEALTH_WARNING 추가(잠금·디스크 상태 점검). 값 추가만.
 #   OpenAPI용 enum은 scripts/gen_openapi_codes.py로 만든다. 값은 문자열이어야 한다(OFF·ON·YES·NO는 따옴표).
 version: 1.0.0
 
@@ -44,7 +45,8 @@ diagnostics:
   component_kind: [CPU, RAM, SSD, BATTERY, DISPLAY, OTHER]
   capacity_unit: [mAh, mWh]
   benchmark_metric: [CPU_SINGLE, CPU_MULTI, MEM_COPY, DISK_READ, DISK_WRITE]
-  flag_kind: [COMPONENT_CHANGED, CAPACITY_DROP, BENCH_DROP]
+  # 앞 3개는 앞 진단과 비교, 뒤 3개는 이번 진단의 checks만 보고 붙임(11/7 민서 결정)
+  flag_kind: [COMPONENT_CHANGED, CAPACITY_DROP, BENCH_DROP, ACTIVATION_LOCK_ON, DISK_ENCRYPTION_ON, DISK_HEALTH_WARNING]
   # 아래는 진단 JSON(diagnostics/result.schema.json)이 쓰는 값 (C2)
   battery_status: [OK, SKIPPED, NO_BATTERY]          # 배터리 읽기 결과. NO_BATTERY = 배터리 없는 기기
   storage_status: [OK, SKIPPED]                      # SSD 읽기 결과
@@ -52,6 +54,8 @@ diagnostics:
   storage_protocol: [NVME, ATA]
   battery_condition: [NORMAL, SERVICE_RECOMMENDED]   # OS 판정. macOS "Good"(·"Normal") → NORMAL, 그 밖 → SERVICE_RECOMMENDED
   thermal_state: [NOMINAL, FAIR, SERIOUS, CRITICAL]  # macOS ProcessInfo.thermalState, Windows는 null
+  lock_state: ['ON', 'OFF']                          # 진단 JSON checks의 활성화 잠금·디스크 암호화 상태
+  disk_health: [OK, WARNING]                         # 진단 JSON checks.osDiskHealth: OS가 본 SSD SMART 상태
 ml:
   split: [TRAIN, VAL, TEST]
 report:
