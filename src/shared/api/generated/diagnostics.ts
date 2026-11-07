@@ -75,11 +75,21 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         DiagnosticUpload: components["schemas"]["result.schema"];
+        /** @description 점검 플래그. COMPONENT_CHANGED·CAPACITY_DROP·BENCH_DROP은 같은 렌탈 앞 진단과 비교해 붙이고 baseRunId는 그 앞 진단이다. ACTIVATION_LOCK_ON·DISK_ENCRYPTION_ON·DISK_HEALTH_WARNING(11/7 추가)은 이번 진단의 checks만 보고 첫 진단(출고)에도 붙이며, 비교 대상이 없으므로 baseRunId는 이번 진단 자신이다. */
         InspectionFlag: {
             kind: components["schemas"]["DiagnosticsFlagKind"];
             baseRunId: components["schemas"]["PublicId"];
             /** @description 플래그별 근거(비교한 값 before·after 등) */
             detail: Record<string, never>;
+        };
+        /** @description 진단 JSON `checks`(11/7 추가). 못 읽었으면 각 값이 null */
+        RunChecks: {
+            /** @description macOS 활성화 잠금(나의 Mac 찾기). Windows는 null */
+            activationLock: components["schemas"]["DiagnosticsLockState"] | null;
+            /** @description FileVault(macOS)·BitLocker(Windows C:) */
+            diskEncryption: components["schemas"]["DiagnosticsLockState"] | null;
+            /** @description OS가 본 SSD SMART 상태 */
+            osDiskHealth: components["schemas"]["DiagnosticsDiskHealth"] | null;
         };
         DiagnosticRunCreated: {
             runId: components["schemas"]["PublicId"];
@@ -120,6 +130,8 @@ export interface components {
                 metric: components["schemas"]["DiagnosticsBenchmarkMetric"];
                 median: number;
             }[];
+            /** @description 선택(11/7 추가, 서버는 항상 보냄). 진단 JSON에 checks가 없던 옛 에이전트 진단은 null */
+            checks?: components["schemas"]["RunChecks"] | null;
         };
         CheckpointDiagnostics: {
             checkpointId: components["schemas"]["PublicId"];
@@ -252,6 +264,16 @@ export interface components {
             median: number;
         };
         /**
+         * @description codes.yaml diagnostics.lock_state
+         * @enum {string}
+         */
+        DiagnosticsLockState: "ON" | "OFF";
+        /**
+         * @description codes.yaml diagnostics.disk_health
+         * @enum {string}
+         */
+        DiagnosticsDiskHealth: "OK" | "WARNING";
+        /**
          * TRACE 진단 결과 JSON v1
          * @description 진단 에이전트가 사용자 동의 뒤 POST /api/v1/diagnostics/runs로 올리는 본문 (C2, FR-DIA-01~05). 원본 초안은 GAKDO/docs design/diagnostics-json-v0.md. 시점(checkpointId)은 본문에 없고 AGENT 토큰에서 서버가 읽는다. 읽지 못한 값은 0이 아니라 null이고 생략 사유를 함께 둔다(헌법 III). 컴퓨터 이름·사용자 이름은 보내지 않는다(헌법 V): 정해진 필드 밖의 키는 모두 거부한다.
          */
@@ -307,6 +329,15 @@ export interface components {
             benchmarkSkippedReason: components["schemas"]["DiagnosticsSkippedReason"] | null;
             /** @description 실행한 명령 목록(NFR-02 고정 목록에서). 원본 JSON에만 남는다. */
             sources: string[];
+            /** @description 선택(11/7 추가, schemaVersion은 diag.v1 그대로). 출고·반납 때 직원이 봐야 할 잠금·디스크 상태. 못 읽은 값은 null. 이 칸이 없는 옛 에이전트 진단은 서버가 모두 null로 본다. diagnostics-server는 ON·WARNING이면 점검 플래그(ACTIVATION_LOCK_ON·DISK_ENCRYPTION_ON·DISK_HEALTH_WARNING)를 붙인다. */
+            checks?: {
+                /** @description macOS 활성화 잠금(나의 Mac 찾기). 켜져 있으면 초기화 뒤 고객 Apple ID 없이 다시 못 쓴다. Windows는 null */
+                activationLock: components["schemas"]["DiagnosticsLockState"] | null;
+                /** @description 시스템 디스크 암호화. macOS는 FileVault, Windows는 C: 드라이브 BitLocker 보호 상태. 관리자 권한이 없어 못 읽으면 null */
+                diskEncryption: components["schemas"]["DiagnosticsLockState"] | null;
+                /** @description OS가 본 내장 SSD SMART 상태. macOS system_profiler smart_status가 Verified면 OK, 다른 값이면 WARNING. 읽지 못했거나 Windows면 null */
+                osDiskHealth: components["schemas"]["DiagnosticsDiskHealth"] | null;
+            };
             $defs: {
                 /**
                  * Format: date-time
@@ -381,7 +412,7 @@ export interface components {
          * @description codes.yaml diagnostics.flag_kind
          * @enum {string}
          */
-        DiagnosticsFlagKind: "COMPONENT_CHANGED" | "CAPACITY_DROP" | "BENCH_DROP";
+        DiagnosticsFlagKind: "COMPONENT_CHANGED" | "CAPACITY_DROP" | "BENCH_DROP" | "ACTIVATION_LOCK_ON" | "DISK_ENCRYPTION_ON" | "DISK_HEALTH_WARNING";
         /**
          * @description codes.yaml error_code
          * @enum {string}

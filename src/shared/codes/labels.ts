@@ -80,6 +80,9 @@ export const FLAG_LABEL: Record<DiagnosticsFlagKind, string> = {
   COMPONENT_CHANGED: "부품 구성이 바뀌었습니다",
   CAPACITY_DROP: "배터리 용량이 크게 줄었습니다",
   BENCH_DROP: "성능 측정값이 크게 떨어졌습니다",
+  ACTIVATION_LOCK_ON: "활성화 잠금(나의 Mac 찾기)이 켜져 있습니다",
+  DISK_ENCRYPTION_ON: "디스크 암호화(FileVault·BitLocker)가 켜져 있습니다",
+  DISK_HEALTH_WARNING: "운영체제가 SSD 상태를 경고했습니다",
 };
 
 export const PROGRESS_STAGE_LABEL: Record<ProgressStage, string> = {
