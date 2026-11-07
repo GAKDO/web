@@ -31,7 +31,7 @@ export function useAllDeviceRentals(deviceId: string | undefined) {
 
 /**
  * 기기의 모든 진단: 렌탈마다 상세(시점 최대 3개)를 읽고, 촬영 대기가 아닌 시점마다 진단 요약을 읽는다.
- * 진단이 없는 시점(404)은 빼고, 리포트 비교표와 같은 키를 써서 이미 읽은 진단은 다시 읽지 않는다.
+ * 진단이 없는 시점(404)은 뺀다.
  * 결과는 오래된 렌탈부터, 렌탈 안에서는 출고·수령·반납 순이다
  */
 export function useDeviceDiagnostics(deviceId: string | undefined) {
@@ -48,7 +48,8 @@ export function useDeviceDiagnostics(deviceId: string | undefined) {
   );
   const diags = useQueries({
     queries: checkpoints.map(({ checkpoint }) => ({
-      queryKey: [...REPORT, "diagnostics", checkpoint.checkpointId],
+      // 없으면 null로 담으므로 리포트·렌탈 상세 진단 칸(404를 오류로 받음)과 키를 나눈다. 같은 키면 한 화면에 함께 있을 때 null을 진단으로 읽는다
+      queryKey: [...REPORT, "diagnostics", checkpoint.checkpointId, "orNull"],
       queryFn: async (): Promise<CheckpointDiagnostics | null> => {
         try {
           return await unwrap(api.GET("/api/v1/diagnostics/checkpoints/{checkpointId}", { params: { path: { checkpointId: checkpoint.checkpointId } } }));

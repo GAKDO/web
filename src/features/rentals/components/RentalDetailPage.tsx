@@ -20,6 +20,7 @@ import { nextAction } from "../nextAction";
 import { BoothIdsPanel } from "./BoothIdsPanel";
 import { CaptureLinkPanel } from "./CaptureLinkPanel";
 import { CheckpointDiagnostics } from "./DiagnosticsPanel";
+import { DiagnosticsTrendToggle } from "../../benchmark/components/DiagnosticsTrend";
 import { formatDate, RENTAL_STATUS_VARIANT } from "./RentalListPage";
 import { InspectionHistory } from "../../inspections/components/InspectionHistory";
 import { formatDateTime } from "../../../shared/ui/format";
@@ -162,6 +163,13 @@ export function RentalDetailPage() {
       <InspectionHistory rental={data} serial={serial} />
       <SectionTitle>시점 진행</SectionTitle>
       <CheckpointSteps rental={data} serial={serial} onError={setError} />
+      {/* 진단 결과를 날짜별로 모아 추이로 본다(11/6 민서 요청). 기기 단위라 다른 렌탈의 진단도 함께 보인다 */}
+      {!isArchived("diagnostics") && (
+        <>
+          <SectionTitle>진단 추이</SectionTitle>
+          <DiagnosticsTrendToggle deviceId={data.deviceId} />
+        </>
+      )}
       {/* 3D 리포트(WE3)는 MVP 배포에서 보관(숨김) */}
       {data.checkpoints.length > 0 && !isArchived("report") && (
         <p className="mt-4">
