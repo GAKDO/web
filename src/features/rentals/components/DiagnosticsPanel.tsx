@@ -23,12 +23,16 @@ function benchmarkText(median: number, unit: string): string {
 
 type RunChecks = NonNullable<CheckpointDiagnostics["current"]["checks"]>;
 
-/** 잠금·디스크 상태 한 줄(contracts 11/7 checks). 옛 에이전트 진단은 checks가 없어 null */
-export function checksText(checks: RunChecks | null | undefined): string {
+/**
+ * 잠금·디스크 상태 한 줄(contracts 11/7 checks). 옛 에이전트 진단은 checks가 없어 null.
+ * Windows는 활성화 잠금·OS 디스크 상태를 읽지 않으므로(계약상 늘 null) '모름'이 아니라 '해당 없음'으로 보인다.
+ */
+export function checksText(checks: RunChecks | null | undefined, os?: CheckpointDiagnostics["current"]["os"]): string {
   if (!checks) return "확인 안 함 (이전 버전 에이전트)";
-  const lock = (v: RunChecks["activationLock"]) => (v === "ON" ? "켜짐" : v === "OFF" ? "꺼짐" : "모름");
-  const health = checks.osDiskHealth === "WARNING" ? "경고" : checks.osDiskHealth === "OK" ? "정상" : "모름";
-  return `활성화 잠금 ${lock(checks.activationLock)} · 디스크 암호화 ${lock(checks.diskEncryption)} · OS 디스크 상태 ${health}`;
+  const unread = (macOnly: boolean) => (macOnly && os === "WINDOWS" ? "해당 없음" : "모름");
+  const lock = (v: RunChecks["activationLock"], macOnly: boolean) => (v === "ON" ? "켜짐" : v === "OFF" ? "꺼짐" : unread(macOnly));
+  const health = checks.osDiskHealth === "WARNING" ? "경고" : checks.osDiskHealth === "OK" ? "정상" : unread(true);
+  return `활성화 잠금 ${lock(checks.activationLock, true)} · 디스크 암호화 ${lock(checks.diskEncryption, false)} · OS 디스크 상태 ${health}`;
 }
 
 function ReadingText({ reading }: { reading: Reading }) {
@@ -89,7 +93,7 @@ export function DiagnosticsPanel({ checkpointId, live }: { checkpointId: string;
           <ReadingText reading={ssd} />
         </dd>
         <dt className="text-muted-foreground">잠금·디스크 상태</dt>
-        <dd>{checksText(current.checks)}</dd>
+        <dd>{checksText(current.checks, current.os)}</dd>
         <dt className="text-muted-foreground">점검 알림</dt>
         <dd>{flagLabels.length === 0 ? "없음" : flagLabels.join(", ")}</dd>
         {/* 벤치마크는 3회 중앙값. 전원이 없어 건너뛰면 비어 온다 */}

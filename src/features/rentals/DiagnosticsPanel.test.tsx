@@ -105,3 +105,16 @@ test("checks가 없는 이전 에이전트 진단은 잠금 상태를 '확인 �
   const step = await screen.findByRole("listitem", { name: "출고" });
   expect(await within(step).findByRole("region", { name: "진단 결과" })).toHaveTextContent("확인 안 함 (이전 버전 에이전트)");
 });
+
+test("Windows 진단은 읽지 않는 활성화 잠금·OS 디스크 상태를 '해당 없음'으로 보인다", async () => {
+  const { rentalId, checkpointId } = openRental("OPEN");
+  const diag = diagnostics(checkpointId);
+  diag.current.os = "WINDOWS";
+  diag.current.checks = { activationLock: null, diskEncryption: "ON", osDiskHealth: null };
+  db.report.diagnostics.set(checkpointId, diag);
+  renderAsAdmin(`/admin/rentals/${rentalId}`);
+  const step = await screen.findByRole("listitem", { name: "출고" });
+  expect(await within(step).findByRole("region", { name: "진단 결과" })).toHaveTextContent(
+    "활성화 잠금 해당 없음 · 디스크 암호화 켜짐 · OS 디스크 상태 해당 없음",
+  );
+});
