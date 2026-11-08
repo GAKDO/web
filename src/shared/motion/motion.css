@@ -157,6 +157,7 @@
 /* ③ 전후 비교(3D 핀) ─────────────────────── */
 /* 3D 모형 위 신규 흠집 이름표(drei Html). 앞 시점부터 있던 흠집은 회색 핀만, 신규만 빨간 이름표 */
 .m-pin-tag {
+  display: inline-block;
   padding: 0.15rem 0.4rem;
   border-radius: 0.3rem;
   background: var(--brand);

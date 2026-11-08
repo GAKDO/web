@@ -95,13 +95,14 @@ function PinMark({
   const tag = useRef<HTMLSpanElement>(null);
   const still = useMemo(prefersReducedMotion, []);
   const tmp = useMemo(() => ({ n: new THREE.Vector3(), p: new THREE.Vector3(), q: new THREE.Quaternion() }), []);
-  const facing = useMemo(() => new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...normal)), [normal[0], normal[1], normal[2]]);
+  const [nx, ny, nz] = normal;
+  const facing = useMemo(() => new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(nx, ny, nz)), [nx, ny, nz]);
   useFrame(({ clock, camera }) => {
     // 이름표(HTML)는 모델에 가려지지 않으므로, 핀이 붙은 면이 카메라 반대쪽을 보면 숨긴다(덮개 뒤 흠집이 화면 위로 비치지 않게)
     if (self.current && tag.current) {
       self.current.getWorldQuaternion(tmp.q);
       self.current.getWorldPosition(tmp.p);
-      tmp.n.set(...normal).applyQuaternion(tmp.q);
+      tmp.n.set(nx, ny, nz).applyQuaternion(tmp.q);
       const visible = tmp.n.dot(camera.position.clone().sub(tmp.p)) > 0;
       tag.current.style.visibility = visible ? "visible" : "hidden";
     }
@@ -127,7 +128,7 @@ function PinMark({
             <torusGeometry args={[radius * 2.2, radius * 0.35, 8, 32]} />
             <meshStandardMaterial color={PIN_NEW} />
           </mesh>
-          <Html center zIndexRange={[10, 0]}>
+          <Html center zIndexRange={[10, 0]} pointerEvents="none">
             <span ref={tag} aria-hidden="true" className="m-pin-tag">
               신규
             </span>
