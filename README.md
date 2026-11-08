@@ -12,7 +12,6 @@ TRACE(노트북 렌탈 상태 기록 서비스)의 **화면**: 관리자 화면�
   |---|---|---|
   | `/api/` | gateway | `API_UPSTREAM`(`gateway:8080`) |
   | `/trace-captures/`·`/trace-derived/` | MinIO S3 API, Host도 이 값 | `MINIO_UPSTREAM`(`minio:9000`, 같은 Compose 안 MinIO) |
-  | `/grafana/` | 파일럿 Grafana | `GRAFANA_UPSTREAM`(`grafana:3000`) |
 
   capture-server가 사전 서명 URL 앞부분을 `MINIO_PUBLIC_BASE`(이 web 주소)로 바꿔 주므로, HTTPS 화면에서 http:// MinIO를 직접 부르지 않습니다. MinIO 경로는 객체 GET·HEAD·PUT만 넘깁니다.
 

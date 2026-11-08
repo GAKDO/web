@@ -7,5 +7,8 @@ main에 버전이 적힌 CHANGELOG가 올라가면 release.yml이 태그와 GitH
 ## [Unreleased]
 
 ### 추가
-- nginx가 `/grafana/`를 클러스터의 `grafana:3000`으로 넘긴다(Host 그대로, WebSocket 포함). grafana가 없어도 web은 뜨고 `/grafana/`만 502
+- 리포트에 공개 검증 주소 QR을 보여 준다(FR-INT-0x 리포트 QR로 공개 검증). 검증 주소가 없으면 숨기고, 인쇄해도 보인다
 - 블로그(AIGJ-01-002-blog/devlog) CI/CD를 옮겨 초기 구성
+
+### 제거
+- nginx의 `/grafana/` 프록시와 `GRAFANA_UPSTREAM`(11/6 결정: Grafana를 쓰지 않음)

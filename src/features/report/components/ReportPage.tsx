@@ -14,6 +14,7 @@ import { CHECKPOINT_ORDER, hasPendingCheckpoint } from "../model/timeline";
 import { ProgressBadge } from "./ProgressBadge";
 import { CompareTable } from "./CompareTable";
 import { TwinSection } from "./TwinSection";
+import { VerifyQr } from "./VerifyQr";
 
 /** 고객 화면 공통 폭(마이페이지와 같음). page는 3D·비교표의 옛 CSS를 이 안에서만 쓰게 한다 */
 const MAIN = "page mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-10";
@@ -114,6 +115,7 @@ export function ReportPage() {
           </a>
         )}
       </div>
+      {data.verifyUrl && <VerifyQr url={data.verifyUrl} />}
       {data.chainStatus === "BROKEN" && (
         <p role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
           {CHAIN_STATUS_LABEL.BROKEN}. 관리자에게 문의해 주세요.
