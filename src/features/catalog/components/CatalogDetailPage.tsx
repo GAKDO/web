@@ -117,8 +117,8 @@ export function CatalogDetailPage() {
     );
 
   const d = row.device;
-  // 흠집 요약 조회가 실패해도 행은 만들어지므로(partial), 검사를 마친 시점이 있으면 '검사 전'이 아니라 불러오기 실패로 본다
-  const summaryFailed = !row.inspection && catalog.data.partial && d.checkpoints.length > 0;
+  // 흠집 요약 조회가 실패해도 행은 만들어지므로, 검사를 마친 시점이 있으면 '검사 전'이 아니라 불러오기 실패로 본다
+  const summaryFailed = !row.inspection && catalog.data.inspectionsFailed && d.checkpoints.length > 0;
   const diag = row.diagnostics;
   const checkpoint = d.checkpoints.find((c) => c.checkpointId === row.inspection?.checkpointId);
   const photoFallback = (reason: string) => (

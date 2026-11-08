@@ -12,13 +12,13 @@ const MAX_IDS = 100;
 
 /**
  * 목록 한 번: rental 기기 목록 → 시점 ID로 capture 흠집 요약·diagnostics 진단을 함께 묻고 한 줄씩 합친다.
- * 흠집·진단 중 하나가 실패해도 기기 목록은 보이고, 그 칸만 비운다(partial로 알린다)
+ * 흠집·진단 중 하나가 실패해도 기기 목록은 보이고, 그 칸만 비운다(partial로 알리고, 흠집 요약 실패는 inspectionsFailed로 따로 알린다)
  */
 export function useCatalog() {
   return useQuery({
     queryKey: [...CATALOG, "list"],
     staleTime: 60_000,
-    queryFn: async (): Promise<{ rows: CatalogRow[]; partial: boolean }> => {
+    queryFn: async (): Promise<{ rows: CatalogRow[]; partial: boolean; inspectionsFailed: boolean }> => {
       const { items: devices } = await unwrap(api.GET("/api/v1/catalog/devices"));
       const groups = chunks(checkpointIdsOf(devices), MAX_IDS);
       const [inspections, diagnostics] = await Promise.allSettled([
@@ -31,7 +31,8 @@ export function useCatalog() {
       ]);
       const ins = inspections.status === "fulfilled" ? inspections.value : [];
       const diag = diagnostics.status === "fulfilled" ? diagnostics.value : [];
-      return { rows: mergeCatalog(devices, ins, diag), partial: inspections.status === "rejected" || diagnostics.status === "rejected" };
+      const inspectionsFailed = inspections.status === "rejected";
+      return { rows: mergeCatalog(devices, ins, diag), partial: inspectionsFailed || diagnostics.status === "rejected", inspectionsFailed };
     },
   });
 }
