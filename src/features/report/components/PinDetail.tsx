@@ -19,7 +19,7 @@ export function PinDetail({ pin, checkpointType, inspection, inspectionError = f
   const defect = inspection?.defects.find((d) => d.defectId === pin.defectId);
   const crop = media?.crops.find((c) => c.defectId === pin.defectId);
   return (
-    <div className="pin-detail" role="dialog" aria-label="흠집 상세">
+    <div className="pin-detail animate-enter" role="dialog" aria-label="흠집 상세">
       {crop && <img src={crop.url} alt="흠집 확대 사진" width={120} height={120} />}
       <dl>
         <dt>종류</dt>

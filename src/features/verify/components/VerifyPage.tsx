@@ -1,11 +1,22 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { ApiError } from "../../../shared/api/client";
-import type { VerifyRecord, VerifyResponse } from "../../../shared/api/types";
+import type { CheckpointType, VerifyRecord, VerifyResponse } from "../../../shared/api/types";
 import { CHECKPOINT_TYPE_LABEL, INSPECTION_GRADE_LABEL } from "../../../shared/codes/labels";
 import { SiteHeader } from "../../../shared/ui/SiteHeader";
+import { SealSequence, type SealSlot } from "../../../shared/motion/SealSequence";
 import { isVerifyToken, useVerify } from "../api/verify";
 import { formatKst, shortHash } from "../format";
+
+const ORDER: CheckpointType[] = ["OUT", "RCV", "RET"];
+
+/** 봉인 그림의 세 칸. 결과 전에는 어떤 시점이 있는지 모르므로 present를 비워 둔다 */
+function sealSlots(result: VerifyResponse | undefined): SealSlot[] {
+  return ORDER.map((type) => ({
+    name: CHECKPOINT_TYPE_LABEL[type],
+    present: result ? result.records.some((r) => r.checkpointType === type) : undefined,
+  }));
+}
 
 // 리포트의 검증 QR이 여는 공개 페이지(WE4, FR-INT-02). 로그인 없이 체인 정상 여부와 시점별 등급·지문을 보인다
 export function VerifyPage() {
@@ -25,9 +36,22 @@ export function VerifyPage() {
       </div>
     );
   } else if (query.data) {
-    content = <VerifyResult result={query.data} />;
+    content = (
+      <>
+        {/* ④ 봉인 확인(11/8): 기록 연결 → 잠금 → 결과. 성공·실패는 서버 검증 결과(valid)가 온 뒤에만 */}
+        <SealSequence state={query.data.valid ? "valid" : "invalid"} slots={sealSlots(query.data)} className="mb-5" />
+        <div className="m-verify-result">
+          <VerifyResult result={query.data} />
+        </div>
+      </>
+    );
   } else {
-    content = <p role="status">기록을 확인하는 중입니다…</p>;
+    content = (
+      <>
+        <SealSequence state="checking" slots={sealSlots(undefined)} className="mb-5" />
+        <p role="status">기록을 확인하는 중입니다…</p>
+      </>
+    );
   }
 
   return (

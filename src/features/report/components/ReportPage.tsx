@@ -13,6 +13,7 @@ import { useProgress, type ProgressState } from "../api/progress";
 import { CHECKPOINT_ORDER, hasPendingCheckpoint } from "../model/timeline";
 import { ProgressBadge } from "./ProgressBadge";
 import { CompareTable } from "./CompareTable";
+import { BeforeAfterCompare } from "./BeforeAfterCompare";
 import { TwinSection } from "./TwinSection";
 import { VerifyQr } from "./VerifyQr";
 
@@ -35,10 +36,11 @@ function CheckpointCard({ type, checkpoint, progress }: { type: TimelineCheckpoi
   }
   const sealed = checkpoint.status === "SEALED";
   return (
-    <li className="grid content-start gap-2 rounded-xl border bg-card p-4 shadow-xs" aria-label={label}>
+    // 시점 칸은 처음 그릴 때 짧게 떠오르고, 상태가 바뀌면(검사 중 → 봉인됨) 표시만 다시 떠오른다
+    <li className="grid animate-enter content-start gap-2 rounded-xl border bg-card p-4 shadow-xs" aria-label={label}>
       <div className="flex flex-wrap items-center gap-2">
         <strong className="text-base">{label}</strong>
-        <Badge variant={sealed ? "success" : "warning"}>{sealed ? "봉인됨" : "검사 중"}</Badge>
+        <Badge key={checkpoint.status} variant={sealed ? "success" : "warning"} className="animate-enter">{sealed ? "봉인됨" : "검사 중"}</Badge>
       </div>
       {(checkpoint.grade || sealed) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
@@ -127,6 +129,7 @@ export function ReportPage() {
         ))}
       </ol>
       <TwinSection modelCode={data.modelCode} checkpoints={data.checkpoints} />
+      <BeforeAfterCompare checkpoints={data.checkpoints} />
       <CompareTable checkpoints={data.checkpoints} />
     </main>
   );

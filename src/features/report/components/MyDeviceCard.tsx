@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Check, Cpu, HardDrive, MemoryStick, MonitorSmartphone, Ruler } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
@@ -35,7 +36,7 @@ function CheckpointSteps({ checkpoints }: { checkpoints: TimelineCheckpoint[] })
             <span
               aria-hidden="true"
               className={cn(
-                "mb-1.5 block h-1.5 rounded-full",
+                "mb-1.5 block h-1.5 rounded-full transition-colors duration-500",
                 done ? (bad ? "bg-destructive" : "bg-success") : cp ? "bg-brand/40" : "bg-muted",
               )}
             />
@@ -55,7 +56,7 @@ function CheckpointSteps({ checkpoints }: { checkpoints: TimelineCheckpoint[] })
  * 마이페이지의 내 노트북 한 대. 기종 사양·치수는 GET /device-models/{modelCode}(고객 허용),
  * 단계별 등급은 리포트 타임라인에서 읽는다. 시리얼은 뒤 4자리만 보인다(11/6 팀 규칙)
  */
-export function MyDeviceCard({ rental }: { rental: RentalSummary }) {
+export function MyDeviceCard({ rental, index = 0 }: { rental: RentalSummary; index?: number }) {
   const model = useDeviceModel(rental.modelCode);
   const timeline = useTimeline(rental.rentalId);
   const checkpoints = orderedCheckpoints(timeline.data?.checkpoints ?? []);
@@ -72,7 +73,8 @@ export function MyDeviceCard({ rental }: { rental: RentalSummary }) {
   ].filter((s): s is { icon: typeof Cpu; label: string; value: string } => !!s);
 
   return (
-    <li aria-label={name} className="flex flex-col rounded-2xl border bg-card p-5 shadow-xs">
+    // 목록이 열리거나 새 렌탈이 붙으면 카드가 순서대로 짧게 떠오른다(11/8, 60ms 간격)
+    <li aria-label={name} className="stagger flex animate-enter flex-col rounded-2xl border bg-card p-5 shadow-xs" style={{ "--i": Math.min(index, 8) } as CSSProperties}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="m-0 text-xs text-muted-foreground">{model.data?.manufacturer ?? "기종"}</p>

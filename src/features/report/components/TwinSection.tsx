@@ -122,6 +122,7 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
             <PinList pins={pins} selected={selected?.defectId ?? null} onSelect={setSelected} />
             {selected && (
               <PinDetail
+                key={selected.defectId}
                 pin={selected}
                 checkpointType={current.type}
                 inspection={inspection.data}
