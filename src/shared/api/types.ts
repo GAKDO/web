@@ -90,6 +90,13 @@ export type CheckpointMedia = CaptureSchemas["CheckpointMedia"];
 export type PhotoDefect = CaptureSchemas["PhotoDefect"];
 /** 원본 사진 보기 주소 한 장(면·조명·카메라) */
 export type CheckpointPhoto = NonNullable<CheckpointMedia["photos"]>[number];
+// 사람 검수(11/8, contracts e5d80e3): AI 후보를 관리자가 확정·기각하고 검수를 완료하면 등급이 난다
+export type ReviewStatus = CaptureSchemas["InspectionReviewStatus"];
+export type DismissReason = CaptureSchemas["InspectionDismissReason"];
+export type DefectReview = CaptureSchemas["DefectReview"];
+export type InspectionReview = CaptureSchemas["InspectionReview"];
+export type DefectReviewRequest = CaptureSchemas["DefectReviewRequest"];
+export type DefectReviewQueueItem = CaptureSchemas["DefectReviewQueueItem"];
 export type CheckpointDiagnostics = DiagnosticsSchemas["CheckpointDiagnostics"];
 export type RunSummary = DiagnosticsSchemas["RunSummary"];
 export type DiagnosticsFlag = DiagnosticsSchemas["InspectionFlag"];

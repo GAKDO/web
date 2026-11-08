@@ -364,3 +364,78 @@ test("렌탈 상세의 검사 이력에서 결과 보기를 누르면 그 검사
   await user.click(screen.getAllByRole("link", { name: "← 렌탈 상세로" })[0]);
   await waitFor(() => expect(router.state.location.pathname).toBe(`/admin/rentals/${rentalId}`));
 });
+
+/** 사람 검수 대기 중인 빠른 검사: 윗면 긁힘(L1·L2 같은 묶음, 의심), 바닥 찍힘(확인 필요) */
+function addReviewRental() {
+  const pending = { status: "PENDING" as const, reason: null, reviewedBy: null, reviewedAt: null };
+  const a = { ...quickDefect("TOP", "L1", "CAM1", "scratch", 600, 400, 0.62), review: pending };
+  const b = { ...quickDefect("TOP", "L2", "CAM1", "scratch", 604, 402, 0.55), review: pending };
+  const c = { ...quickDefect("BOT", "L3", "CAM2", "dent", 900, 700, 0.31), review: pending };
+  const ids = addRental("C02AIR0002", "CAPTURED", {
+    grade: null,
+    ruleVersion: null,
+    reasons: [],
+    defects: [],
+    photoDefects: [
+      { ...a, groupId: a.defectId },
+      { ...b, groupId: a.defectId },
+      { ...c, groupId: c.defectId },
+    ],
+    review: { pending: 3, confirmed: 0, dismissed: 0, completedAt: null },
+  });
+  db.report.media.set(ids.checkpointId, quickMedia(ids.checkpointId));
+  return ids;
+}
+
+test("AI 후보가 있으면 목록 맨 위에 사람 검수 대기가 보이고, 판정은 사람 검수 대기로 보인다", async () => {
+  addReviewRental();
+  renderAsAdmin("/admin/inspections");
+  const queue = await screen.findByRole("region", { name: "사람 검수 대기 · 1건" });
+  expect(await within(queue).findByText(/AI 후보 사진 3장 · 남은 3장/)).toBeInTheDocument();
+  expect(within(queue).getByRole("link", { name: "검수하기" })).toBeInTheDocument();
+  expect(await within(await card("C02AIR0002")).findByText("사람 검수 대기")).toBeInTheDocument();
+});
+
+test("검수 화면에서 같은 흠집 묶음을 한 번에 정하고, 흠집 아님은 이유를 고르며, 모두 정해야 검수 완료로 등급이 난다", async () => {
+  const user = userEvent.setup();
+  const { rentalId, checkpointId } = addReviewRental();
+  renderAsAdmin(`/admin/inspections/${rentalId}/${checkpointId}`);
+  const panel = await screen.findByRole("region", { name: "사람 검수 · 남은 후보 2곳" });
+  const first = within(panel).getByRole("listitem", { name: "후보 1" });
+  expect(first).toHaveTextContent("긁힘");
+  expect(first).toHaveTextContent("흠집 의심");
+  expect(first).toHaveTextContent("사진 2장에서 함께 잡힘");
+  const second = within(panel).getByRole("listitem", { name: "후보 2" });
+  expect(second).toHaveTextContent("확인 필요");
+  const complete = within(panel).getByRole("button", { name: "검수 완료하고 판정하기" });
+  expect(complete).toBeDisabled();
+
+  await user.click(within(first).getByRole("button", { name: "흠집 맞음" }));
+  await waitFor(() => expect(within(first).getByLabelText("검수 상태")).toHaveTextContent("흠집 맞음"));
+  await user.click(within(second).getByRole("button", { name: "흠집 아님" }));
+  await user.click(within(second).getByRole("button", { name: "스티커·테이프" }));
+  await waitFor(() => expect(within(second).getByLabelText("검수 상태")).toHaveTextContent("흠집 아님 · 스티커·테이프"));
+  expect(screen.getByLabelText("검수 현황")).toHaveTextContent("흠집 맞음 2 · 흠집 아님 1 · 남은 사진 0장");
+
+  await user.click(within(panel).getByRole("button", { name: "검수 완료하고 판정하기" }));
+  // 찍힘은 흠집 아님이라 빠지고 긁힘만 남아 B
+  expect(await screen.findByText("✖ 문제 있음 · B등급")).toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: /사람 검수/ })).not.toBeInTheDocument();
+  expect(screen.getByRole("listitem", { name: "흠집 3" })).toHaveTextContent("흠집 아님 · 스티커·테이프");
+});
+
+test("모두 정해도 서버가 탐지 결과를 아직 기다리면(409 REVIEW_NOT_READY) 그 문장을 보이고 등급을 내지 않는다", async () => {
+  const { rentalId, checkpointId } = addReviewRental();
+  server.use(
+    http.post("*/api/v1/captures/checkpoints/:checkpointId/reviews/complete", () =>
+      problem(409, "REVIEW_NOT_READY", "탐지·정합 결과가 아직 오지 않았습니다"),
+    ),
+  );
+  const user = userEvent.setup();
+  renderAsAdmin(`/admin/inspections/${rentalId}/${checkpointId}`);
+  const panel = await screen.findByRole("region", { name: "사람 검수 · 남은 후보 2곳" });
+  await user.click(within(panel).getByRole("button", { name: "남은 2곳 모두 흠집 맞음" }));
+  await waitFor(() => expect(within(panel).getByRole("button", { name: "검수 완료하고 판정하기" })).toBeEnabled());
+  await user.click(within(panel).getByRole("button", { name: "검수 완료하고 판정하기" }));
+  expect(await within(panel).findByText("탐지 결과가 아직 다 오지 않았습니다. 잠시 뒤 다시 눌러 주세요.")).toBeInTheDocument();
+});
