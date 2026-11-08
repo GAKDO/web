@@ -77,7 +77,10 @@ function useScrolled(threshold = 8): boolean {
 
 const LINK =
   "relative inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] font-medium whitespace-nowrap text-zinc-400 no-underline transition-colors duration-200 hover:text-white";
-const LINK_ACTIVE = "text-white after:absolute after:inset-x-3 after:-bottom-[0.6875rem] after:h-px after:bg-white";
+// 밑줄은 링크 안쪽 맨 아래(after:bottom-0)에 그린다. 링크 밖으로 내보내면 메뉴 칸(overflow-x-auto)이 넘쳐 가로·세로 스크롤바가 생긴다
+const LINK_ACTIVE = "text-white after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-white";
+/** 넓은 화면 메뉴의 링크. 헤더 높이를 꽉 채워 밑줄이 헤더 아래 선에 붙는다 */
+const NAV_LINK = cn(LINK, "h-full rounded-none");
 
 function HeaderLink({ item, className, activeClassName, onNavigate, style }: { item: NavItem; className: string; activeClassName?: string; onNavigate?: () => void; style?: CSSProperties }) {
   const Icon = item.icon;
@@ -161,9 +164,9 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
           <TraceLogo className="h-8" />
         </Link>
         {!mobile && links.length > 0 && (
-          <nav aria-label={admin ? "관리 메뉴" : "고객 메뉴"} className="ml-4 flex min-w-0 items-center gap-0.5 overflow-x-auto">
+          <nav aria-label={admin ? "관리 메뉴" : "고객 메뉴"} className="ml-4 flex h-full min-w-0 items-stretch gap-0.5 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {links.map((item) => (
-              <HeaderLink key={item.to} item={item} className={LINK} activeClassName={LINK_ACTIVE} />
+              <HeaderLink key={item.to} item={item} className={NAV_LINK} activeClassName={LINK_ACTIVE} />
             ))}
           </nav>
         )}
