@@ -3,8 +3,7 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { AppProviders } from "./AppProviders";
 import { routes } from "./App";
-// 글꼴은 서버에 같이 넣는다(외부 CDN 없이): 숫자·영문 Inter, 한글 Pretendard(필요한 글자 묶음만 받음)
-import "@fontsource-variable/inter";
+// 글꼴은 서버에 같이 넣는다(외부 CDN 없이): 한글·영문 모두 Pretendard(필요한 글자 묶음만 받음, 11/8)
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "./index.css";
 
