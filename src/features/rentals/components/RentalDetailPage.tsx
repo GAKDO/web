@@ -185,7 +185,7 @@ export function RentalDetailPage() {
       {/* 폰 촬영을 숨긴 배포에서도 같은 QR로 렌탈을 고객 계정에 연결한다(11/6). 연결하면 고객 내 렌탈에 리포트가 보인다 */}
       {claimCheckpoint && data.status !== "CLOSED" && isArchived("phoneCapture") && !isArchived("report") && (
         <>
-          <SectionTitle>고객 계정 연결</SectionTitle>
+          <SectionTitle>수령 QR(고객 계정 연결)</SectionTitle>
           <CaptureLinkPanel key={claimCheckpoint.checkpointId} rentalId={data.rentalId} checkpointId={claimCheckpoint.checkpointId} purpose="claim" />
         </>
       )}

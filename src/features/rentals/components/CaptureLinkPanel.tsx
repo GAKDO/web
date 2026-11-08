@@ -14,15 +14,20 @@ interface Issued {
   qr: string;
 }
 
-/** capture: 수령 촬영 QR(WE2). claim: 폰 촬영을 숨긴 배포에서 렌탈을 고객 계정에 연결만 하는 QR(같은 발급 API) */
+/** 둘 다 같은 수령 QR(같은 발급 API)이고 로그인·가입을 마치면 렌탈이 고객 계정에 연결된다(11/8, 별도 연결 QR 없음).
+ * capture: 연결 뒤 수령 촬영(WE2). claim: 폰 촬영을 숨긴 배포에서 연결만 */
 type Purpose = "capture" | "claim";
 
 const TEXT: Record<Purpose, { alt: string; hint: string; make: string }> = {
-  capture: { alt: "수령 QR", hint: "고객이 폰 카메라로 읽으면 촬영 화면이 열립니다.", make: "수령 QR 만들기" },
+  capture: {
+    alt: "수령 QR",
+    hint: "고객이 폰 카메라로 읽고 로그인(처음이면 가입)하면 이 렌탈이 고객 계정에 자동으로 연결되고 촬영 화면이 열립니다.",
+    make: "수령 QR 만들기",
+  },
   claim: {
-    alt: "고객 연결 QR",
-    hint: "고객이 폰 카메라로 읽고 로그인하면 이 렌탈이 고객 계정에 연결되어 내 렌탈에서 리포트를 봅니다. 한 번만 쓸 수 있습니다.",
-    make: "고객 연결 QR 만들기",
+    alt: "수령 QR",
+    hint: "고객이 폰 카메라로 읽고 로그인(처음이면 가입)하면 이 렌탈이 고객 계정에 연결되어 내 렌탈에서 리포트를 봅니다. 한 번만 쓸 수 있습니다.",
+    make: "수령 QR 만들기",
   },
 };
 

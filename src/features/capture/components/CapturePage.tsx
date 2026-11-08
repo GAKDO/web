@@ -47,7 +47,7 @@ function useInAppLeaveConfirm(active: boolean): void {
 }
 
 /** 면 목록 → 면 하나 찍기 → 다음 면(US3·US4-1) */
-export function CapturePage({ grant }: { grant: CaptureGrant }) {
+export function CapturePage({ grant, linked = false }: { grant: CaptureGrant; linked?: boolean }) {
   const [shots, setShots] = useState<Shots>({});
   const [active, setActive] = useState<CaptureFace | null>(null);
   const [done, setDone] = useState(false);
@@ -105,6 +105,13 @@ export function CapturePage({ grant }: { grant: CaptureGrant }) {
   return (
     <main className="page capture">
       <h1>수령 사진 찍기</h1>
+      {/* 수령 QR 하나로 계정 연결까지 끝난다(11/8). 고객이 따로 연결할 일이 없다는 걸 알린다 */}
+      {linked && (
+        <p role="status" className="m-0 mb-3 flex items-center gap-2 rounded-lg bg-success-soft px-3 py-2 text-sm text-success">
+          <CircleCheck aria-hidden="true" className="size-4 shrink-0" />
+          이 렌탈이 내 계정에 연결되었습니다{isArchived("report") ? "." : ". 내 렌탈에서 출고 기록도 볼 수 있습니다."}
+        </p>
+      )}
       <p className="notice">촬영이 끝날 때까지 새로 고치거나 창을 닫지 마세요. 찍은 사진이 사라지고 QR을 다시 받아야 합니다.</p>
       {expired ? (
         <p role="alert">촬영 시간이 지났습니다. 대여 담당자에게 새 QR을 받아 주세요.</p>
