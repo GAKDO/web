@@ -1,5 +1,5 @@
 // 화면 라우트. 관리자 화면(WE1)은 /admin 아래, 고객 폰 촬영·3D 리포트·검증 페이지는 이 아래에 더한다
-import { Navigate, type RouteObject } from "react-router-dom";
+import { Navigate, Outlet, ScrollRestoration, type RouteObject } from "react-router-dom";
 import { HomePage } from "./features/home/components/HomePage";
 import { GuidePage } from "./features/guide/components/GuidePage";
 import { BoothPage } from "./features/booth/components/BoothPage";
@@ -36,6 +36,20 @@ function CaptureOrClaim() {
   return isArchived("phoneCapture") ? <ClaimRentalPage /> : <CaptureEntryPage />;
 }
 
+
+/**
+ * 모든 화면을 감싸는 틀. 화면을 옮길 때(링크·버튼) 새 화면은 맨 위에서 열고, 뒤로 가기는 보던 자리로 돌아간다.
+ * 주소에 #앵커가 있으면 그 구역으로 내린다. 없으면 앞 화면의 스크롤 위치가 그대로 남아
+ * 첫 화면 아래쪽의 "이용 안내 자세히 보기"를 누르면 이용 안내가 자주 묻는 질문쯤에서 열렸다(11/8)
+ */
+function RootLayout() {
+  return (
+    <>
+      <ScrollRestoration />
+      <Outlet />
+    </>
+  );
+}
 
 export const routes: RouteObject[] = [
   { path: "/", element: <HomePage /> },
@@ -90,3 +104,8 @@ export const routes: RouteObject[] = [
     ],
   },
 ];
+
+/** 실제 앱 라우터에 넣는 라우트: 위 화면들을 스크롤 위치 관리 틀로 감싼다. 테스트에서 화면 하나만 바꿔 끼울 때는 routes를 쓴다 */
+export function withRoot(children: RouteObject[]): RouteObject[] {
+  return [{ element: <RootLayout />, children }];
+}
