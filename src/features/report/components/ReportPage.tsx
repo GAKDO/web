@@ -1,4 +1,8 @@
+import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { ApiError } from "../../../shared/api/client";
 import { messageFor } from "../../../shared/api/errorMessages";
 import type { TimelineCheckpoint } from "../../../shared/api/types";
@@ -11,6 +15,9 @@ import { ProgressBadge } from "./ProgressBadge";
 import { CompareTable } from "./CompareTable";
 import { TwinSection } from "./TwinSection";
 
+/** 고객 화면 공통 폭(마이페이지와 같음). page는 3D·비교표의 옛 CSS를 이 안에서만 쓰게 한다 */
+const MAIN = "page mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-10";
+
 function formatDateTime(iso: string | null): string {
   return iso ? new Date(iso).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" }) : "";
 }
@@ -19,21 +26,26 @@ function CheckpointCard({ type, checkpoint, progress }: { type: TimelineCheckpoi
   const label = CHECKPOINT_TYPE_LABEL[type];
   if (!checkpoint) {
     return (
-      <li className="card" aria-label={label}>
-        <strong>{label}</strong> <span className="muted">아직 진행 전</span>
+      <li className="grid content-start gap-2 rounded-xl border border-dashed bg-card/60 p-4" aria-label={label}>
+        <strong className="text-base">{label}</strong>
+        <span className="text-sm text-muted-foreground">아직 진행 전</span>
       </li>
     );
   }
   const sealed = checkpoint.status === "SEALED";
   return (
-    <li className="card" aria-label={label}>
-      <div className="card-main">
-        <strong>{label}</strong>
-        <span className={`badge${sealed ? "" : " badge-maintenance"}`}>{sealed ? "봉인됨" : "검사 중"}</span>
-        {checkpoint.grade && <span>등급 {checkpoint.grade}</span>}
-        {sealed && <span className={checkpoint.newDefectCount > 0 ? "warn" : undefined}>신규 흠집 {checkpoint.newDefectCount}개</span>}
-        {checkpoint.sealedAt && <small>봉인 {formatDateTime(checkpoint.sealedAt)}</small>}
+    <li className="grid content-start gap-2 rounded-xl border bg-card p-4 shadow-xs" aria-label={label}>
+      <div className="flex flex-wrap items-center gap-2">
+        <strong className="text-base">{label}</strong>
+        <Badge variant={sealed ? "success" : "warning"}>{sealed ? "봉인됨" : "검사 중"}</Badge>
       </div>
+      {(checkpoint.grade || sealed) && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          {checkpoint.grade && <span className="font-semibold">등급 {checkpoint.grade}</span>}
+          {sealed && <span className={checkpoint.newDefectCount > 0 ? "font-semibold text-warning" : "text-muted-foreground"}>신규 흠집 {checkpoint.newDefectCount}개</span>}
+        </div>
+      )}
+      {checkpoint.sealedAt && <small className="text-xs text-muted-foreground">봉인 {formatDateTime(checkpoint.sealedAt)}</small>}
       {!sealed && <ProgressBadge event={progress.byCheckpoint[checkpoint.checkpointId]} reconnecting={progress.reconnecting} failed={progress.failed} />}
     </li>
   );
@@ -71,30 +83,43 @@ export function ReportPage() {
   const model = useDeviceModel(timeline.data?.modelCode);
   const progress = useProgress(rentalId, !!timeline.data && hasPendingCheckpoint(timeline.data.checkpoints));
 
-  if (timeline.isPending) return <main className="page">리포트를 불러오는 중…</main>;
+  if (timeline.isPending) return <main className={MAIN}><p className="text-muted-foreground">리포트를 불러오는 중…</p></main>;
   if (timeline.isError) {
     return (
-      <main className="page narrow">
-        <h1>렌탈 리포트</h1>
+      <main className={cn(MAIN, "max-w-xl")}>
+        <h1 className="m-0 mb-4 text-2xl font-bold tracking-tight">렌탈 리포트</h1>
         <ReportError error={timeline.error} onRetry={() => void timeline.refetch()} />
       </main>
     );
   }
   const data = timeline.data;
   return (
-    <main className="page">
-      <h1>{model.data?.name ?? data.modelCode} 리포트</h1>
+    <main className={MAIN}>
+      <Link
+        to="/my/rentals"
+        className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground no-underline underline-offset-4 hover:text-foreground hover:underline"
+      >
+        <ArrowLeft aria-hidden="true" className="size-4" />
+        마이페이지
+      </Link>
+      <div className="mt-2 mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div className="grid gap-1">
+          <p className="m-0 text-sm font-semibold text-brand">상태 리포트</p>
+          <h1 className="m-0 text-2xl font-bold tracking-tight md:text-3xl">{model.data?.name ?? data.modelCode}</h1>
+        </div>
+        {data.verifyUrl && (
+          <a className={cn(buttonVariants({ variant: "outline" }), "text-foreground no-underline")} href={data.verifyUrl}>
+            <ShieldCheck aria-hidden="true" />
+            기록 검증하기
+          </a>
+        )}
+      </div>
       {data.chainStatus === "BROKEN" && (
-        <p role="alert" className="error-banner">
+        <p role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
           {CHAIN_STATUS_LABEL.BROKEN}. 관리자에게 문의해 주세요.
         </p>
       )}
-      {data.verifyUrl && (
-        <p>
-          <a href={data.verifyUrl}>기록 검증하기</a>
-        </p>
-      )}
-      <ol className="steps" aria-label="시점">
+      <ol className="m-0 grid list-none gap-3 p-0 md:grid-cols-3" aria-label="시점">
         {CHECKPOINT_ORDER.map((type) => (
           <CheckpointCard key={type} type={type} checkpoint={data.checkpoints.find((c) => c.type === type)} progress={progress} />
         ))}

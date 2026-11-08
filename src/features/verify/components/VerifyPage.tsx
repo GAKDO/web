@@ -71,7 +71,7 @@ function VerifyResult({ result }: { result: VerifyResponse }) {
           <p>봉인된 뒤 기록이 달라졌습니다. 이 리포트를 믿지 마세요.</p>
         </section>
       )}
-      <p>
+      <p className="mt-4 mb-2">
         기종 <strong>{modelName}</strong>
       </p>
       {!valid && <p className="muted">서버가 가진 기록을 그대로 보여 줍니다(참고용).</p>}
@@ -80,7 +80,7 @@ function VerifyResult({ result }: { result: VerifyResponse }) {
           <RecordItem key={record.seq} record={record} />
         ))}
       </ol>
-      <p className="muted">확인한 시각 {formatKst(checkedAt)}</p>
+      <p className="muted text-sm">확인한 시각 {formatKst(checkedAt)}</p>
     </>
   );
 }
@@ -90,14 +90,16 @@ function RecordItem({ record }: { record: VerifyRecord }) {
   const label = CHECKPOINT_TYPE_LABEL[record.checkpointType];
   return (
     <li className="card verify-record" aria-label={label}>
-      <div className="card-main">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <strong>{label}</strong>
-        <span className="badge">{record.grade ? INSPECTION_GRADE_LABEL[record.grade] : "등급 없음"}</span>
-        <span>봉인 {formatKst(record.signedAt)}</span>
+        <span className={record.grade ? "badge" : "badge badge-retired"}>{record.grade ? INSPECTION_GRADE_LABEL[record.grade] : "등급 없음"}</span>
+        <span className="text-sm text-muted-foreground">봉인 {formatKst(record.signedAt)}</span>
       </div>
-      <div className="row">
-        <span>지문</span>
-        <code className="hash">{open ? record.payloadHash : shortHash(record.payloadHash)}</code>
+      <div className="grid gap-2 rounded-lg bg-muted px-3 py-2">
+        <span className="text-xs text-muted-foreground">지문(SHA-256)</span>
+        <code className="hash text-sm">{open ? record.payloadHash : shortHash(record.payloadHash)}</code>
+      </div>
+      <div className="flex flex-wrap gap-2">
         <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
           {open ? "접기" : "전체 보기"}
         </button>
