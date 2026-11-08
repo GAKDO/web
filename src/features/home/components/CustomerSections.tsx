@@ -1,8 +1,8 @@
-import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CircleCheck, CircleX, FileCheck2, Laptop, Lock, ShieldCheck, Sparkles } from "lucide-react";
+import { Check, Laptop, Lock, ShieldCheck, Sparkles } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Reveal } from "../../../shared/ui/Reveal";
 import { FAQ, STEPS } from "../../guide/content";
 
 const VALUES = [
@@ -15,132 +15,134 @@ const VALUES = [
 const MYPAGE = ["빌린 노트북의 사양(프로세서·메모리·저장 공간)", "출고·수령·반납 단계별 등급", "사진 위 흠집 위치와 새 흠집 표시", "봉인 기록 검증 링크"];
 
 const SECTION = "mx-auto max-w-6xl px-4 md:px-8";
-const H2 = "m-0 text-2xl font-bold tracking-tight md:text-3xl";
+const H2 = "m-0 text-headline font-bold";
+
+/** 판정 기준 두 줄(등급 A / 등급 B~D). 첫 화면 두 배포가 같이 쓴다 */
+export function GradeList({ ok, bad }: { ok: string; bad: string }) {
+  return (
+    <dl className="m-0 mt-10 grid gap-x-10 gap-y-8 md:grid-cols-2">
+      <Reveal className="border-t-2 border-success pt-6">
+        <dt className="text-title font-semibold">
+          등급 A <span className="text-success">문제 없음</span>
+        </dt>
+        <dd className="m-0 mt-2 text-[0.9375rem] leading-relaxed text-muted-foreground">{ok}</dd>
+      </Reveal>
+      <Reveal index={1} className="border-t-2 border-destructive pt-6">
+        <dt className="text-title font-semibold">
+          등급 B~D <span className="text-destructive">문제 있음</span>
+        </dt>
+        <dd className="m-0 mt-2 text-[0.9375rem] leading-relaxed text-muted-foreground">{bad}</dd>
+      </Reveal>
+    </dl>
+  );
+}
 
 /**
  * 고객 계정·리포트가 보이는 배포의 첫 화면 본문(11/6). 렌탈 서비스 첫 화면처럼 장점 → 이용 흐름 → 마이페이지 → 판정 기준 → 자주 묻는 질문 → 가입 순서.
+ * 11/8: 같은 모양 카드를 늘어놓는 대신 큰 제목 + 여백 + 얇은 선으로 나누고, 구역마다 스크롤해 들어올 때 한 번 떠오른다(Reveal).
  * 기기 목록(라인업)은 고객용 카탈로그 API가 계약에 생기면 붙인다(가짜 목록을 넣지 않음)
  */
 export function CustomerSections({ signedIn, myHome, myHomeLabel }: { signedIn: boolean; myHome: string; myHomeLabel: string }) {
   return (
     <main>
-      <section aria-labelledby="values" className={cn(SECTION, "py-14 md:py-20")}>
-        <p className="m-0 text-sm font-semibold text-brand">왜 TRACE인가요</p>
-        <h2 id="values" className={cn(H2, "mt-2")}>
+      <section aria-labelledby="values" className={cn(SECTION, "pb-24 md:pb-36")}>
+        <Reveal as="h2" id="values" className={H2}>
           빌릴 때도, 돌려줄 때도 마음 편하게
-        </h2>
-        <ul className="m-0 mt-8 grid list-none gap-3 p-0 sm:grid-cols-2 lg:grid-cols-4 md:gap-4">
+        </Reveal>
+        <ul className="m-0 mt-12 grid list-none gap-x-12 gap-y-12 p-0 sm:grid-cols-2 md:mt-16">
           {VALUES.map(({ icon: Icon, title, text }, i) => (
-            <li
-              key={title}
-              className="stagger animate-enter rounded-2xl border bg-card p-5 shadow-xs transition-[translate,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lg motion-reduce:translate-none"
-              style={{ "--i": i + 4 } as CSSProperties}
-            >
-              <span aria-hidden="true" className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand">
-                <Icon className="size-5" />
-              </span>
-              <h3 className="mt-4 mb-1 text-base font-semibold break-keep">{title}</h3>
-              <p className="m-0 text-sm leading-relaxed text-muted-foreground">{text}</p>
-            </li>
+            <Reveal as="li" key={title} index={i % 2}>
+              <Icon aria-hidden="true" className="size-6 text-brand" />
+              <h3 className="mt-4 mb-2 text-title font-semibold">{title}</h3>
+              <p className="m-0 max-w-[38ch] text-[0.9375rem] leading-relaxed text-muted-foreground">{text}</p>
+            </Reveal>
           ))}
         </ul>
       </section>
 
-      <section aria-labelledby="flow" className="border-y bg-card/60 py-14 md:py-20">
+      <section aria-labelledby="flow" className="bg-sidebar py-24 text-white md:py-36">
         <div className={SECTION}>
-          <p className="m-0 text-sm font-semibold text-brand">이용 방법</p>
-          <h2 id="flow" className={cn(H2, "mt-2")}>
+          <Reveal as="h2" id="flow" className={H2}>
             대여부터 반납까지 4단계
-          </h2>
-          <ol className="m-0 mt-8 grid list-none gap-3 p-0 md:grid-cols-2 lg:grid-cols-4 md:gap-4">
+          </Reveal>
+          <ol className="m-0 mt-12 grid list-none gap-x-8 gap-y-10 p-0 md:mt-16 md:grid-cols-2 lg:grid-cols-4">
             {STEPS.map(({ icon: Icon, title, text }, i) => (
-              <li key={title} className="relative rounded-2xl border bg-background p-5">
-                <span className="absolute top-5 right-5 text-3xl font-bold text-muted-foreground/25 tabular-nums" aria-hidden="true">
-                  0{i + 1}
+              <Reveal as="li" key={title} index={i} className="border-t border-white/15 pt-6">
+                <span className="block text-[2.5rem] leading-none font-bold tracking-[-0.04em] text-white/25 tabular-nums" aria-hidden="true">
+                  {i + 1}
                 </span>
-                <Icon aria-hidden="true" className="size-6 text-brand" />
-                <h3 className="mt-4 mb-1 text-base font-semibold">
+                <h3 className="mt-6 mb-2 flex items-center gap-2 text-title font-semibold">
+                  <Icon aria-hidden="true" className="size-5 text-brand" />
                   <span className="sr-only">{i + 1}단계 </span>
                   {title}
                 </h3>
-                <p className="m-0 text-sm leading-relaxed text-muted-foreground">{text}</p>
-              </li>
+                <p className="m-0 text-[0.9375rem] leading-relaxed text-zinc-400">{text}</p>
+              </Reveal>
             ))}
           </ol>
-          <Link to="/guide" className="mt-6 inline-flex items-center gap-1 text-sm font-semibold">
-            이용 안내 자세히 보기
-            <ArrowRight aria-hidden="true" className="size-4" />
-          </Link>
+          <Reveal>
+            <Link to="/guide" className="mt-12 inline-flex text-[0.9375rem] font-semibold text-white underline decoration-white/30 underline-offset-[6px] transition-colors hover:decoration-white">
+              이용 안내 자세히 보기
+            </Link>
+          </Reveal>
         </div>
       </section>
 
-      <section aria-labelledby="mypage" className={cn(SECTION, "grid items-center gap-8 py-14 md:grid-cols-2 md:py-20")}>
-        <div>
-          <p className="m-0 text-sm font-semibold text-brand">마이페이지</p>
-          <h2 id="mypage" className={cn(H2, "mt-2")}>
+      <section aria-labelledby="mypage" className={cn(SECTION, "grid items-start gap-10 py-24 md:grid-cols-2 md:gap-16 md:py-36")}>
+        <Reveal>
+          <h2 id="mypage" className={H2}>
             가입하면 이런 걸 볼 수 있어요
           </h2>
-          <p className="m-0 mt-3 text-muted-foreground">렌탈을 계정에 연결하면 검사가 끝날 때마다 결과가 쌓입니다.</p>
-        </div>
-        <ul className="m-0 grid list-none gap-2 p-0">
-          {MYPAGE.map((item) => (
-            <li key={item} className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3">
-              <FileCheck2 aria-hidden="true" className="size-5 shrink-0 text-success" />
-              <span className="text-sm font-medium">{item}</span>
-            </li>
+          <p className="m-0 mt-5 max-w-[34ch] text-lead text-muted-foreground">렌탈을 계정에 연결하면 검사가 끝날 때마다 결과가 쌓입니다.</p>
+        </Reveal>
+        <ul className="m-0 grid list-none p-0 md:pt-3">
+          {MYPAGE.map((item, i) => (
+            <Reveal as="li" key={item} index={i} className="flex items-center gap-4 border-b py-5 first:pt-0">
+              <Check aria-hidden="true" className="size-5 shrink-0 text-success" />
+              <span className="text-[1.0625rem] font-medium">{item}</span>
+            </Reveal>
           ))}
         </ul>
       </section>
 
-      <section aria-labelledby="grade" className={cn(SECTION, "pb-14 md:pb-20")}>
-        <h2 id="grade" className={H2}>
+      <section aria-labelledby="grade" className={cn(SECTION, "pb-24 md:pb-36")}>
+        <Reveal as="h2" id="grade" className={H2}>
           판정 기준
-        </h2>
-        <ul className="m-0 mt-6 grid list-none gap-3 p-0 md:grid-cols-2 md:gap-4">
-          <li className="flex items-start gap-3 rounded-2xl border border-success/30 bg-success-soft p-5">
-            <CircleCheck aria-hidden="true" className="mt-0.5 size-6 shrink-0 text-success" />
-            <span>
-              <strong className="text-success">문제 없음 · 등급 A</strong>
-              <span className="mt-1 block text-sm text-muted-foreground">외관에 수리할 흠집이 없습니다.</span>
-            </span>
-          </li>
-          <li className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive-soft p-5">
-            <CircleX aria-hidden="true" className="mt-0.5 size-6 shrink-0 text-destructive" />
-            <span>
-              <strong className="text-destructive">문제 있음 · 등급 B~D</strong>
-              <span className="mt-1 block text-sm text-muted-foreground">긁힘·찍힘이 있어 수리가 필요합니다.</span>
-            </span>
-          </li>
-        </ul>
+        </Reveal>
+        <GradeList ok="외관에 수리할 흠집이 없습니다." bad="긁힘·찍힘이 있어 수리가 필요합니다." />
       </section>
 
-      <section aria-labelledby="faq" className={cn(SECTION, "pb-14 md:pb-20")}>
-        <h2 id="faq" className={H2}>
+      <section aria-labelledby="faq" className={cn(SECTION, "grid gap-10 pb-24 md:grid-cols-[1fr_1.6fr] md:gap-16 md:pb-36")}>
+        <Reveal as="h2" id="faq" className={H2}>
           자주 묻는 질문
-        </h2>
-        <div className="mt-6 grid gap-3">
+        </Reveal>
+        <Reveal className="border-t">
           {FAQ.map(({ q, a }) => (
-            <details key={q} className="rounded-2xl border bg-card p-5 open:shadow-xs">
-              <summary className="cursor-pointer font-semibold">{q}</summary>
-              <p className="m-0 mt-2 text-sm leading-relaxed text-muted-foreground">{a}</p>
+            <details key={q} className="group border-b py-5">
+              <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-[1.0625rem] font-semibold marker:hidden [&::-webkit-details-marker]:hidden">
+                {q}
+                <span aria-hidden="true" className="mt-1 text-xl leading-none text-muted-foreground transition-transform duration-300 group-open:rotate-45">
+                  +
+                </span>
+              </summary>
+              <p className="m-0 mt-3 max-w-[60ch] text-[0.9375rem] leading-relaxed text-muted-foreground">{a}</p>
             </details>
           ))}
-        </div>
+        </Reveal>
       </section>
 
-      <section aria-labelledby="cta" className={cn(SECTION, "pb-16 md:pb-24")}>
-        <div className="flex flex-col items-start gap-4 rounded-3xl bg-sidebar p-7 text-white md:flex-row md:items-center md:justify-between md:p-10">
+      <section aria-labelledby="cta" className={cn(SECTION, "pb-24 md:pb-36")}>
+        <Reveal className="flex flex-col items-start gap-6 rounded-[2rem] bg-sidebar px-7 py-12 text-white md:flex-row md:items-end md:justify-between md:px-14 md:py-16">
           <div>
-            <h2 id="cta" className="m-0 text-xl font-bold md:text-2xl">
+            <h2 id="cta" className="m-0 max-w-[18ch] text-headline font-bold">
               {signedIn ? "내 노트북 기록을 확인해 보세요" : "지금 가입하고 렌탈을 연결하세요"}
             </h2>
-            <p className="m-0 mt-1 text-sm text-zinc-400">QR 한 번이면 빌린 노트북이 내 계정에 연결돼요.</p>
+            <p className="m-0 mt-4 text-lead text-zinc-400">QR 한 번이면 빌린 노트북이 내 계정에 연결돼요.</p>
           </div>
-          <Link to={signedIn ? myHome : "/signup"} className={cn(buttonVariants({ size: "lg" }), "group shrink-0")}>
+          <Link to={signedIn ? myHome : "/signup"} className={cn(buttonVariants({ size: "lg" }), "h-12 shrink-0 rounded-full px-7")}>
             {signedIn ? `${myHomeLabel} 열기` : "회원가입하기"}
-            <ArrowRight aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-1" />
           </Link>
-        </div>
+        </Reveal>
       </section>
     </main>
   );
