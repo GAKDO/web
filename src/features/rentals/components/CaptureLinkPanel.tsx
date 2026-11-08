@@ -6,6 +6,7 @@ import { messageFor } from "../../../shared/api/errorMessages";
 import { ApiError } from "../../../shared/api/problem";
 import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
+import { formatDateTime } from "../../../shared/ui/format";
 
 interface Issued {
   url: string;
@@ -61,24 +62,39 @@ export function CaptureLinkPanel({ rentalId, checkpointId, purpose = "capture" }
   }
 
   return (
-    <div className="qr-panel">
+    <div className="grid justify-items-start gap-3 rounded-xl border bg-card p-4 text-sm shadow-xs">
       {create.isError && (
         <ErrorBanner message={create.error instanceof ApiError ? messageFor(create.error) : "QR을 만들지 못했습니다. 다시 시도해 주세요."} />
       )}
+      {!issued && <p className="m-0 text-muted-foreground">{text.hint}</p>}
       {issued && (
         <>
-          <img className="qr" src={issued.qr} alt={text.alt} />
-          <p>
-            만료 {new Date(issued.expiresAt).toLocaleString("ko-KR")} · {text.hint}
+          <img className="size-60 max-w-full rounded-lg border bg-white p-2" src={issued.qr} alt={text.alt} />
+          <p className="m-0 text-muted-foreground">
+            만료 {formatDateTime(issued.expiresAt)} · {text.hint}
           </p>
-          {count > 1 && <p role="status">새 QR을 만들었습니다. 이전 QR은 쓰지 마세요.</p>}
-          <Button busy={copying} disabled={create.isPending} onClick={() => void copy(issued.url)}>{copied === "ok" ? "링크 복사됨" : "링크 복사"}</Button>
-          {copied === "failed" && <p role="alert">복사하지 못했습니다. QR을 폰으로 읽게 해 주세요.</p>}
+          {count > 1 && (
+            <p role="status" className="m-0 font-medium text-warning">
+              새 QR을 만들었습니다. 이전 QR은 쓰지 마세요.
+            </p>
+          )}
+          {copied === "failed" && (
+            <p role="alert" className="m-0 text-destructive">
+              복사하지 못했습니다. QR을 폰으로 읽게 해 주세요.
+            </p>
+          )}
         </>
       )}
-      <Button busy={create.isPending} disabled={copying} onClick={() => create.mutate()}>
-        {issued ? "QR 다시 만들기" : text.make}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        {issued && (
+          <Button busy={copying} disabled={create.isPending} onClick={() => void copy(issued.url)}>
+            {copied === "ok" ? "링크 복사됨" : "링크 복사"}
+          </Button>
+        )}
+        <Button busy={create.isPending} disabled={copying} onClick={() => create.mutate()}>
+          {issued ? "QR 다시 만들기" : text.make}
+        </Button>
+      </div>
     </div>
   );
 }

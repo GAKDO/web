@@ -80,6 +80,7 @@ export function DeviceDetailPage() {
   return (
     <section>
       <PageHeader
+        back={{ to: "/admin/devices", label: "기기 목록" }}
         title={`기기 ${maskSerial(data.serial)}`}
         description={
           <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -99,11 +100,6 @@ export function DeviceDetailPage() {
           </>
         }
       />
-      <p className="mb-4">
-        <Link className="text-info underline-offset-4 hover:underline" to="/admin/devices">
-          ← 기기 목록
-        </Link>
-      </p>
       <SectionTitle>기기 정보</SectionTitle>
       <InfoList
         className="rounded-xl border bg-card p-5 shadow-xs"

@@ -128,8 +128,9 @@ function BoothBoard({ onLogout }: { onLogout(): void }) {
           {selected ? (
             <BoothDevicePanel key={selected.rentalId} rental={selected} modelName={modelName(selected.modelCode)} />
           ) : (
-            <div className="grid min-h-60 place-items-center rounded-xl border border-dashed p-6 text-center text-muted-foreground">
-              왼쪽에서 기기를 고르세요.
+            // 폰 폭에서는 목록 아래에 빈 칸만 남으므로 숨긴다(기기를 고르면 이 자리에 결과가 열린다)
+            <div className="hidden min-h-60 place-items-center rounded-xl border border-dashed p-6 text-center text-muted-foreground md:grid">
+              목록에서 기기를 고르면 검사 결과가 여기에 나옵니다.
             </div>
           )}
         </section>

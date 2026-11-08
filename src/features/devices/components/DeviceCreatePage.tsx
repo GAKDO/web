@@ -61,7 +61,7 @@ export function DeviceCreatePage() {
 
   return (
     <section className="max-w-xl">
-      <PageHeader title="기기 등록" description="등록된 기종으로 새 기기를 등록합니다. 라벨 사진을 찍으면 시리얼·기종을 미리 채워 드립니다." />
+      <PageHeader back={{ to: "/admin/devices", label: "기기 목록" }} title="기기 등록" description="등록된 기종으로 새 기기를 등록합니다. 라벨 사진을 찍으면 시리얼·기종을 미리 채워 드립니다." />
       {error && <ErrorBanner message={error} />}
       <FormCard onSubmit={submit}>
         <LabelScanner onRead={fillFromLabel} />
