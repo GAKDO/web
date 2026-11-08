@@ -1,6 +1,6 @@
 import type { CheckpointDiagnostics, RunSummary } from "../../../shared/api/types";
 import type { DiagnosedCheckpoint } from "./diagnostics";
-import { shortDate, trendDomain, trendSeries } from "./trend";
+import { axisLabels, shortDate, tooltipAlign, trendDomain, trendSeries } from "./trend";
 
 function run(collectedAt: string, maxCapacityPct: number | null, cpu?: number): RunSummary {
   return {
@@ -43,5 +43,16 @@ describe("진단 추이", () => {
     expect(hi).toBeGreaterThan(91.2);
     expect(trendDomain([0, 2])[0]).toBe(0);
     expect(trendDomain([50])).toEqual([40, 60]);
+  });
+
+  it("같은 날 진단이 이어지면 가로축에 날짜 대신 서울 시각을 쓴다", () => {
+    const points = ["2026-11-09T01:00:00Z", "2026-11-09T05:30:00Z", "2026-11-10T02:00:00Z"].map((collectedAt) => ({ collectedAt, label: shortDate(collectedAt) }));
+    expect(axisLabels(points)).toEqual(["11/9", "14:30", "11/10"]);
+  });
+
+  it("가장자리 점의 툴팁은 그래프 안쪽으로 펼친다", () => {
+    expect(tooltipAlign(0)).toBe("start");
+    expect(tooltipAlign(50)).toBe("center");
+    expect(tooltipAlign(100)).toBe("end");
   });
 });

@@ -31,6 +31,26 @@ export function shortDate(iso: string): string {
   return `${month}/${day}`;
 }
 
+/** "14:02"(서울 시각, 24시간) */
+export function shortTime(iso: string): string {
+  return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso));
+}
+
+/**
+ * 가로축 이름. 날짜가 바뀌는 점은 "11/9", 앞 점과 같은 날이면 "14:02"로 써서
+ * 시연처럼 하루에 출고·반납을 다 하면 축이 "11/9 11/9 11/9"로 똑같아지지 않게 한다
+ */
+export function axisLabels(points: Pick<TrendPoint, "collectedAt" | "label">[]): string[] {
+  return points.map((p, i) => (i > 0 && points[i - 1].label === p.label ? shortTime(p.collectedAt) : p.label));
+}
+
+/** 툴팁을 점의 어느 쪽에 붙일지: 가장자리 점은 안쪽으로 펼쳐 375px에서 잘리거나 가로 스크롤이 생기지 않게 한다 */
+export function tooltipAlign(xPct: number): "start" | "center" | "end" {
+  if (xPct < 25) return "start";
+  if (xPct > 75) return "end";
+  return "center";
+}
+
 interface Def {
   key: string;
   label: string;
