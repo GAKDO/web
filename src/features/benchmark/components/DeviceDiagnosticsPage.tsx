@@ -218,7 +218,7 @@ export function DeviceDiagnosticsPage() {
     const next = new URLSearchParams(params);
     next.set(key, value);
     if (key === "deviceId") next.delete("rentalId");
-    setParams(next, { replace: true });
+    setParams(next, { replace: true, preventScrollReset: true });
   };
 
   return (

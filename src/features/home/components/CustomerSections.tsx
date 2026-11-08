@@ -16,6 +16,8 @@ const MYPAGE = ["빌린 노트북의 사양(프로세서·메모리·저장 공�
 
 const SECTION = "mx-auto max-w-6xl px-4 md:px-8";
 const H2 = "m-0 text-headline font-bold";
+/** 이용 안내로 넘어가는 글자 링크(밝은 바탕) */
+const MORE = "mt-10 inline-flex text-[0.9375rem] font-semibold text-foreground underline decoration-foreground/30 underline-offset-[6px] transition-colors hover:decoration-foreground";
 
 /** 판정 기준 두 줄(등급 A / 등급 B~D). 첫 화면 두 배포가 같이 쓴다 */
 export function GradeList({ ok, bad }: { ok: string; bad: string }) {
@@ -110,6 +112,12 @@ export function CustomerSections({ signedIn, myHome, myHomeLabel }: { signedIn: 
           판정 기준
         </Reveal>
         <GradeList ok="외관에 수리할 흠집이 없습니다." bad="긁힘·찍힘이 있어 수리가 필요합니다." />
+        {/* 첫 화면은 요약만. 등급별 규칙(B·C·D)은 이용 안내에서 자세히 본다 */}
+        <Reveal>
+          <Link to={{ pathname: "/guide", hash: "grade" }} className={MORE}>
+            등급별 자세한 기준 보기
+          </Link>
+        </Reveal>
       </section>
 
       <section aria-labelledby="faq" className={cn(SECTION, "grid gap-10 pb-24 md:grid-cols-[1fr_1.6fr] md:gap-16 md:pb-36")}>
@@ -128,6 +136,11 @@ export function CustomerSections({ signedIn, myHome, myHomeLabel }: { signedIn: 
               <p className="m-0 mt-3 max-w-[60ch] text-[0.9375rem] leading-relaxed text-muted-foreground">{a}</p>
             </details>
           ))}
+        </Reveal>
+        <Reveal className="md:col-start-2">
+          <Link to={{ pathname: "/guide", hash: "faq" }} className={cn(MORE, "mt-0")}>
+            질문 더 보기
+          </Link>
         </Reveal>
       </section>
 

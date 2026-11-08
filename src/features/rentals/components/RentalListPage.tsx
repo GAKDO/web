@@ -53,8 +53,8 @@ export function RentalListPage() {
           </Link>
         }
       />
-      <FilterPanel active={status ? 1 : 0} onReset={() => setParams({})}>
-        <SelectField label="렌탈 상태" value={status ?? ""} onChange={(e) => setParams(e.target.value ? { status: e.target.value } : {})}>
+      <FilterPanel active={status ? 1 : 0} onReset={() => setParams({}, { preventScrollReset: true })}>
+        <SelectField label="렌탈 상태" value={status ?? ""} onChange={(e) => setParams(e.target.value ? { status: e.target.value } : {}, { preventScrollReset: true })}>
           <option value="">전체</option>
           {Object.entries(RENTAL_STATUS_LABEL).map(([value, label]) => (
             <option key={value} value={value}>
