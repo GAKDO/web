@@ -50,6 +50,15 @@ describe("진단 추이", () => {
     expect(axisLabels(points)).toEqual(["11/9", "14:30", "11/10"]);
   });
 
+  it("이름을 다는 점끼리 날짜를 비교하고, 연도가 다르면 같은 날로 보지 않는다", () => {
+    // 7개면 0·2·4·6번에만 이름: 1번에서 날짜가 바뀌어도 2번은 시각이 아니라 날짜
+    const isos = ["2026-11-09T01:00:00Z", "2026-11-10T01:00:00Z", "2026-11-10T02:00:00Z", "2026-11-10T03:00:00Z", "2026-11-10T04:00:00Z", "2026-11-10T05:00:00Z", "2026-11-10T06:00:00Z"];
+    const points = isos.map((collectedAt) => ({ collectedAt, label: shortDate(collectedAt) }));
+    expect(axisLabels(points)).toEqual(["11/9", "", "11/10", "", "13:00", "", "15:00"]);
+    const years = ["2025-11-09T01:00:00Z", "2026-11-09T01:00:00Z"].map((collectedAt) => ({ collectedAt, label: shortDate(collectedAt) }));
+    expect(axisLabels(years)).toEqual(["11/9", "11/9"]);
+  });
+
   it("가장자리 점의 툴팁은 그래프 안쪽으로 펼친다", () => {
     expect(tooltipAlign(0)).toBe("start");
     expect(tooltipAlign(50)).toBe("center");

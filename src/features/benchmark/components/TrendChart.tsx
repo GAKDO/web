@@ -86,8 +86,7 @@ export function TrendChart({ series, height = 120 }: { series: TrendSeries; heig
         <div className="relative h-full">
           {points.map((p, i) => (
             <span key={`${p.collectedAt}-${i}`} className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${x(i)}%` }}>
-              {/* 점이 많으면 처음·끝·몇 칸마다만 이름을 단다(겹치지 않게) */}
-              {i === 0 || i === points.length - 1 || i % Math.ceil(points.length / 6) === 0 ? axis[i] : ""}
+              {axis[i]}
             </span>
           ))}
         </div>
