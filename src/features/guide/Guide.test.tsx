@@ -25,7 +25,7 @@ test("로그인하지 않은 사람도 이용 안내에서 가입부터 반납 �
     "6단계 반납 비교",
   ]);
   const receive = within(screen.getByRole("list", { name: "수령: QR 하나로 연결과 촬영에서 하는 일" }));
-  expect(receive.getByText(/로그인\(또는 인증\)이 끝나는 순간 그 렌탈을 내 계정에 연결/)).toBeInTheDocument();
+  expect(receive.getByText(/로그인이 끝나는 순간 그 렌탈을 내 계정에 연결/)).toBeInTheDocument();
   expect(receive.getByText(/폰으로 찍어 제출합니다/)).toBeInTheDocument();
   expect(within(screen.getByRole("list", { name: "출고 검사에서 하는 일" })).getByText(/실제 흠집만 확정/)).toBeInTheDocument();
   expect(screen.getByRole("link", { name: /회원가입하기/ })).toHaveAttribute("href", "/signup");
@@ -46,6 +46,15 @@ test("폰 촬영을 숨긴 배포의 이용 안내는 수령 단계에서 폰 �
   const receive = within(await screen.findByRole("list", { name: "수령: QR 하나로 계정 연결에서 하는 일" }));
   expect(receive.getByText(/렌탈을 내 계정에 연결합니다/)).toBeInTheDocument();
   expect(receive.queryByText(/폰으로 찍어 제출합니다/)).not.toBeInTheDocument();
+});
+
+test("고객 가입을 숨긴 배포의 이용 안내에는 가입 단계와 가입·메일 인증 안내가 없다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "account,diagnostics,pilot");
+  renderApp("/guide");
+  const list = await screen.findByRole("list", { name: "대여 순서" });
+  expect(within(list).queryByRole("heading", { name: /미리 가입하기/ })).not.toBeInTheDocument();
+  expect(within(list).getByRole("heading", { level: 3, name: /1단계 창구에서 대여/ })).toBeInTheDocument();
+  expect(screen.queryByText(/가입하고 메일 인증을 마칩니다/)).not.toBeInTheDocument();
 });
 
 test("첫 화면 아래쪽에서 '이용 안내 자세히 보기'를 누르면 이용 안내가 맨 위(빌리는 방법)부터 열린다", async () => {

@@ -42,7 +42,10 @@ export function GuidePage() {
   const signedIn = status === "authenticated";
   const myHome = role === "ADMIN" ? "/admin/devices" : customerHome();
   const myHomeLabel = role === "ADMIN" ? "관리자 화면" : myHome === "/my/rentals" ? "마이페이지" : "내 정보";
-  const stages = STAGES.map((s) => (!phoneCapture && s.claimOnly ? { ...s, ...s.claimOnly } : s));
+  // 고객 가입을 숨긴 배포에서는 가입 단계와 가입 안내 줄을 뺀다
+  const stages = STAGES.filter((s) => showAccount || s.id !== "prepare")
+    .map((s) => (!phoneCapture && s.claimOnly ? { ...s, ...s.claimOnly } : s))
+    .map((s) => ({ ...s, actions: s.actions.filter((a) => showAccount || !a.accountOnly) }));
   const moments = [
     { name: "출고", where: "검사 부스", who: "직원이 부스로 촬영", what: "이후 모든 비교의 기준선" },
     phoneCapture

@@ -34,7 +34,8 @@ export function usePaged<T>(query: InfiniteLike<T>, resetKey = "") {
           else next.delete("page");
           return next;
         },
-        { replace: true },
+        // 쪽만 바꾸는 이동은 화면을 맨 위로 올리지 않는다(App.tsx ScrollRestoration)
+        { replace: true, preventScrollReset: true },
       ),
     [setParams],
   );
