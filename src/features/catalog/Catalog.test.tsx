@@ -153,4 +153,15 @@ describe("보유 노트북 화면", () => {
     expect(screen.getByRole("heading", { name: "부스 사진 12장" })).toBeInTheDocument();
     expect(screen.queryByText(/C02PRO0001/)).not.toBeInTheDocument();
   });
+  test("검사 전 노트북도 기종 3D 외관은 보이고, 흠집 대신 검사 전이라고 안내한다", async () => {
+    const target = db.devices.find((dv) => dv.status !== "RETIRED")!;
+    db.rentals = db.rentals.filter((r) => r.deviceId !== target.deviceId);
+    renderApp(`/devices/${target.deviceId}`);
+    expect(await screen.findByRole("heading", { name: /외관 3D/ })).toBeInTheDocument();
+    expect(await screen.findByText(/이 브라우저에서는 3D를 볼 수 없습니다/)).toBeInTheDocument();
+    const list = screen.getByRole("complementary", { name: "흠집 목록" });
+    expect(within(list).getByRole("heading", { name: "검사 전" })).toBeInTheDocument();
+    expect(screen.queryByText(/흠집 위치를 불러오는 중/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/아래 부스 사진에서/)).not.toBeInTheDocument();
+  });
 });

@@ -124,8 +124,12 @@ export function CatalogDetailPage() {
       <span>
         <Images aria-hidden="true" className="mx-auto mb-2 size-6" />
         {reason}
-        <br />
-        아래 부스 사진에서 흠집을 확인해 주세요.
+        {row.inspection && (
+          <>
+            <br />
+            아래 부스 사진에서 흠집을 확인해 주세요.
+          </>
+        )}
       </span>
     </div>
   );
@@ -156,100 +160,108 @@ export function CatalogDetailPage() {
         </h2>
         <p className="m-0 mt-1 text-sm text-muted-foreground">
           {checkpoint ? `${CHECKPOINT_TYPE_LABEL[checkpoint.type]} 검사(${formatDateTime(row.inspection?.gradedAt)}) 기준입니다. ` : ""}
-          드래그해서 돌려 보고, 표시된 모양은 부스 사진에서 찾은 실제 흠집 모양이에요. 점을 누르면 그 흠집이 찍힌 사진을 볼 수 있어요. 위치는 사진에서 옮긴 대략 위치입니다.
+          {row.inspection
+            ? "드래그해서 돌려 보고, 표시된 모양은 부스 사진에서 찾은 실제 흠집 모양이에요. 점을 누르면 그 흠집이 찍힌 사진을 볼 수 있어요. 위치는 사진에서 옮긴 대략 위치입니다."
+            : "이 기종의 실제 치수로 만든 외관이에요. 드래그해서 돌려 볼 수 있어요. 부스 검사를 마치면 흠집 위치가 여기에 표시됩니다."}
         </p>
-        {!row.inspection && <p className="mt-4 rounded-2xl border border-dashed p-6 text-center text-muted-foreground">아직 부스 검사를 마치지 않은 노트북입니다.</p>}
-        {row.inspection && (
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-            <div>
-              {inspection.isError && <ErrorBanner message="사진과 흠집 위치를 불러오지 못했습니다." onRetry={() => void inspection.refetch()} />}
-              {webgl ? (
-                <ViewerBoundary fallback={photoFallback("3D를 그리지 못했습니다.")}>
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border bg-gradient-to-b from-zinc-100 to-zinc-200 dark:from-zinc-900 dark:to-zinc-800">
-                    <Suspense fallback={<p className="grid h-full place-items-center text-sm">3D를 준비하는 중…</p>}>
-                      <LaptopViewer dimensions={d.dimensions} modelCode={d.modelCode} color={d.color} pins={pins} selected={selected} onSelect={(id) => setSelected(id)} view={view} viewNonce={viewNonce} lidOpen={lidOpen} />
-                    </Suspense>
-                  </div>
-                </ViewerBoundary>
-              ) : (
-                photoFallback("이 브라우저에서는 3D를 볼 수 없습니다.")
-              )}
-              {webgl && (
-                <div role="group" aria-label="보는 방향" className="mt-2 flex flex-wrap gap-2">
-                  {VIEWS.map((v) => (
-                    <button
-                      key={v.view}
-                      type="button"
-                      onClick={() => {
-                        setView(v.view);
-                        setLidOpen(v.lidOpen);
-                        setViewNonce((n) => n + 1);
-                      }}
-                      className={cn("h-9 cursor-pointer rounded-full border px-3 text-sm", view === v.view ? "border-foreground bg-foreground text-background" : "bg-background hover:bg-muted")}
-                    >
-                      {v.label}
-                    </button>
-                  ))}
-                  <button type="button" onClick={() => setLidOpen((o) => !o)} className="h-9 cursor-pointer rounded-full border bg-background px-3 text-sm hover:bg-muted">
-                    {lidOpen ? "덮개 닫기" : "덮개 열기"}
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div>
+            {inspection.isError && <ErrorBanner message="사진과 흠집 위치를 불러오지 못했습니다." onRetry={() => void inspection.refetch()} />}
+            {webgl ? (
+              <ViewerBoundary fallback={photoFallback("3D를 그리지 못했습니다.")}>
+                <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border bg-gradient-to-b from-zinc-100 to-zinc-200 dark:from-zinc-900 dark:to-zinc-800">
+                  <Suspense fallback={<p className="grid h-full place-items-center text-sm">3D를 준비하는 중…</p>}>
+                    <LaptopViewer dimensions={d.dimensions} modelCode={d.modelCode} color={d.color} pins={pins} selected={selected} onSelect={(id) => setSelected(id)} view={view} viewNonce={viewNonce} lidOpen={lidOpen} />
+                  </Suspense>
+                </div>
+              </ViewerBoundary>
+            ) : (
+              photoFallback("이 브라우저에서는 3D를 볼 수 없습니다.")
+            )}
+            {webgl && (
+              <div role="group" aria-label="보는 방향" className="mt-2 flex flex-wrap gap-2">
+                {VIEWS.map((v) => (
+                  <button
+                    key={v.view}
+                    type="button"
+                    onClick={() => {
+                      setView(v.view);
+                      setLidOpen(v.lidOpen);
+                      setViewNonce((n) => n + 1);
+                    }}
+                    className={cn("h-9 cursor-pointer rounded-full border px-3 text-sm", view === v.view ? "border-foreground bg-foreground text-background" : "bg-background hover:bg-muted")}
+                  >
+                    {v.label}
                   </button>
-                </div>
-              )}
-            </div>
-
-            <aside aria-label="흠집 목록" className="rounded-2xl border bg-card p-4">
-              <h3 className="m-0 text-base font-semibold">확정된 흠집 {pins.length}개</h3>
-              {row.inspection && <p className="m-0 mt-0.5 text-xs text-muted-foreground">{classSummary(row.inspection.defectsByClass, DEFECT_CLASS_LABEL) || "흠집이 없습니다."}</p>}
-              {inspection.isPending && <p role="status" className="text-sm">흠집 위치를 불러오는 중…</p>}
-              {pins.length > 0 && (
-                <ol className="m-0 mt-3 grid max-h-64 list-none gap-1 overflow-y-auto p-0">
-                  {pins.map((pin, i) => (
-                    <li key={pin.groupId}>
-                      <button
-                        type="button"
-                        aria-pressed={selected === pin.groupId}
-                        onClick={() => choose(pin)}
-                        className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm", selected === pin.groupId ? "bg-muted font-semibold" : "hover:bg-muted/60")}
-                      >
-                        <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: PIN_COLOR[pin.defectClass] }} />
-                        <span>
-                          {i + 1}. {DEFECT_CLASS_LABEL[pin.defectClass]} · {CAPTURE_FACE_LABEL[pin.face]}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-              )}
-              {current && (
-                <div className="mt-3 border-t pt-3">
-                  {(() => {
-                    const head = current.members.find((m) => m.defectId === current.groupId) ?? current.members[0];
-                    const src = urlOf(head);
-                    return src ? (
-                      <PhotoWithDefects
-                        src={src}
-                        alt={`${CAPTURE_FACE_LABEL[head.face]} ${DEFECT_CLASS_LABEL[head.class]} 사진`}
-                        defects={[{ id: head.defectId, title: DEFECT_CLASS_LABEL[head.class], polygon: head.polygon }]}
-                        onOpen={() => setLightbox({ photos: memberPhotos(current), index: 0 })}
-                      />
-                    ) : null;
-                  })()}
-                  <p className="m-0 mt-2 text-xs text-muted-foreground">
-                    사진 {current.members.length}장에 찍힌 흠집입니다. 사진을 누르면 크게 보고 조명별로 넘겨 볼 수 있어요.
-                  </p>
-                </div>
-              )}
-              <p className="m-0 mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                {(Object.keys(PIN_COLOR) as (keyof typeof PIN_COLOR)[]).map((c) => (
-                  <span key={c} className="inline-flex items-center gap-1">
-                    <span aria-hidden="true" className="size-2 rounded-full" style={{ background: PIN_COLOR[c] }} />
-                    {DEFECT_CLASS_LABEL[c]}
-                  </span>
                 ))}
-              </p>
-            </aside>
+                <button type="button" onClick={() => setLidOpen((o) => !o)} className="h-9 cursor-pointer rounded-full border bg-background px-3 text-sm hover:bg-muted">
+                  {lidOpen ? "덮개 닫기" : "덮개 열기"}
+                </button>
+              </div>
+            )}
           </div>
-        )}
+
+          <aside aria-label="흠집 목록" className={cn("rounded-2xl border bg-card p-4", !row.inspection && "self-start")}>
+            {row.inspection ? (
+              <h3 className="m-0 text-base font-semibold">확정된 흠집 {pins.length}개</h3>
+            ) : (
+              <>
+                <h3 className="m-0 text-base font-semibold">검사 전</h3>
+                <p className="m-0 mt-1 text-sm text-muted-foreground">아직 부스 검사를 마치지 않아 확정된 흠집 기록이 없습니다. 검사와 관리자 확인이 끝나면 흠집 위치와 원본 사진이 함께 보입니다.</p>
+              </>
+            )}
+            {row.inspection && <p className="m-0 mt-0.5 text-xs text-muted-foreground">{classSummary(row.inspection.defectsByClass, DEFECT_CLASS_LABEL) || "흠집이 없습니다."}</p>}
+            {row.inspection && inspection.isPending && <p role="status" className="text-sm">흠집 위치를 불러오는 중…</p>}
+            {pins.length > 0 && (
+              <ol className="m-0 mt-3 grid max-h-64 list-none gap-1 overflow-y-auto p-0">
+                {pins.map((pin, i) => (
+                  <li key={pin.groupId}>
+                    <button
+                      type="button"
+                      aria-pressed={selected === pin.groupId}
+                      onClick={() => choose(pin)}
+                      className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm", selected === pin.groupId ? "bg-muted font-semibold" : "hover:bg-muted/60")}
+                    >
+                      <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: PIN_COLOR[pin.defectClass] }} />
+                      <span>
+                        {i + 1}. {DEFECT_CLASS_LABEL[pin.defectClass]} · {CAPTURE_FACE_LABEL[pin.face]}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {current && (
+              <div className="mt-3 border-t pt-3">
+                {(() => {
+                  const head = current.members.find((m) => m.defectId === current.groupId) ?? current.members[0];
+                  const src = urlOf(head);
+                  return src ? (
+                    <PhotoWithDefects
+                      src={src}
+                      alt={`${CAPTURE_FACE_LABEL[head.face]} ${DEFECT_CLASS_LABEL[head.class]} 사진`}
+                      defects={[{ id: head.defectId, title: DEFECT_CLASS_LABEL[head.class], polygon: head.polygon }]}
+                      onOpen={() => setLightbox({ photos: memberPhotos(current), index: 0 })}
+                    />
+                  ) : null;
+                })()}
+                <p className="m-0 mt-2 text-xs text-muted-foreground">
+                  사진 {current.members.length}장에 찍힌 흠집입니다. 사진을 누르면 크게 보고 조명별로 넘겨 볼 수 있어요.
+                </p>
+              </div>
+            )}
+            {row.inspection && (
+              <p className="m-0 mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              {(Object.keys(PIN_COLOR) as (keyof typeof PIN_COLOR)[]).map((c) => (
+                <span key={c} className="inline-flex items-center gap-1">
+                  <span aria-hidden="true" className="size-2 rounded-full" style={{ background: PIN_COLOR[c] }} />
+                  {DEFECT_CLASS_LABEL[c]}
+                </span>
+              ))}
+              </p>
+            )}
+          </aside>
+        </div>
       </section>
 
       <section aria-labelledby="spec" className="mt-10 grid gap-4 md:grid-cols-2">
