@@ -58,3 +58,13 @@ test("폰에서는 메뉴 버튼을 누르면 큰 글자 메뉴가 펼쳐지고 
   await user.keyboard("{Escape}");
   expect(screen.queryByRole("navigation", { name: "고객 메뉴" })).not.toBeInTheDocument();
 });
+
+test("리포트를 보관한 배포에서도 폰의 로그인 전 사람은 메뉴를 열어 로그인으로 갈 수 있다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "report");
+  setMobile(true);
+  const user = userEvent.setup();
+  renderApp("/");
+  await user.click(await screen.findByRole("button", { name: "메뉴 열기" }));
+  const nav = screen.getByRole("navigation", { name: "고객 메뉴" });
+  expect(within(nav).getByRole("link", { name: /로그인$/ })).toHaveAttribute("href", "/login");
+});

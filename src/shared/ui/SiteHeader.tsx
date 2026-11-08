@@ -130,6 +130,8 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
     };
   }, [open]);
 
+  // 폰에서 로그인 링크는 펼침 메뉴 안에만 있으므로, 다른 메뉴가 없어도(report 보관 배포) 메뉴 버튼을 보인다
+  const guestLogin = status === "anonymous" && !admin && showAccount;
   // 로그인 전 고객 입구. 고객 계정을 숨긴 배포는 관리자 로그인이 입구다
   const guestActions =
     status !== "anonymous" || admin ? null : showAccount ? (
@@ -173,7 +175,7 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
               로그아웃
             </button>
           )}
-          {mobile && (links.length > 0 || admin) && (
+          {mobile && (links.length > 0 || admin || guestLogin) && (
             <button
               type="button"
               aria-label={open ? "메뉴 닫기" : "메뉴 열기"}
