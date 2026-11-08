@@ -6,10 +6,19 @@ import type { FaceGrid, TextureOverlay } from "../model/photos";
 import { formatConfidence } from "../model/verdict";
 import { PhotoLightbox, type LightboxPhoto } from "./PhotoLightbox";
 import { PHOTO_MISSING, PhotoWithDefects } from "./PhotoWithDefects";
-import type { PhotoDefect } from "../../../shared/api/types";
+import type { Defect, PhotoDefect } from "../../../shared/api/types";
 
-const overlayOf = (defects: PhotoDefect[]) =>
-  defects.map((d) => ({ id: d.defectId, title: `${DEFECT_CLASS_LABEL[d.class]} ${formatConfidence(d.confidence)}`, polygon: d.polygon }));
+/** 사람이 흠집 아님으로 정한 후보는 흐린 점선으로 그린다(11/8 검수) */
+const overlayOf = (defects: (PhotoDefect | Defect)[]) =>
+  defects.map((d) => {
+    const dismissed = d.review?.status === "DISMISSED";
+    return {
+      id: d.defectId,
+      title: `${DEFECT_CLASS_LABEL[d.class]} ${formatConfidence(d.confidence)}${dismissed ? " · 흠집 아님" : ""}`,
+      polygon: d.polygon,
+      muted: dismissed,
+    };
+  });
 
 /**
  * 빠른 검사(QUICK): 면마다 카메라 2(행) × 조명 3(열) 원본 사진 격자(11/3 A 답변), 사진 위에 그 사진의 흠집.
@@ -120,7 +129,7 @@ export function TextureList({ overlays }: { overlays: TextureOverlay[] }) {
           <PhotoWithDefects
             src={o.url}
             alt={`${CAPTURE_FACE_LABEL[o.face]} 사진`}
-            defects={o.defects.map((d) => ({ id: d.defectId, title: `${DEFECT_CLASS_LABEL[d.class]} ${formatConfidence(d.confidence)}`, polygon: d.polygon }))}
+            defects={overlayOf(o.defects)}
           />
           <p className="mt-1 mb-0 text-[0.8125rem] text-muted-foreground">
             {CAPTURE_FACE_LABEL[o.face]} · 흠집 {o.defects.length}개

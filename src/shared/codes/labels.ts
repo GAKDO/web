@@ -8,8 +8,10 @@ import type {
   CheckpointType,
   DefectClass,
   DefectSource,
+  DismissReason,
   DeviceFormFactor,
   DeviceOs,
+  ReviewStatus,
   DeviceStatus,
   DiagnosticsFlagKind,
   DiagnosticsSkippedReason,
@@ -75,6 +77,16 @@ export const DEFECT_CLASS_LABEL: Record<DefectClass, string> = { scratch: "긁�
 
 // 관리자 검사 결과(spec 006)
 export const DEFECT_SOURCE_LABEL: Record<DefectSource, string> = { AUTO: "자동 탐지", HUMAN: "사람이 표시" };
+
+// 사람 검수(11/8): AI가 넓게 잡은 후보를 관리자가 확정·기각
+export const REVIEW_STATUS_LABEL: Record<ReviewStatus, string> = { PENDING: "검수 전", CONFIRMED: "흠집 맞음", DISMISSED: "흠집 아님" };
+export const DISMISS_REASON_LABEL: Record<DismissReason, string> = {
+  DUST: "먼지·얼룩",
+  TAPE: "스티커·테이프",
+  REFLECTION: "빛 반사",
+  PART: "원래 있는 부품·무늬",
+  OTHER: "기타",
+};
 
 export const FLAG_LABEL: Record<DiagnosticsFlagKind, string> = {
   COMPONENT_CHANGED: "부품 구성이 바뀌었습니다",

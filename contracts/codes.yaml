@@ -10,6 +10,7 @@
 # Unreleased(2026-11-04): error_code BOOTH_CODE_INVALID·BOOTH_CODE_EXPIRED 추가(부스 6자리 코드). 값 추가만.
 # Unreleased(2026-11-03): capture.profile·face_required_quick 추가(부스 위·아래 2면 빠른 검사, MVP). 값 추가만.
 # Unreleased(2026-11-07): diagnostics.lock_state·disk_health, flag_kind ACTIVATION_LOCK_ON·DISK_ENCRYPTION_ON·DISK_HEALTH_WARNING 추가(잠금·디스크 상태 점검). 값 추가만.
+# Unreleased(2026-11-08): inspection.review_status·dismiss_reason, error_code REVIEW_PENDING_REMAINS·REVIEW_NOT_READY·REVIEW_CLOSED 추가(AI 후보 사람 검수). 값 추가만.
 #   OpenAPI용 enum은 scripts/gen_openapi_codes.py로 만든다. 값은 문자열이어야 한다(OFF·ON·YES·NO는 따옴표).
 version: 1.0.0
 
@@ -39,6 +40,9 @@ inspection:
   alignment_method: [CONTOUR, LIGHTGLUE]
   defect_class: [scratch, dent, crack, stain]       # 긁힘·찍힘·균열·오염
   defect_source: [AUTO, HUMAN]
+  # 사람 검수(11/8 민서 결정): AI가 1차로 넓게 잡은 후보를 관리자가 확정·기각한다. 등급은 기각을 뺀 흠집으로만 매긴다
+  review_status: [PENDING, CONFIRMED, DISMISSED]   # 검수 전·흠집 맞음·흠집 아님
+  dismiss_reason: [DUST, TAPE, REFLECTION, PART, OTHER]   # 기각 사유: 먼지·스티커(자산번호 테이프)·반사·부품(고무발·나사·로고)·기타
   match_status: [NEW, EXISTING]
   grade: [A, B, C, D]
 diagnostics:
@@ -109,6 +113,9 @@ error_code:
   - CAPTURE_FACES_MISSING        # 409 빠진 면
   - CAPTURE_HASH_MISMATCH        # 409 올린 사진의 해시가 다름
   - CAPTURE_SET_CLOSED           # 409 이미 완료된 세트
+  - REVIEW_PENDING_REMAINS       # 409 검수하지 않은 후보가 남았는데 검수 완료
+  - REVIEW_NOT_READY             # 409 탐지·정합 결과가 아직 다 오지 않았는데 검수 완료
+  - REVIEW_CLOSED                # 409 검수 완료(등급 발행) 뒤 결정을 바꾸려 함
   # diagnostics
   - DIAGNOSTIC_ALREADY_UPLOADED  # 409
   - DIAGNOSTIC_SCHEMA_INVALID    # 422 진단 JSON 형식 오류

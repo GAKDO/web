@@ -1,10 +1,11 @@
 import type { Checkpoint, Inspection, InspectionGrade } from "../../../shared/api/types";
 import { INSPECTION_GRADE_LABEL } from "../../../shared/codes/labels";
+import { isReviewOpen } from "./review";
 
 /**
  * 관리자 검사 결과 화면의 판정(spec 006 FR-003). 서버가 준 등급으로만 정하고 화면이 등급을 계산하지 않는다.
  * - none: 시점이 없다(검사 전)
- * - pending: 시점은 있지만 검사 결과가 아직 없다(404) 또는 등급이 아직 없다
+ * - pending: 시점은 있지만 검사 결과가 아직 없다(404) 또는 등급이 아직 없다(사람 검수 대기 포함)
  * - ungradable: 등급 없이 근거만 있다(판정 가능한 면이 없음)
  * - ok: A 등급(문제 없음), bad: B·C·D 등급(문제 있음)
  */
@@ -18,6 +19,8 @@ export function verdictOf(checkpoint: Pick<Checkpoint, "status"> | null | undefi
   if (inspection === "loading") return { kind: "pending", grade: null, label: "판정 확인 중" };
   if (!inspection || inspection.grade === null) {
     if (inspection && inspection.reasons.length > 0) return { kind: "ungradable", grade: null, label: "판정 불가" };
+    // AI 후보가 있으면 사람이 검수를 마쳐야 등급이 난다(11/8)
+    if (isReviewOpen(inspection)) return { kind: "pending", grade: null, label: "사람 검수 대기" };
     return { kind: "pending", grade: null, label: checkpoint.status === "OPEN" ? "촬영 대기" : "판정 대기" };
   }
   const grade = inspection.grade;
