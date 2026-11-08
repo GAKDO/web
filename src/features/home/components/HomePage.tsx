@@ -79,6 +79,9 @@ export function HomePage() {
                   관리자 화면 열기
                 </Link>
               )}
+              <Link to="/devices" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-12 rounded-full border-white/20 bg-transparent px-6 text-white hover:bg-white/10 hover:text-white")}>
+                보유 노트북 비교하기
+              </Link>
             </div>
           </div>
           {/* 스크롤로 첫 화면을 벗어날 때 그림이 살짝 작아지며 물러난다(index.css .hero-recede) */}
