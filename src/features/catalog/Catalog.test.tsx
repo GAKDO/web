@@ -1,6 +1,8 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { renderApp } from "../../test/renderApp";
+import { server } from "../../shared/mocks/node";
 import { db } from "../../shared/mocks/db";
 import type { CatalogDevice, CatalogDiagnostics, CatalogInspectionSummary, CatalogPhotoDefect, ModelDimensions } from "../../shared/api/types";
 import { filterRows, mergeCatalog, sortRows } from "./model/catalog";
@@ -163,5 +165,15 @@ describe("보유 노트북 화면", () => {
     expect(within(list).getByRole("heading", { name: "검사 전" })).toBeInTheDocument();
     expect(screen.queryByText(/흠집 위치를 불러오는 중/)).not.toBeInTheDocument();
     expect(screen.queryByText(/아래 부스 사진에서/)).not.toBeInTheDocument();
+  });
+  test("흠집 요약을 못 불러오면 검사한 노트북을 검사 전으로 안내하지 않고 다시 시도를 보인다", async () => {
+    const quick = db.rentals.find((r) => r.renterRef === "R-1002")!;
+    db.rentals = db.rentals.filter((r) => r.deviceId !== quick.deviceId || r === quick);
+    server.use(http.get("*/api/v1/captures/catalog", () => HttpResponse.error()));
+    renderApp(`/devices/${quick.deviceId}`);
+    const list = await screen.findByRole("complementary", { name: "흠집 목록" });
+    expect(within(list).getByRole("heading", { name: "흠집 기록을 불러오지 못했습니다" })).toBeInTheDocument();
+    expect(within(list).getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
+    expect(within(list).queryByRole("heading", { name: "검사 전" })).not.toBeInTheDocument();
   });
 });

@@ -117,6 +117,8 @@ export function CatalogDetailPage() {
     );
 
   const d = row.device;
+  // 흠집 요약 조회가 실패해도 행은 만들어지므로(partial), 검사를 마친 시점이 있으면 '검사 전'이 아니라 불러오기 실패로 본다
+  const summaryFailed = !row.inspection && catalog.data.partial && d.checkpoints.length > 0;
   const diag = row.diagnostics;
   const checkpoint = d.checkpoints.find((c) => c.checkpointId === row.inspection?.checkpointId);
   const photoFallback = (reason: string) => (
@@ -124,7 +126,7 @@ export function CatalogDetailPage() {
       <span>
         <Images aria-hidden="true" className="mx-auto mb-2 size-6" />
         {reason}
-        {row.inspection && (
+        {photos.length > 0 && (
           <>
             <br />
             아래 부스 사진에서 흠집을 확인해 주세요.
@@ -162,7 +164,9 @@ export function CatalogDetailPage() {
           {checkpoint ? `${CHECKPOINT_TYPE_LABEL[checkpoint.type]} 검사(${formatDateTime(row.inspection?.gradedAt)}) 기준입니다. ` : ""}
           {row.inspection
             ? "드래그해서 돌려 보고, 표시된 모양은 부스 사진에서 찾은 실제 흠집 모양이에요. 점을 누르면 그 흠집이 찍힌 사진을 볼 수 있어요. 위치는 사진에서 옮긴 대략 위치입니다."
-            : "이 기종의 실제 치수로 만든 외관이에요. 드래그해서 돌려 볼 수 있어요. 부스 검사를 마치면 흠집 위치가 여기에 표시됩니다."}
+            : summaryFailed
+              ? "이 기종의 실제 치수로 만든 외관이에요. 흠집 기록을 불러오지 못해 위치를 표시하지 못했습니다."
+              : "이 기종의 실제 치수로 만든 외관이에요. 드래그해서 돌려 볼 수 있어요. 부스 검사를 마치면 흠집 위치가 여기에 표시됩니다."}
         </p>
         <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <div>
@@ -205,11 +209,19 @@ export function CatalogDetailPage() {
             {row.inspection ? (
               <h3 className="m-0 text-base font-semibold">확정된 흠집 {pins.length}개</h3>
             ) : (
+              summaryFailed ? (
+              <>
+                <h3 className="m-0 text-base font-semibold">흠집 기록을 불러오지 못했습니다</h3>
+                <button type="button" onClick={() => void catalog.refetch()} className="mt-2 h-9 cursor-pointer rounded-full border bg-background px-3 text-sm hover:bg-muted">
+                  다시 시도
+                </button>
+              </>
+            ) : (
               <>
                 <h3 className="m-0 text-base font-semibold">검사 전</h3>
                 <p className="m-0 mt-1 text-sm text-muted-foreground">아직 부스 검사를 마치지 않아 확정된 흠집 기록이 없습니다. 검사와 관리자 확인이 끝나면 흠집 위치와 원본 사진이 함께 보입니다.</p>
               </>
-            )}
+            ))}
             {row.inspection && <p className="m-0 mt-0.5 text-xs text-muted-foreground">{classSummary(row.inspection.defectsByClass, DEFECT_CLASS_LABEL) || "흠집이 없습니다."}</p>}
             {row.inspection && inspection.isPending && <p role="status" className="text-sm">흠집 위치를 불러오는 중…</p>}
             {pins.length > 0 && (
