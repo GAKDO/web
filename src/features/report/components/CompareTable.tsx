@@ -1,6 +1,5 @@
 import type { TimelineCheckpoint } from "../../../shared/api/types";
 import { CHECKPOINT_TYPE_LABEL } from "../../../shared/codes/labels";
-import { ApiError } from "../../../shared/api/client";
 import { useCheckpointMedia, useDiagnostics } from "../api/report";
 import { compareColumn, deltaText, type Reading } from "../model/compare";
 import { sliderCheckpoints } from "../model/timeline";
@@ -14,8 +13,8 @@ function Column({ checkpoint }: { checkpoint: TimelineCheckpoint }) {
   const isFirst = checkpoint.type === "OUT";
   const diag = useDiagnostics(checkpoint.checkpointId);
   const media = useCheckpointMedia(checkpoint.checkpointId);
-  // 404는 "진단 기록 없음", 그 밖의 오류는 "불러오지 못함" + 다시 시도
-  const diagFailed = diag.isError && !(diag.error instanceof ApiError && diag.error.status === 404);
+  // 진단이 없으면(404) data가 null → "진단 기록 없음", 그 밖의 오류는 "불러오지 못함" + 다시 시도
+  const diagFailed = diag.isError;
   const col = compareColumn(checkpoint, diag.data ?? null, diagFailed);
   const crops = media.data?.crops.filter((c) => col.newDefectIds.includes(c.defectId)) ?? [];
   const cropsMissing = !media.isPending && col.newDefectIds.length > crops.length;
