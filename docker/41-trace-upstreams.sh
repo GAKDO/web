@@ -45,3 +45,20 @@ write_upstream api api_upstream "${API_UPSTREAM:-gateway:8080}"
 minio="${MINIO_UPSTREAM:-minio:9000}"
 write_upstream minio minio_upstream "$minio"
 echo "set \$minio_host $minio;" >> "$out_dir/minio.conf"
+
+# 앞단 프록시가 넣은 실제 사용자 IP(gateway 요청 제한 키). TRUSTED_PROXIES(쉼표로 IP·CIDR)에서 온 연결만
+# X-Forwarded-For를 믿고, 맨 오른쪽의 믿지 않는 주소를 사용자 IP($remote_addr → X-Real-IP)로 쓴다.
+# 비우면 예전처럼 연결 주소를 쓴다(앞단 프록시가 있으면 모든 사용자가 같은 IP로 세져 로그인 제한을 함께 쓴다)
+realip="$out_dir/realip.conf"
+: > "$realip"
+if [ -n "${TRUSTED_PROXIES:-}" ]; then
+  for cidr in $(echo "$TRUSTED_PROXIES" | tr ',' ' '); do
+    case "$cidr" in
+      *[!0-9a-fA-F.:/]*) echo "trace-upstreams: TRUSTED_PROXIES 값이 IP·CIDR이 아님: $cidr" >&2; exit 1 ;;
+    esac
+    echo "set_real_ip_from $cidr;" >> "$realip"
+  done
+  echo "real_ip_header X-Forwarded-For;" >> "$realip"
+  echo "real_ip_recursive on;" >> "$realip"
+  echo "trace-upstreams: 실제 사용자 IP는 X-Forwarded-For에서(믿는 프록시 $TRUSTED_PROXIES)"
+fi
