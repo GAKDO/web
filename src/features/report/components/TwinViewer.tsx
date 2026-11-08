@@ -1,15 +1,19 @@
-import { OrbitControls } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
+import { Html, OrbitControls } from "@react-three/drei";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, type ElementRef } from "react";
 import * as THREE from "three";
 import type { CaptureFace, CheckpointMedia, Pin } from "../../../shared/api/types";
 import { CAPTURE_FACE_LABEL } from "../../../shared/codes/labels";
 import { useTextures, type LoadedTexture } from "../hooks/useTextures";
+import { prefersReducedMotion } from "../../../shared/motion/usePlayback";
 import { lidInnerFace, pinPlacement, pinRatio, sideBaseShare, type Dimensions } from "../model/pins";
 
 // 3D 트윈(FR-RPT-01·02). 리포트 화면에서만 지연 로딩한다. 단위는 mm, 화면 상자는 110° 열린 모습 하나(명세 Q2)
 const OPEN_DEG = 110;
 const GRAY = new THREE.MeshStandardMaterial({ color: "#b8bec7" });
+/** 핀 색(11/8 민서): 서버가 신규(isNew)로 판정한 흠집만 빨강, 앞 시점부터 있던 흠집은 회색 */
+const PIN_NEW = "#c8161d";
+const PIN_KNOWN = "#6b7280";
 
 interface View {
   /** 사진의 아래에서부터 이 비율만 쓴다(옆면을 본체·덮개로 나눌 때). 기본 [0, 1] */
@@ -122,26 +126,16 @@ export default function TwinViewer({ dimensions: d, media, pins, selected, onSel
             const { position: at, normal } = pinPlacement(face, ratio, d, OPEN_DEG);
             // 면 위로 반지름의 절반만큼 띄우고, 고리는 면에 눕힌다
             const position: [number, number, number] = [at[0] + normal[0] * radius * 0.5, at[1] + normal[1] * radius * 0.5, at[2] + normal[2] * radius * 0.5];
-            const facing = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...normal));
             return (
-              <mesh
+              <PinMark
                 key={pin.defectId}
+                pin={pin}
                 position={position}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(pin);
-                }}
-              >
-                <sphereGeometry args={[selected === pin.defectId ? radius * 1.5 : radius, 16, 16]} />
-                <meshStandardMaterial color={pin.isNew ? "#f97316" : "#2563eb"} />
-                {pin.isNew && (
-                  // 신규는 색에 더해 고리 모양으로도 구분한다(FR-013). 글자 "신규"는 옆 흠집 목록에 있다
-                  <mesh quaternion={facing}>
-                    <torusGeometry args={[radius * 2.2, radius * 0.35, 8, 32]} />
-                    <meshStandardMaterial color="#f97316" />
-                  </mesh>
-                )}
-              </mesh>
+                normal={normal}
+                radius={radius}
+                selected={selected === pin.defectId}
+                onSelect={onSelect}
+              />
             );
           })}
         </group>
@@ -156,5 +150,60 @@ export default function TwinViewer({ dimensions: d, media, pins, selected, onSel
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * 핀 하나. 신규는 빨간 공 + 면에 눕힌 고리 + "신규" 이름표, 기존은 회색 공만.
+ * 신규 고리는 천천히 숨 쉬듯 커졌다 줄어 눈에 띄게 하고, 움직임 줄이기 설정이면 멈춰 둔다
+ */
+function PinMark({
+  pin,
+  position,
+  normal,
+  radius,
+  selected,
+  onSelect,
+}: {
+  pin: Pin;
+  position: [number, number, number];
+  normal: [number, number, number];
+  radius: number;
+  selected: boolean;
+  onSelect(pin: Pin): void;
+}) {
+  const ring = useRef<THREE.Mesh>(null);
+  const still = useMemo(prefersReducedMotion, []);
+  const facing = useMemo(() => new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...normal)), [normal[0], normal[1], normal[2]]);
+  useFrame(({ clock }) => {
+    if (!ring.current || still) return;
+    const k = 1 + 0.25 * Math.sin(clock.elapsedTime * 3);
+    ring.current.scale.setScalar(k);
+  });
+  return (
+    <mesh
+      position={position}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect(pin);
+      }}
+    >
+      <sphereGeometry args={[selected ? radius * 1.5 : radius, 16, 16]} />
+      <meshStandardMaterial color={pin.isNew ? PIN_NEW : PIN_KNOWN} />
+      {pin.isNew && (
+        <>
+          {/* 신규는 색에 더해 고리 모양과 글자로도 구분한다(FR-013) */}
+          <mesh ref={ring} quaternion={facing}>
+            <torusGeometry args={[radius * 2.2, radius * 0.35, 8, 32]} />
+            <meshStandardMaterial color={PIN_NEW} />
+          </mesh>
+          <Html center zIndexRange={[10, 0]}>
+            <span aria-hidden="true" className="m-pin-tag">
+              신규
+            </span>
+          </Html>
+        </>
+      )}
+    </mesh>
   );
 }

@@ -22,23 +22,26 @@ export interface ChainRecord {
 export function RecordChain({ records, className, label = "세 시점" }: { records: ChainRecord[]; className?: string; label?: string }) {
   const play = usePlayback<HTMLOListElement>();
   return (
-    <ol ref={play.ref} {...play.attrs} aria-label={label} className={cn("m-scene m-chain m-0 grid list-none gap-y-10 p-0 md:grid-cols-3 md:gap-x-12", className)}>
+    <ol ref={play.ref} {...play.attrs} aria-label={label} className={cn("m-scene m-chain m-0 grid list-none gap-y-6 p-0 md:grid-cols-3 md:gap-x-12", className)}>
       {records.map(({ name, icon: Icon, tag, body }, i) => (
         <li key={name} className="m-chain-item relative" style={{ "--i": i } as CSSProperties}>
           {i > 0 && <span aria-hidden="true" className="m-chain-link" />}
-          <div className="m-chain-card h-full rounded-2xl border bg-card p-5 md:p-6">
-            <div className="flex items-start justify-between gap-3">
+          <div className="m-chain-card h-full rounded-2xl border bg-card p-4 md:p-6">
+            {/* 폰: 아이콘·이름·번호를 한 줄에 두어 카드를 낮게. 넓은 화면: 아이콘·번호 위, 이름 아래 */}
+            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 md:grid-cols-[auto_minmax(0,1fr)] md:items-start">
               <span aria-hidden="true" className="grid size-11 place-items-center rounded-xl bg-foreground text-background">
                 <Icon className="size-5" />
               </span>
-              <span aria-hidden="true" className="text-sm font-semibold text-muted-foreground tabular-nums">
+              <div className="min-w-0 md:col-span-2 md:row-start-2 md:mt-5">
+                <h3 className="m-0 text-title font-bold md:mb-1">{name}</h3>
+                <p className="m-0 text-[0.9375rem] font-medium text-foreground/80">{tag}</p>
+              </div>
+              <span aria-hidden="true" className="self-start text-sm font-semibold text-muted-foreground tabular-nums md:col-start-2 md:row-start-1 md:justify-self-end">
                 0{i + 1}
               </span>
             </div>
-            <h3 className="mt-5 mb-1 text-title font-bold">{name}</h3>
-            <p className="m-0 text-[0.9375rem] font-medium text-foreground/80">{tag}</p>
-            {body && <div className="mt-4">{body}</div>}
-            <p className="m-chain-seal m-0 mt-5 inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">
+            {body && <div className="mt-3 md:mt-4">{body}</div>}
+            <p className="m-chain-seal m-0 mt-3 md:mt-5 inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">
               <LockKeyhole aria-hidden="true" className="size-3.5" />
               {name} 기록 봉인
             </p>

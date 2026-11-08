@@ -119,6 +119,7 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
             fallback
           )}
           <div className="twin-side">
+            <NewDefectSummary checkpoint={current} pins={pins} previous={previousName(sealed, current)} />
             <PinList pins={pins} selected={selected?.defectId ?? null} onSelect={setSelected} />
             {selected && (
               <PinDetail
@@ -136,5 +137,42 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
         </div>
       )}
     </section>
+  );
+}
+
+/** 바로 앞 봉인 시점 이름(출고·수령). 앞 시점이 없으면 null */
+function previousName(sealed: TimelineCheckpoint[], current: TimelineCheckpoint): string | null {
+  const i = sealed.findIndex((c) => c.checkpointId === current.checkpointId);
+  return i > 0 ? CHECKPOINT_TYPE_LABEL[sealed[i - 1].type] : null;
+}
+
+/**
+ * 전후 비교 요약(11/8 민서: 2D 사진 비교 대신 3D 핀으로). 신규 여부는 서버 판정(pin.isNew)만 쓰고,
+ * 비교하지 않은 시점(출고·빠른 검사, compared=false)에는 "신규 없음"으로 읽히지 않게 이유만 적는다
+ */
+function NewDefectSummary({ checkpoint, pins, previous }: { checkpoint: TimelineCheckpoint; pins: Pin[]; previous: string | null }) {
+  const compared = checkpoint.type !== "OUT" && checkpoint.compared !== false && previous !== null;
+  const fresh = pins.filter((p) => p.isNew).length;
+  return (
+    <div className="grid gap-1.5 text-sm">
+      {compared ? (
+        <p className="m-0 font-semibold">
+          {previous} 기록과 비교 ·{" "}
+          {fresh > 0 ? <span className="text-brand">새로 생긴 흠집 {fresh}개</span> : "새로 생긴 흠집 없음"}
+        </p>
+      ) : (
+        <p className="muted m-0">{checkpoint.type === "OUT" ? "출고 기록은 이후 비교의 기준이라 신규 표시가 없습니다." : "이 시점은 앞 기록과 비교하지 않았습니다."}</p>
+      )}
+      <ul aria-label="핀 색" className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-xs text-muted-foreground">
+        <li className="inline-flex items-center gap-1.5">
+          <span aria-hidden="true" className="size-2.5 rounded-full bg-[#6b7280]" />
+          앞 시점부터 있던 흠집
+        </li>
+        <li className="inline-flex items-center gap-1.5">
+          <span aria-hidden="true" className="size-2.5 rounded-full bg-brand ring-2 ring-brand/35 ring-offset-1" />
+          새로 생긴 흠집(신규)
+        </li>
+      </ul>
+    </div>
   );
 }

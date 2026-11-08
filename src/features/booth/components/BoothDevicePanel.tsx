@@ -63,13 +63,15 @@ function Result({ rentalId, checkpointId, status }: { rentalId: string; checkpoi
       {inspection.isError ? (
         <ErrorBanner message="판정을 읽지 못했습니다." onRetry={() => void inspection.refetch()} />
       ) : (
-        // 판정이 바뀌면(촬영 대기 → 검수 대기 → 문제 없음 등) 칸이 짧게 다시 떠오른다
-        <div key={verdict.kind} role="status" aria-label="판정" className={cn("grid animate-enter gap-1 rounded-xl border-2 p-5 shadow-xs", VERDICT_BOX[verdict.kind])}>
-          <p className="m-0 text-3xl font-bold">
-            <span aria-hidden="true">{VERDICT_MARK[verdict.kind]} </span>
-            {verdict.label}
-          </p>
-          {inspection.data && <Reasons inspection={inspection.data} />}
+        // 라이브 영역(role=status)은 그대로 두고, 판정이 바뀌면(촬영 대기 → 검수 대기 → 문제 없음 등) 안쪽 내용만 짧게 다시 떠오른다
+        <div role="status" aria-label="판정" className={cn("rounded-xl border-2 p-5 shadow-xs", VERDICT_BOX[verdict.kind])}>
+          <div key={verdict.kind} className="grid animate-enter gap-1">
+            <p className="m-0 text-3xl font-bold">
+              <span aria-hidden="true">{VERDICT_MARK[verdict.kind]} </span>
+              {verdict.label}
+            </p>
+            {inspection.data && <Reasons inspection={inspection.data} />}
+          </div>
         </div>
       )}
       <Link className={cn(buttonVariants({ variant: "outline", size: "sm" }), "justify-self-start")} to={`/admin/inspections/${rentalId}/${checkpointId}`}>

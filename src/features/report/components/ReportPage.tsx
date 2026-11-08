@@ -13,7 +13,6 @@ import { useProgress, type ProgressState } from "../api/progress";
 import { CHECKPOINT_ORDER, hasPendingCheckpoint } from "../model/timeline";
 import { ProgressBadge } from "./ProgressBadge";
 import { CompareTable } from "./CompareTable";
-import { BeforeAfterCompare } from "./BeforeAfterCompare";
 import { TwinSection } from "./TwinSection";
 import { VerifyQr } from "./VerifyQr";
 
@@ -129,7 +128,6 @@ export function ReportPage() {
         ))}
       </ol>
       <TwinSection modelCode={data.modelCode} checkpoints={data.checkpoints} />
-      <BeforeAfterCompare checkpoints={data.checkpoints} />
       <CompareTable checkpoints={data.checkpoints} />
     </main>
   );

@@ -121,10 +121,10 @@
 /* 앞 카드와 잇는 빨간 선: 폰은 위쪽 세로선, 넓은 화면은 왼쪽 가로선 */
 .m-chain-link {
   position: absolute;
-  left: calc(2.625rem - 1px);
-  top: -2.5rem;
+  left: calc(2.375rem - 1px);
+  top: -1.5rem;
   width: 2px;
-  height: 2.5rem;
+  height: 1.5rem;
   background: var(--brand);
   transform-origin: top;
   animation: m-grow-y 500ms var(--ease-out-expo) both;
@@ -154,28 +154,9 @@
   100% { opacity: 1; transform: none; }
 }
 
-/* ③ 전후 비교 ─────────────────────────────── */
-.m-compare-mark {
-  stroke-width: 2.5;
-}
-.m-compare-existing {
-  fill: rgb(113 113 122 / 0.12);
-  stroke: #71717a;
-}
-.m-compare-spot {
-  fill: none;
-  stroke: #71717a;
-  stroke-dasharray: 6 4;
-}
-.m-compare-new {
-  fill: rgb(200 22 29 / 0.28);
-  stroke: var(--brand);
-  stroke-width: 3;
-  animation: m-fade-in 400ms ease-out both;
-}
-.m-compare-tag {
-  position: absolute;
-  translate: 0 calc(-100% - 4px);
+/* ③ 전후 비교(3D 핀) ─────────────────────── */
+/* 3D 모형 위 신규 흠집 이름표(drei Html). 앞 시점부터 있던 흠집은 회색 핀만, 신규만 빨간 이름표 */
+.m-pin-tag {
   padding: 0.15rem 0.4rem;
   border-radius: 0.3rem;
   background: var(--brand);
@@ -184,25 +165,9 @@
   font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
-  animation: m-arrive 400ms var(--ease-out-expo) both;
-}
-.m-compare-wipe {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 100%;
-  width: 2px;
-  background: #fff;
-  box-shadow: 0 0 10px 2px rgb(255 255 255 / 0.6), 0 0 0 1px rgb(24 24 27 / 0.25);
-  opacity: 0;
-  animation: m-wipe var(--m-wipe-s) cubic-bezier(0.4, 0, 0.6, 1) both;
-  animation-delay: var(--m-wipe-delay);
-}
-@keyframes m-wipe {
-  0% { left: 0; opacity: 0; }
-  8% { opacity: 1; }
-  92% { left: 100%; opacity: 1; }
-  100% { left: 100%; opacity: 0; }
+  pointer-events: none;
+  translate: 0 calc(-100% - 6px);
+  animation: m-fade-in 400ms ease-out both;
 }
 @keyframes m-fade-in {
   from { opacity: 0; }
@@ -434,8 +399,10 @@ textarea[aria-invalid="true"] {
     animation: none !important;
     transition: none !important;
   }
+  .m-pin-tag {
+    animation: none !important;
+  }
   .m-scanner,
-  .m-compare-wipe,
   .m-place-scan {
     display: none;
   }
