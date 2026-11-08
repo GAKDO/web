@@ -63,11 +63,16 @@ function BoothBoard({ onLogout }: { onLogout(): void }) {
   const { waiting, judged } = boothQueue(items);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = items.find((r) => r.rentalId === selectedId) ?? null;
-  // 폰·세로 태블릿은 고른 기기 칸이 목록 아래에 있어 눌렀을 때 그쪽으로 내린다
+  // 폰·세로 태블릿은 고른 기기 칸이 목록 아래에 있어 눌렀을 때 그쪽으로 내린다.
+  // 고른 칸이 그려진 뒤에 내려야 하므로(처음 고를 때는 빈 칸이 숨겨져 있어 내릴 거리가 모자람) 요청만 남기고 effect에서 내린다
+  const [scrollRequest, setScrollRequest] = useState(0);
   const select = (id: string) => {
     setSelectedId(id);
-    if (window.innerWidth < 768) document.getElementById("booth-panel")?.scrollIntoView?.({ behavior: "smooth" });
+    if (window.innerWidth < 768) setScrollRequest((n) => n + 1);
   };
+  useEffect(() => {
+    if (scrollRequest > 0) document.getElementById("booth-panel")?.scrollIntoView?.({ behavior: "smooth" });
+  }, [scrollRequest]);
 
   return (
     <div className="min-h-svh bg-background">
