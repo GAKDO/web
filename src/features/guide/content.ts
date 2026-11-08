@@ -163,8 +163,8 @@ export const VERIFY_STEPS = [
   { title: "지문 비교", text: "검증 페이지의 지문이 메일과 같고 \"봉인된 뒤 바뀐 기록이 없습니다\"가 보이면 처음 그대로입니다." },
 ];
 
-/** 이용 안내의 자주 묻는 질문: 첫 화면 세 개 + 자세한 질문 */
-export const GUIDE_FAQ = [
+/** 이용 안내의 자주 묻는 질문: 첫 화면 세 개 + 자세한 질문. phoneOnly는 수령 폰 촬영이 보이는 배포에서만 */
+export const GUIDE_FAQ: { q: string; a: string; phoneOnly?: boolean }[] = [
   ...FAQ,
   {
     q: "QR이 만료됐다고 나와요.",
@@ -179,6 +179,7 @@ export const GUIDE_FAQ = [
     a: "먼지·반사는 검수 때 기각하고, 오염(얼룩)은 등급에서 뺍니다. 부스에 올리기 전에 표면을 한 번 닦습니다.",
   },
   {
+    phoneOnly: true,
     q: "수령 때 꼭 폰으로 찍어야 하나요?",
     a: "받은 상태를 내 손으로 남기는 단계라 찍어 두시길 권합니다. 출고 기록과 다른 점이 있으면 바로 창구에 알려 주세요.",
   },

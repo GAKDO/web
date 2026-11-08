@@ -46,6 +46,7 @@ test("폰 촬영을 숨긴 배포의 이용 안내는 수령 단계에서 폰 �
   const receive = within(await screen.findByRole("list", { name: "수령: QR 하나로 계정 연결에서 하는 일" }));
   expect(receive.getByText(/렌탈을 내 계정에 연결합니다/)).toBeInTheDocument();
   expect(receive.queryByText(/폰으로 찍어 제출합니다/)).not.toBeInTheDocument();
+  expect(screen.queryByText("수령 때 꼭 폰으로 찍어야 하나요?")).not.toBeInTheDocument();
 });
 
 test("고객 가입을 숨긴 배포의 이용 안내에는 가입 단계와 가입·메일 인증 안내가 없다", async () => {

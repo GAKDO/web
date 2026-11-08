@@ -183,7 +183,7 @@ export function GuidePage() {
             자주 묻는 질문
           </Reveal>
           <Reveal className="mt-10 border-t">
-            {GUIDE_FAQ.map(({ q, a }) => (
+            {GUIDE_FAQ.filter((f) => phoneCapture || !f.phoneOnly).map(({ q, a }) => (
               <details key={q} className="group border-b py-5">
                 <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-[1.0625rem] font-semibold marker:hidden [&::-webkit-details-marker]:hidden">
                   {q}
