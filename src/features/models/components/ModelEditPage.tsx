@@ -161,7 +161,7 @@ export function ModelEditPage() {
 
   return (
     <section className="max-w-2xl">
-      <PageHeader title={editing ? "기종 수정" : "기종 등록"} description="3D 리포트와 촬영 윤곽이 이 치수를 씁니다." />
+      <PageHeader back={{ to: "/admin/models", label: "기종 목록" }} title={editing ? "기종 수정" : "기종 등록"} description="3D 리포트와 촬영 윤곽이 이 치수를 씁니다." />
       {error && <ErrorBanner message={error} />}
       <FormCard onSubmit={submit}>
         <Field

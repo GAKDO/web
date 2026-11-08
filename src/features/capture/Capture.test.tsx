@@ -51,6 +51,25 @@ test("로그인하지 않은 고객이 QR 링크를 열면 로그인 화면이 �
   expect(captureTokenStore.get()?.checkpointId).toBe(link.checkpointId);
 });
 
+test("QR을 교환해 렌탈이 연결되면 로그인 세션을 다시 받아 내 렌탈이 새 렌탈을 담게 하고, 촬영 권한은 그대로 남는다", async () => {
+  const link = mockCaptureLink();
+  asCustomer();
+  let refreshes = 0;
+  const count = ({ request }: { request: Request }) => {
+    if (request.method === "POST" && new URL(request.url).pathname.endsWith("/api/v1/auth/refresh")) refreshes += 1;
+  };
+  server.events.on("request:start", count);
+  try {
+    renderApp(`/capture?t=${link.token}`);
+    expect(await screen.findByRole("heading", { name: "수령 사진 찍기" })).toBeInTheDocument();
+    // 처음 화면을 열 때 세션을 되살리는 1번 + 교환 뒤 1번
+    await vi.waitFor(() => expect(refreshes).toBe(2));
+    expect(captureTokenStore.get()?.checkpointId).toBe(link.checkpointId);
+  } finally {
+    server.events.removeListener("request:start", count);
+  }
+});
+
 test("만료됐거나 이미 쓴 QR을 열면 새 QR을 받으라는 문장이 보인다", async () => {
   const link = mockCaptureLink();
   link.used = true;

@@ -80,13 +80,13 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
         }}
       />
       {pending.map((c) => (
-        <p key={c.checkpointId} className="muted">
+        <p key={c.checkpointId} className="muted m-0 text-sm">
           {CHECKPOINT_TYPE_LABEL[c.type]}: 검사 중이라 아직 볼 수 없습니다.
         </p>
       ))}
       {inspection.data?.ruleVersion && (
         // 흠집이 없는 검사도 어떤 규칙으로 판정했는지 보이도록 핀 선택과 상관없이 둔다(defect_match.rule_version)
-        <p className="muted">판정 규칙: {inspection.data.ruleVersion}</p>
+        <p className="muted mt-0 mb-3 text-sm">판정 규칙: {inspection.data.ruleVersion}</p>
       )}
       {current && quick && (
         <div>
