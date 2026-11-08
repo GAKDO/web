@@ -25,7 +25,7 @@ export function ProgressBadge({ event, reconnecting, failed = false }: { event: 
       ) : (
         <span>검사 진행을 기다리는 중</span>
       )}
-      <StepTrail steps={steps} label="검사 단계" className="mt-1 w-full basis-full" stalled={failed} />
+      <StepTrail steps={steps} label="검사 단계" className="mt-1 w-full basis-full" stalled={failed || reconnecting} />
       {event?.stage === "INSPECTED" && <small className="muted">흠집 후보를 찾았습니다. 직원이 후보를 확인한 뒤 등급이 정해집니다.</small>}
       {reconnecting && <small className="muted">다시 연결 중…</small>}
       {failed && <small className="muted">실시간 진행률을 받지 못했습니다. 새로고침하면 최신 상태를 볼 수 있습니다.</small>}
