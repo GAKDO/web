@@ -2,7 +2,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { RoundedBoxGeometry } from "three-stdlib";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type { ModelDimensions } from "../api/types";
 import { DefectShapes } from "./DefectShapes";
 import type { FaceShape } from "./shapes";

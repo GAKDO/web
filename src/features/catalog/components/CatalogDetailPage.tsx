@@ -19,7 +19,7 @@ import { BENCH_LABEL, BENCH_UNIT, full, percent } from "../model/format";
 import { laptopPins, PIN_COLOR, type LaptopPin } from "../model/laptop3d";
 import { AvailabilityBadge, GradeBadge } from "./Badges";
 import type { ViewPreset } from "./LaptopViewer";
-import { usePhotoSizes } from "./usePhotoSizes";
+import { usePhotoSizes } from "../../../shared/laptop3d/usePhotoSizes";
 
 // 공개 기기 상세(11/8 민서 요청): 노트북 3D 모델 위에 확정 흠집을 핀으로 찍고, 핀을 누르면 그 흠집이 찍힌 원본 사진을 보여 준다.
 // WebGL이 없거나 3D가 실패하면 사진 보기만 남는다. 사양·진단·벤치마크도 함께 보여 준다.

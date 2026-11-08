@@ -9,7 +9,7 @@ import { PinList } from "./PinList";
 import { TwinFallback } from "./TwinFallback";
 import { PhotoGrid } from "../../inspections/components/PhotoGrid";
 import { faceGrids, photoDefectsOf } from "../../inspections/model/photos";
-import { usePhotoSizes } from "../../catalog/components/usePhotoSizes";
+import { usePhotoSizes } from "../../../shared/laptop3d/usePhotoSizes";
 import { quickShapes, SHAPE_KNOWN, standardShapes } from "../model/twinShapes";
 
 const TwinViewer = lazy(() => import("./TwinViewer"));
@@ -109,7 +109,7 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
             </Suspense>
           </TwinBoundary>
           <div className="twin-side text-sm">
-            <p className="m-0 font-semibold">흠집 {shapes.length}곳</p>
+            <p className="m-0 font-semibold">흠집 {shapes.length}곳 <span className="font-normal text-muted-foreground">(조명만 다른 사진의 같은 흠집은 한 곳으로 셈)</span></p>
             <p className="muted m-0">부스 사진에서 찾은 실제 흠집 모양을 노트북 모형 위에 옮겨 그렸습니다. 위치는 사진에서 옮긴 대략 위치이고, 정확한 모습은 아래 사진에서 볼 수 있습니다.</p>
             <p className="m-0 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
               <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: SHAPE_KNOWN }} />
@@ -122,7 +122,7 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
         <div>
           <p className="muted">
             부스에서 찍은 사진 {photos.length}장
-            {photoDefects.length > 0 ? ` · 흠집 표시 ${photoDefects.length}곳` : " · 표시된 흠집 없음"}
+            {photoDefects.length > 0 ? ` · 사진 속 표시 ${photoDefects.length}개` : " · 표시된 흠집 없음"}
           </p>
           <PhotoGrid grids={faceGrids(photos, photoDefects)} />
         </div>
