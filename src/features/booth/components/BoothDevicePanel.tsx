@@ -59,7 +59,7 @@ function Result({ rentalId, checkpointId, status }: { rentalId: string; checkpoi
   const verdict = verdictOf({ status }, inspection.isPending ? "loading" : (inspection.data ?? null));
   return (
     <>
-      <StepTrail steps={boothSteps(status, inspection.data ?? null)} label="검사 진행" />
+      <StepTrail steps={boothSteps(status, inspection.data ?? null)} label="검사 진행" stalled={inspection.isError} />
       {inspection.isError ? (
         <ErrorBanner message="판정을 읽지 못했습니다." onRetry={() => void inspection.refetch()} />
       ) : (

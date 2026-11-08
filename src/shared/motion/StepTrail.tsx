@@ -13,9 +13,10 @@ export interface TrailStep {
  * 실제 상태(SSE 진행 단계·시점 상태·검수 상태)에서 만든 단계만 그리고,
  * 단계가 바뀌면 막대가 차오르고 점이 바뀌는 짧은 전환만 둔다. 진행률을 모르면 백분율을 만들지 않는다
  */
-export function StepTrail({ steps, label, className }: { steps: TrailStep[]; label: string; className?: string }) {
+export function StepTrail({ steps, label, className, stalled = false }: { steps: TrailStep[]; label: string; className?: string; stalled?: boolean }) {
+  // stalled: 오류·연결 끊김으로 다음 상태를 받지 못하는 중. 진행 중 점의 깜빡임을 멈춰 계속 처리되는 것처럼 보이지 않게 한다
   return (
-    <div role="group" aria-label={label} className={cn("m-trail grid gap-1.5", className)} style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+    <div role="group" aria-label={label} data-stalled={stalled || undefined} className={cn("m-trail grid gap-1.5", className)} style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
       {steps.map((s) => (
         <div key={s.label} data-state={s.state} className="m-trail-step min-w-0">
           <span aria-hidden="true" className="m-trail-bar" />
@@ -23,7 +24,7 @@ export function StepTrail({ steps, label, className }: { steps: TrailStep[]; lab
             {s.state === "done" && <Check aria-hidden="true" className="mt-px size-3 shrink-0" />}
             {s.state === "current" && <span aria-hidden="true" className="m-trail-dot mt-1" />}
             <span className="min-w-0 break-keep">{s.label}</span>
-            <span className="sr-only">{s.state === "done" ? " 끝남" : s.state === "current" ? " 진행 중" : " 대기"}</span>
+            <span className="sr-only">{s.state === "done" ? " 끝남" : s.state === "current" ? (stalled ? " 멈춤" : " 진행 중") : " 대기"}</span>
           </span>
         </div>
       ))}

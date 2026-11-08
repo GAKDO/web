@@ -4,7 +4,7 @@ import { Camera } from "lucide-react";
 import { RecordChain } from "./RecordChain";
 import { ScanMotion } from "./ScanMotion";
 import { SealSequence } from "./SealSequence";
-import { trailOf } from "./StepTrail";
+import { StepTrail, trailOf } from "./StepTrail";
 
 describe("설명용 모션", () => {
   it("홈 흠집 탐지 그림은 설명용 그림이라고 밝히고, 관찰할 수 없는 곳에서는 바로 재생(최종 상태) 상태다", () => {
@@ -41,5 +41,15 @@ describe("설명용 모션", () => {
   it("단계 줄은 지금 단계 앞을 끝남, 지금을 진행 중으로 매긴다", () => {
     expect(trailOf(["a", "b", "c"], 1).map((s) => s.state)).toEqual(["done", "current", "todo"]);
     expect(trailOf(["a", "b"], 2).map((s) => s.state)).toEqual(["done", "done"]);
+  });
+
+  it("오류·연결 끊김으로 멈춘 단계 줄은 진행 중 대신 멈춤으로 읽히고 깜빡임 표시를 끈다", () => {
+    const { rerender, container } = render(<StepTrail steps={trailOf(["촬영", "분석"], 1)} label="검사 진행" />);
+    expect(screen.getByRole("group", { name: "검사 진행" })).not.toHaveAttribute("data-stalled");
+    expect(container.textContent).toContain("진행 중");
+    rerender(<StepTrail steps={trailOf(["촬영", "분석"], 1)} label="검사 진행" stalled />);
+    expect(screen.getByRole("group", { name: "검사 진행" })).toHaveAttribute("data-stalled", "true");
+    expect(container.textContent).toContain("멈춤");
+    expect(container.textContent).not.toContain("진행 중");
   });
 });
