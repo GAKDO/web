@@ -435,7 +435,7 @@ export interface components {
             /** @description 기종 기준 사양. 없으면 null */
             spec: components["schemas"]["ModelSpec"] | null;
             dimensions: components["schemas"]["ModelDimensions"];
-            /** @description 검사가 끝난 시점(GRADED·SEALED), 최근 것부터 최대 12개. 화면은 앞에서부터 흠집·진단이 있는 첫 시점을 그 기기의 최신 상태로 쓴다 */
+            /** @description 검사가 끝난 시점(GRADED·SEALED), 최근 것부터 최대 12개. 화면은 앞에서부터 흠집·진단이 있는 첫 시점을 그 기기의 최신 상태로 쓴다. 화면은 이 ID를 100개씩 나눠 capture·diagnostics 공개 목록에 묻는다(최악 200대×12개면 각 24회). 세 공개 목록 경로는 게이트웨이에서 같은 catalog 버킷으로 IP당 합산 분당 300회까지다 */
             checkpoints: components["schemas"]["CatalogCheckpoint"][];
         };
         CatalogCheckpoint: {
