@@ -108,7 +108,7 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
               <TwinViewer dimensions={dimensions} modelCode={modelCode} sizes={{}} shapes={shapes} pins={[]} selected={null} onSelect={() => undefined} />
             </Suspense>
           </TwinBoundary>
-          <div className="twin-side text-sm">
+          <div key={current.checkpointId} className="twin-side animate-enter text-sm">
             <p className="m-0 font-semibold">흠집 {shapes.length}곳 <span className="font-normal text-muted-foreground">(조명만 다른 사진의 같은 흠집은 한 곳으로 셈)</span></p>
             <p className="muted m-0">부스 사진에서 찾은 실제 흠집 모양을 노트북 모형 위에 옮겨 그렸습니다. 위치는 사진에서 옮긴 대략 위치이고, 정확한 모습은 아래 사진에서 볼 수 있습니다.</p>
             <p className="m-0 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -119,7 +119,8 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
         </div>
       )}
       {current && quick && (
-        <div>
+        // 시점을 바꾸면 그 시점의 사진·흠집 표시로 짧게 다시 떠오른다(11/8). 3D 위 흠집 모양은 같은 데이터로 바로 바뀐다
+        <div key={current.checkpointId} className="animate-enter">
           <p className="muted">
             부스에서 찍은 사진 {photos.length}장
             {photoDefects.length > 0 ? ` · 사진 속 표시 ${photoDefects.length}개` : " · 표시된 흠집 없음"}
@@ -148,7 +149,7 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
           ) : (
             fallback
           )}
-          <div className="twin-side">
+          <div key={current.checkpointId} className="twin-side animate-enter">
             <NewDefectSummary checkpoint={current} pins={pins} previous={previousName(sealed, current)} />
             <PinList pins={pins} selected={selected?.defectId ?? null} onSelect={setSelected} />
             {selected && (

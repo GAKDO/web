@@ -23,10 +23,12 @@ export function VerifyPage() {
   const { verifyToken } = useParams();
   const query = useVerify(verifyToken);
 
+  // 상태 구분(11/8 보완): 주소가 틀렸거나 기록 없음(404) → 찾을 수 없음, 요청 실패 → 다시 시도,
+  // 다시 시도 중 → 대조 중 그림, 서버 응답(valid)이 온 뒤에만 성공·실패. 이미 받은 결과는 뒤이은 재요청이 실패해도 그대로 둔다
   let content;
   if (!isVerifyToken(verifyToken) || (query.error instanceof ApiError && query.error.status === 404)) {
     content = <NotFound />;
-  } else if (query.isError) {
+  } else if (query.isError && !query.data && !query.isFetching) {
     content = (
       <div className="error-banner" role="alert">
         <span>지금 확인할 수 없습니다. 잠시 뒤 다시 열어 주세요.</span>

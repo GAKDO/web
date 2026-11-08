@@ -76,6 +76,28 @@ test("서버 오류면 지금 확인할 수 없다고 보이고 다시 시도하
   expect(await screen.findByText("기록이 그대로입니다")).toBeInTheDocument();
 });
 
+test("다시 시도를 누르면 응답이 오기 전까지 오류 대신 대조 중으로 보이고 성공·실패는 아직 보이지 않는다", async () => {
+  const u = userEvent.setup();
+  let release: () => void = () => undefined;
+  let fail = true;
+  server.use(
+    http.get("*/api/v1/verify/:token", async () => {
+      if (fail) return HttpResponse.json({ status: 500 }, { status: 500 });
+      await new Promise<void>((r) => (release = r));
+      return undefined;
+    }),
+  );
+  renderApp(`/verify/${VERIFY_TOKENS.valid}`);
+  expect(await screen.findByText(/지금 확인할 수 없습니다/)).toBeInTheDocument();
+  fail = false;
+  await u.click(screen.getByRole("button", { name: "다시 시도" }));
+  expect(await screen.findByText("기록을 확인하는 중입니다…")).toBeInTheDocument();
+  expect(screen.queryByText(/지금 확인할 수 없습니다/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/그대로입니다|바뀌었습니다/)).not.toBeInTheDocument();
+  release();
+  expect(await screen.findByText("기록이 그대로입니다")).toBeInTheDocument();
+});
+
 test("서버에 닿지 못하면 지금 확인할 수 없다고 보인다", async () => {
   server.use(http.get("*/api/v1/verify/:token", () => HttpResponse.error()));
   renderApp(`/verify/${VERIFY_TOKENS.valid}`);
