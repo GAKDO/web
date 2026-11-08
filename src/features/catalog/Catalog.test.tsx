@@ -176,4 +176,17 @@ describe("보유 노트북 화면", () => {
     expect(within(list).getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
     expect(within(list).queryByRole("heading", { name: "검사 전" })).not.toBeInTheDocument();
   });
+  test("진단만 못 불러오면 흠집 기록 오류로 안내하지 않는다", async () => {
+    const quick = db.rentals.find((r) => r.renterRef === "R-1002")!;
+    db.rentals = db.rentals.filter((r) => r.deviceId !== quick.deviceId || r === quick);
+    // 검사를 마친 시점은 있지만 공개 흠집 요약은 없고(예: 폰 세트만), 진단 조회만 실패한 경우
+    server.use(
+      http.get("*/api/v1/captures/catalog", () => HttpResponse.json({ items: [] })),
+      http.get("*/api/v1/diagnostics/catalog", () => HttpResponse.error()),
+    );
+    renderApp(`/devices/${quick.deviceId}`);
+    const list = await screen.findByRole("complementary", { name: "흠집 목록" });
+    expect(within(list).getByRole("heading", { name: "검사 전" })).toBeInTheDocument();
+    expect(within(list).queryByText("흠집 기록을 불러오지 못했습니다")).not.toBeInTheDocument();
+  });
 });
