@@ -7,6 +7,7 @@ import { useAuth } from "../../../shared/auth/AuthProvider";
 import { Button } from "../../../shared/ui/Button";
 import { Field } from "../../../shared/ui/Field";
 import { safeNext } from "../../customer-auth/safeNext";
+import { ReceiveQrNotice } from "../../customer-auth/ReceiveQrNotice";
 import { looksLikeEmail, pendingSignup } from "../pendingSignup";
 import { customerHome } from "../../../shared/config/customerHome";
 import { AuthHeading, AuthShell } from "../../../shared/ui/AuthShell";
@@ -58,6 +59,7 @@ export function SignupPage() {
       }
     >
       <AuthHeading title="회원가입">노트북을 받기 전에 계정을 만들어 주세요. 가입한 메일로 6자리 인증 코드를 보내 드려요.</AuthHeading>
+      <ReceiveQrNotice next={next} signup />
       <form onSubmit={submit} noValidate>
         <Field label="이름" autoComplete="name" required value={name} onChange={(e) => setName(e.target.value)} />
         <Field label="이메일" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

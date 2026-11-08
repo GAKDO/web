@@ -29,12 +29,12 @@ function newCustomer() {
   return account;
 }
 
-test("폰 촬영을 숨긴 배포에서 관리자가 렌탈 상세를 열면 고객 연결 QR을 만들 수 있다", async () => {
+test("폰 촬영을 숨긴 배포에서 관리자가 렌탈 상세를 열면 수령 QR을 만들 수 있다", async () => {
   const u = userEvent.setup();
   renderAsAdmin(`/admin/rentals/${quickRental().rentalId}`);
-  await u.click(await screen.findByRole("button", { name: "고객 연결 QR 만들기" }));
-  expect(await screen.findByRole("img", { name: "고객 연결 QR" })).toBeInTheDocument();
-  expect(screen.getByText(/로그인하면 이 렌탈이 고객 계정에 연결되어/)).toBeInTheDocument();
+  await u.click(await screen.findByRole("button", { name: "수령 QR 만들기" }));
+  expect(await screen.findByRole("img", { name: "수령 QR" })).toBeInTheDocument();
+  expect(screen.getByText(/가입\)하면 이 렌탈이 고객 계정에 연결되어/)).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "수령 QR 만들기" })).not.toBeInTheDocument();
 });
 
