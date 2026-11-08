@@ -7,6 +7,7 @@ import { ApiError } from "../../../shared/api/problem";
 import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { formatDateTime } from "../../../shared/ui/format";
+import { PlaceDemo } from "../../../shared/motion/PlaceDemo";
 
 interface Issued {
   url: string;
@@ -74,7 +75,11 @@ export function CaptureLinkPanel({ rentalId, checkpointId, purpose = "capture" }
       {!issued && <p className="m-0 text-muted-foreground">{text.hint}</p>}
       {issued && (
         <>
-          <img className="size-60 max-w-full rounded-lg border bg-white p-2" src={issued.qr} alt={text.alt} />
+          <div className="flex flex-wrap items-start gap-4">
+            <img className="size-60 max-w-full rounded-lg border bg-white p-2" src={issued.qr} alt={text.alt} />
+            {/* 고객에게 보여 줄 짧은 시범: 폰 카메라로 QR을 읽으면 촬영 화면이 열린다(11/8) */}
+            {purpose === "capture" && <PlaceDemo variant="qr" className="w-full max-w-[16rem]" />}
+          </div>
           <p className="m-0 text-muted-foreground">
             만료 {formatDateTime(issued.expiresAt)} · {text.hint}
           </p>

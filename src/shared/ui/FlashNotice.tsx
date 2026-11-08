@@ -42,7 +42,7 @@ export function FlashNotice({ ms = 4000 }: { ms?: number }) {
   if (!shown) return null;
   return (
     <div
-      className="fixed right-4 bottom-4 z-20 flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-lg border border-success/30 bg-card py-2 pr-2 pl-4 text-sm font-semibold text-success shadow-lg"
+      className="m-toast fixed right-4 bottom-4 z-20 flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-lg border border-success/30 bg-card py-2 pr-2 pl-4 text-sm font-semibold text-success shadow-lg"
       role="status"
     >
       <CircleCheck aria-hidden="true" className="size-4 shrink-0" />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Size } from "../model/laptop3d";
+import type { Size } from "./faces";
 
 /**
  * 사진 원본 크기(px)를 읽는다. 흠집 좌표가 원본 px라 3D 핀 위치를 비율로 바꾸려면 필요하다.

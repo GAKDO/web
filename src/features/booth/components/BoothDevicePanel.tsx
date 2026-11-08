@@ -10,6 +10,9 @@ import { useCheckpointInspection, useCheckpointMedia } from "../../inspections/a
 import { PhotoGrid } from "../../inspections/components/PhotoGrid";
 import { faceGrids, photoDefectsOf } from "../../inspections/model/photos";
 import { verdictOf, type Verdict } from "../../inspections/model/verdict";
+import { isReviewOpen } from "../../inspections/model/review";
+import { PlaceDemo } from "../../../shared/motion/PlaceDemo";
+import { StepTrail, trailOf } from "../../../shared/motion/StepTrail";
 
 const VERDICT_BOX: Record<Verdict["kind"], string> = {
   ok: "border-success/40 bg-success-soft text-success",
@@ -34,6 +37,8 @@ export function BoothDevicePanel({ rental, modelName }: { rental: RentalSummary;
       </div>
       {cp?.status === "OPEN" && (
         <>
+          {/* 노트북을 표시 칸에 맞춰 놓는 짧은 시범(11/8, 한 번) */}
+          <PlaceDemo variant="place" />
           <ol className="m-0 grid gap-1 rounded-xl border bg-card p-4 pl-8 text-sm">
             <li>노트북을 부스에 넣습니다.</li>
             <li>
@@ -54,15 +59,19 @@ function Result({ rentalId, checkpointId, status }: { rentalId: string; checkpoi
   const verdict = verdictOf({ status }, inspection.isPending ? "loading" : (inspection.data ?? null));
   return (
     <>
+      <StepTrail steps={boothSteps(status, inspection.data ?? null)} label="검사 진행" />
       {inspection.isError ? (
         <ErrorBanner message="판정을 읽지 못했습니다." onRetry={() => void inspection.refetch()} />
       ) : (
-        <div role="status" aria-label="판정" className={cn("grid gap-1 rounded-xl border-2 p-5 shadow-xs", VERDICT_BOX[verdict.kind])}>
-          <p className="m-0 text-3xl font-bold">
-            <span aria-hidden="true">{VERDICT_MARK[verdict.kind]} </span>
-            {verdict.label}
-          </p>
-          {inspection.data && <Reasons inspection={inspection.data} />}
+        // 라이브 영역(role=status)은 그대로 두고, 판정이 바뀌면(촬영 대기 → 검수 대기 → 문제 없음 등) 안쪽 내용만 짧게 다시 떠오른다
+        <div role="status" aria-label="판정" className={cn("rounded-xl border-2 p-5 shadow-xs", VERDICT_BOX[verdict.kind])}>
+          <div key={verdict.kind} className="grid animate-enter gap-1">
+            <p className="m-0 text-3xl font-bold">
+              <span aria-hidden="true">{VERDICT_MARK[verdict.kind]} </span>
+              {verdict.label}
+            </p>
+            {inspection.data && <Reasons inspection={inspection.data} />}
+          </div>
         </div>
       )}
       <Link className={cn(buttonVariants({ variant: "outline", size: "sm" }), "justify-self-start")} to={`/admin/inspections/${rentalId}/${checkpointId}`}>
@@ -72,6 +81,21 @@ function Result({ rentalId, checkpointId, status }: { rentalId: string; checkpoi
     </>
   );
 }
+
+const BOOTH_STEPS = ["촬영", "AI 흠집 후보", "직원 확인", "판정"];
+
+/**
+ * 부스 검사 진행 단계. 시점 상태(CAPTURED·GRADED·SEALED)와 검사 결과(검수 대기 여부·등급)로만 정하고 백분율은 보이지 않는다.
+ * 촬영됨인데 검사 결과가 없으면 AI가 사진을 보는 중, 후보가 남아 있으면 직원 확인 중, 등급이 있으면 판정 끝
+ */
+function boothSteps(status: BoothStatus, inspection: Inspection | null) {
+  if (status === "GRADED" || status === "SEALED" || inspection?.grade) return trailOf(BOOTH_STEPS, BOOTH_STEPS.length);
+  if (inspection && isReviewOpen(inspection)) return trailOf(BOOTH_STEPS, 2);
+  if (inspection) return trailOf(BOOTH_STEPS, 3);
+  return trailOf(BOOTH_STEPS, 1);
+}
+
+type BoothStatus = NonNullable<RentalSummary["currentCheckpoint"]>["status"];
 
 function Reasons({ inspection }: { inspection: Inspection }) {
   const count = photoDefectsOf(inspection).length || inspection.defects.length;

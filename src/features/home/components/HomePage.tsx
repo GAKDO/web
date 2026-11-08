@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Camera, ScanSearch, ShieldCheck } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ScanVisual } from "../../../shared/ui/ScanVisual";
+import { ScanMotion } from "../../../shared/motion/ScanMotion";
 import { Reveal } from "../../../shared/ui/Reveal";
 import { SiteHeader } from "../../../shared/ui/SiteHeader";
 import { CustomerSections, GradeList } from "./CustomerSections";
@@ -84,9 +84,10 @@ export function HomePage() {
               </Link>
             </div>
           </div>
-          {/* 스크롤로 첫 화면을 벗어날 때 그림이 살짝 작아지며 물러난다(index.css .hero-recede) */}
+          {/* ① 흠집 탐지 설명 그림(11/8): 화면에 들어오면 스캔 선이 한 번(약 4초) 지나가며 흠집 후보가 차례로 뜬다.
+              스크롤로 첫 화면을 벗어날 때 그림이 살짝 작아지며 물러난다(index.css .hero-recede) */}
           <div className="hero-recede">
-            <ScanVisual className="mx-auto max-w-[28.75rem]" />
+            <ScanMotion className="mx-auto w-full max-w-[28.75rem]" />
           </div>
         </div>
       </section>

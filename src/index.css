@@ -5,6 +5,8 @@
 @layer theme, base, legacy, components, utilities;
 @import "tailwindcss";
 @import "./legacy.css" layer(legacy);
+/* 설명용 모션·상태 반응(11/8) */
+@import "./shared/motion/motion.css" layer(components);
 
 /* 목록 표 모양은 왼쪽 메뉴(220px)를 빼고도 6칸이 들어가는 1100px부터(768px에서는 한 글자씩 줄이 바뀜) */
 @custom-variant table (@media (width >= 1100px));
@@ -105,14 +107,11 @@
   --text-lead--line-height: 1.6;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* 움직임: 짧고(150~400ms) 한 방향. 화면 들어올 때 아래에서 살짝, 패널은 옆에서, 검사 스캔 막대는 위아래로 */
+  /* 움직임: 짧고(150~400ms) 한 방향. 화면 들어올 때 아래에서 살짝, 패널은 옆에서, 설명용 모션은 shared/motion/motion.css */
   --animate-enter: enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-fade: fade 200ms ease-out both;
   --animate-sheet-right: sheet-right 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-sheet-up: sheet-up 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-scan: scan 2.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-  --animate-ping-soft: ping-soft 2.8s ease-out infinite;
-  --animate-float: float 6s ease-in-out infinite;
 
   @keyframes enter {
     from { opacity: 0; transform: translateY(8px); }
@@ -129,22 +128,6 @@
   @keyframes sheet-up {
     from { transform: translateY(100%); }
     to { transform: none; }
-  }
-  /* 노트북 그림 위를 위→아래→위로 훑는 검사 막대 */
-  @keyframes scan {
-    0%, 100% { top: 6%; }
-    50% { top: 88%; }
-  }
-  /* 흠집 표시: 막대가 지나간 뒤 나타났다 사라짐 */
-  @keyframes ping-soft {
-    0%, 30% { opacity: 0; transform: scale(0.6); }
-    40% { opacity: 1; transform: scale(1); }
-    85% { opacity: 1; transform: scale(1); }
-    100% { opacity: 0; transform: scale(1); }
-  }
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-6px); }
   }
 }
 

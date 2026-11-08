@@ -8,7 +8,7 @@ import { isArchived } from "../../../shared/config/features";
 import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { useMe } from "../../account/api";
-import { useMyRentals } from "../api/report";
+import { MY_RENTALS_PAGE_SIZE, useMyRentals } from "../api/report";
 import { MyDeviceCard } from "./MyDeviceCard";
 
 const FLOW = [
@@ -127,8 +127,8 @@ export function MyRentalsPage() {
           {rentals.isSuccess && items.length === 0 && <EmptyRentals onRefresh={() => void rentals.refetch()} refreshing={rentals.isFetching} />}
           {items.length > 0 && (
             <ul aria-label="내 노트북" className="m-0 grid list-none gap-4 p-0 md:grid-cols-2 xl:grid-cols-3">
-              {items.map((rental) => (
-                <MyDeviceCard key={rental.rentalId} rental={rental} />
+              {items.map((rental, i) => (
+                <MyDeviceCard key={rental.rentalId} rental={rental} index={i % MY_RENTALS_PAGE_SIZE} />
               ))}
             </ul>
           )}

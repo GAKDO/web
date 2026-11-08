@@ -112,10 +112,10 @@
 .slider-ticks { display: flex; justify-content: space-between; list-style: none; padding: 0; margin: 0; font-size: 0.875rem; color: var(--muted-foreground); }
 .slider-ticks .on { color: inherit; font-weight: 700; }
 .pin-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
-.page .pin-button { width: 100%; text-align: left; border: 1px solid rgb(29 78 216 / 0.35); border-radius: var(--radius); background: #fff; display: flex; gap: 8px; align-items: center; }
+.page .pin-button { width: 100%; text-align: left; border: 1px solid rgb(107 114 128 / 0.4); border-radius: var(--radius); background: #fff; display: flex; gap: 8px; align-items: center; }
 .page .pin-button[aria-pressed="true"] { border-color: var(--info); box-shadow: 0 0 0 2px rgb(29 78 216 / 0.2); }
-.page .pin-button.pin-new { border-color: rgb(194 65 12 / 0.45); background: #fff4ec; }
-.pin-tag { background: #c2410c; color: #fff; padding: 0 8px; border-radius: 999px; font-size: 0.75rem; }
+.page .pin-button.pin-new { border-color: rgb(200 22 29 / 0.45); background: #fdf0f0; }
+.pin-tag { background: var(--brand); color: #fff; padding: 0 8px; border-radius: 999px; font-size: 0.75rem; }
 .pin-detail { border: 1px solid var(--border); border-radius: calc(var(--radius) + 4px); padding: 14px 16px; margin-top: 8px; display: grid; gap: 8px; background: var(--surface); }
 .pin-detail dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 0.875rem; }
 .pin-detail dt { color: var(--muted-foreground); }

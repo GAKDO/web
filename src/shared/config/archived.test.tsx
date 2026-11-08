@@ -37,7 +37,8 @@ test("보관 설정이 없으면 렌탈 상세에 수령 QR·페어링 코드·�
   vi.stubEnv("VITE_ARCHIVED_FEATURES", "");
   const receipt = await openRentalWithOpenReceipt();
   expect(within(receipt).getByRole("button", { name: /QR/ })).toBeInTheDocument();
-  expect(within(receipt).getByRole("button", { name: /페어링/ })).toBeInTheDocument();
+  // 페어링 버튼은 진단 조회가 끝난 뒤 나타나므로 기다린다(느린 CI에서 먼저 물으면 아직 없다)
+  expect(await within(receipt).findByRole("button", { name: /페어링/ })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "리포트 보기" })).toBeInTheDocument();
 });
 

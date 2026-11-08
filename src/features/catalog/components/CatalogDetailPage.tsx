@@ -19,7 +19,7 @@ import { BENCH_LABEL, BENCH_UNIT, full, percent } from "../model/format";
 import { laptopPins, PIN_COLOR, type LaptopPin } from "../model/laptop3d";
 import { AvailabilityBadge, GradeBadge } from "./Badges";
 import type { ViewPreset } from "./LaptopViewer";
-import { usePhotoSizes } from "./usePhotoSizes";
+import { usePhotoSizes } from "../../../shared/laptop3d/usePhotoSizes";
 
 // 공개 기기 상세(11/8 민서 요청): 노트북 3D 모델 위에 확정 흠집을 핀으로 찍고, 핀을 누르면 그 흠집이 찍힌 원본 사진을 보여 준다.
 // WebGL이 없거나 3D가 실패하면 사진 보기만 남는다. 사양·진단·벤치마크도 함께 보여 준다.
@@ -156,7 +156,7 @@ export function CatalogDetailPage() {
         </h2>
         <p className="m-0 mt-1 text-sm text-muted-foreground">
           {checkpoint ? `${CHECKPOINT_TYPE_LABEL[checkpoint.type]} 검사(${formatDateTime(row.inspection?.gradedAt)}) 기준입니다. ` : ""}
-          드래그해서 돌려 보고, 점을 누르면 그 흠집이 찍힌 사진을 볼 수 있어요. 점은 사진에서 옮긴 대략 위치입니다.
+          드래그해서 돌려 보고, 표시된 모양은 부스 사진에서 찾은 실제 흠집 모양이에요. 점을 누르면 그 흠집이 찍힌 사진을 볼 수 있어요. 위치는 사진에서 옮긴 대략 위치입니다.
         </p>
         {!row.inspection && <p className="mt-4 rounded-2xl border border-dashed p-6 text-center text-muted-foreground">아직 부스 검사를 마치지 않은 노트북입니다.</p>}
         {row.inspection && (
@@ -167,7 +167,7 @@ export function CatalogDetailPage() {
                 <ViewerBoundary fallback={photoFallback("3D를 그리지 못했습니다.")}>
                   <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border bg-gradient-to-b from-zinc-100 to-zinc-200 dark:from-zinc-900 dark:to-zinc-800">
                     <Suspense fallback={<p className="grid h-full place-items-center text-sm">3D를 준비하는 중…</p>}>
-                      <LaptopViewer dimensions={d.dimensions} color={d.color} pins={pins} selected={selected} onSelect={(id) => setSelected(id)} view={view} viewNonce={viewNonce} lidOpen={lidOpen} />
+                      <LaptopViewer dimensions={d.dimensions} modelCode={d.modelCode} color={d.color} pins={pins} selected={selected} onSelect={(id) => setSelected(id)} view={view} viewNonce={viewNonce} lidOpen={lidOpen} />
                     </Suspense>
                   </div>
                 </ViewerBoundary>

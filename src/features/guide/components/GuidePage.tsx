@@ -1,10 +1,11 @@
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
-import { Mail } from "lucide-react";
+import { Camera, Mail, QrCode, ScanLine, Smartphone } from "lucide-react";
 import { GRADE_NOTES, GRADES, GUIDE_FAQ, STAGES, VERIFY_STEPS, type Actor, type GuideStage } from "../content";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Reveal } from "../../../shared/ui/Reveal";
+import { RecordChain } from "../../../shared/motion/RecordChain";
 import { SiteHeader } from "../../../shared/ui/SiteHeader";
 import { isArchived } from "../../../shared/config/features";
 import { customerHome } from "../../../shared/config/customerHome";
@@ -46,12 +47,13 @@ export function GuidePage() {
   const stages = STAGES.filter((s) => showAccount || s.id !== "prepare")
     .map((s) => (!phoneCapture && s.claimOnly ? { ...s, ...s.claimOnly } : s))
     .map((s) => ({ ...s, actions: s.actions.filter((a) => showAccount || !a.accountOnly) }));
+  // 세 시점 카드(② 세 번의 기록 모션). tag는 카드 첫 줄: 출고=부스 촬영, 수령=고객 폰 촬영, 반납=처음 사진과 비교
   const moments = [
-    { name: "출고", where: "검사 부스", who: "직원이 부스로 촬영", what: "이후 모든 비교의 기준선" },
+    { name: "출고", icon: Camera, tag: "부스에서 기준 촬영", where: "검사 부스", who: "직원이 부스로 촬영", what: "이후 모든 비교의 기준선" },
     phoneCapture
-      ? { name: "수령", where: "창구에서 내 폰", who: "고객이 폰으로 촬영", what: "받은 그대로의 상태를 내 손으로" }
-      : { name: "수령", where: "창구에서 내 폰", who: "고객이 QR로 로그인", what: "렌탈이 내 계정에 연결" },
-    { name: "반납", where: "검사 부스", who: "직원이 부스로 촬영", what: "출고 사진과 비교해 새 흠집만" },
+      ? { name: "수령", icon: Smartphone, tag: "내 폰으로 상태 촬영", where: "창구에서 내 폰", who: "고객이 폰으로 촬영", what: "받은 그대로의 상태를 내 손으로" }
+      : { name: "수령", icon: QrCode, tag: "수령 QR로 계정 연결", where: "창구에서 내 폰", who: "고객이 QR로 로그인", what: "렌탈이 내 계정에 연결" },
+    { name: "반납", icon: ScanLine, tag: "처음 사진과 비교", where: "검사 부스", who: "직원이 부스로 촬영", what: "출고 사진과 비교해 새 흠집만" },
   ];
 
   return (
@@ -88,11 +90,15 @@ export function GuidePage() {
             세 번의 기록
           </Reveal>
           <p className="m-0 mt-4 max-w-[52ch] text-lead text-muted-foreground">렌탈 하나에 기록이 세 번 남고, 시점마다 따로 봉인됩니다.</p>
-          <ol aria-label="세 시점" className="m-0 mt-10 grid list-none gap-x-8 gap-y-8 p-0 md:grid-cols-3">
-            {moments.map((m, i) => (
-              <Reveal as="li" key={m.name} index={i} className="border-t-2 border-foreground pt-5">
-                <h3 className="m-0 text-title font-bold">{m.name}</h3>
-                <dl className="m-0 mt-4 grid grid-cols-[4.5rem_1fr] gap-y-2 text-[0.9375rem]">
+          {/* 구역이 화면에 들어오면 출고 → 수령 → 반납 카드가 차례로 이어지고 봉인 표시가 붙는다(한 번). 끝난 뒤에는 모든 내용이 그대로 보인다 */}
+          <RecordChain
+            className="mt-10"
+            records={moments.map((m) => ({
+              name: m.name,
+              icon: m.icon,
+              tag: m.tag,
+              body: (
+                <dl className="m-0 grid grid-cols-[4.5rem_1fr] gap-y-2 border-t pt-4 text-[0.9375rem]">
                   <dt className="text-muted-foreground">어디서</dt>
                   <dd className="m-0">{m.where}</dd>
                   <dt className="text-muted-foreground">어떻게</dt>
@@ -100,9 +106,9 @@ export function GuidePage() {
                   <dt className="text-muted-foreground">의미</dt>
                   <dd className="m-0">{m.what}</dd>
                 </dl>
-              </Reveal>
-            ))}
-          </ol>
+              ),
+            }))}
+          />
         </section>
 
         <section id="steps" aria-labelledby="steps-title" className={cn(ANCHOR, "mt-24 md:mt-32")}>
