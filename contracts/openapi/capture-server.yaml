@@ -652,6 +652,99 @@ paths:
           $ref: './components/common.yaml#/components/responses/Forbidden'
         '404':
           $ref: './components/common.yaml#/components/responses/NotFound'
+  /api/v1/captures/catalog:
+    get:
+      tags: [검사]
+      operationId: listCatalogInspections
+      summary: 공개 기기 목록의 흠집 요약
+      description: >-
+        로그인 없이 시점별 등급과 흠집 수를 본다(11/8 민서 요청, 공개 보유 기기 목록). checkpointId는 rental-server
+        `GET /api/v1/catalog/devices`의 `checkpoints`에서 온다. 부스(BOOTH)에서 찍고 등급이 난 세트만 답하고, 나머지 시점은 목록에서 빠진다.
+        흠집 수는 사람이 확정(CONFIRMED)한 흠집만, 조명·카메라만 다른 같은 흠집은 하나로 센다(등급 계산의 묶기와 같다).
+      security: []
+      x-trace-requirements: [FR-INS-04]
+      parameters:
+        - name: checkpointIds
+          in: query
+          required: true
+          description: 쉼표로 이은 시점 ID(최대 100개)
+          style: form
+          explode: false
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 100
+            items:
+              $ref: './components/common.yaml#/components/schemas/PublicId'
+      responses:
+        '200':
+          description: 요약 목록(요청 순서와 상관없음)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogInspectionList'
+              example:
+                items:
+                  - checkpointId: Q2xxYv8oP0aLkM3nB7cDe
+                    grade: B
+                    gradedAt: '2026-11-12T18:05:00+09:00'
+                    defectCount: 2
+                    defectsByClass:
+                      scratch: 1
+                      dent: 1
+                      crack: 0
+                      stain: 0
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '429':
+          $ref: './components/common.yaml#/components/responses/TooManyRequests'
+  /api/v1/captures/catalog/checkpoints/{checkpointId}:
+    parameters:
+      - $ref: '#/components/parameters/CheckpointId'
+    get:
+      tags: [검사]
+      operationId: getCatalogInspection
+      summary: 공개 기기 상세의 사진과 흠집
+      description: >-
+        로그인 없이 시점의 부스 사진(보기 URL)과 사람이 확정한 흠집(원본 사진 px)을 본다. 기기 상세의 3D 흠집 핀·사진 보기용(11/8 민서 요청).
+        부스에서 찍고 등급이 난 세트만 답하고, 그 밖(폰 촬영·검사 중·없는 시점)은 404다. 기각·검수 기록·신뢰도·대여자 정보는 싣지 않는다.
+      security: []
+      x-trace-requirements: [FR-INS-04, FR-RPT-01]
+      responses:
+        '200':
+          description: 사진과 흠집
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogInspection'
+              example:
+                checkpointId: Q2xxYv8oP0aLkM3nB7cDe
+                grade: B
+                gradedAt: '2026-11-12T18:05:00+09:00'
+                defectCount: 1
+                defectsByClass:
+                  scratch: 1
+                  dent: 0
+                  crack: 0
+                  stain: 0
+                expiresAt: '2026-11-12T18:15:00+09:00'
+                photos:
+                  - face: TOP
+                    light: L3
+                    camera: CAM1
+                    url: https://storage.example/trace-captures/a.jpg?X-Amz-Signature=abc
+                photoDefects:
+                  - defectId: Z1aB2cD3eF4gH5iJ6kL7m
+                    face: TOP
+                    light: L3
+                    camera: CAM1
+                    class: scratch
+                    polygon: [[812, 420], [860, 424], [858, 431], [810, 428]]
+                    groupId: Z1aB2cD3eF4gH5iJ6kL7m
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './components/common.yaml#/components/responses/TooManyRequests'
   /api/v1/captures/benchmarks:
     get:
       tags: [검사]
@@ -1320,6 +1413,97 @@ components:
           oneOf:
             - $ref: './components/common.yaml#/components/schemas/DateTime'
             - type: 'null'
+    CatalogInspectionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CatalogInspectionSummary'
+    CatalogInspectionSummary:
+      type: object
+      required: [checkpointId, grade, gradedAt, defectCount, defectsByClass]
+      description: 공개 흠집 요약. 사람이 확정한 흠집만 센다
+      properties:
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        grade:
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionGrade'
+        gradedAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+        defectCount:
+          type: integer
+          minimum: 0
+          description: 확정 흠집 수(같은 면·카메라에서 겹치는 흠집은 하나)
+        defectsByClass:
+          type: object
+          additionalProperties: false
+          required: [scratch, dent, crack, stain]
+          description: 종류별 확정 흠집 수(묶음의 가장 심한 종류로 센다)
+          properties:
+            scratch:
+              type: integer
+              minimum: 0
+            dent:
+              type: integer
+              minimum: 0
+            crack:
+              type: integer
+              minimum: 0
+            stain:
+              type: integer
+              minimum: 0
+    CatalogInspection:
+      description: 공개 기기 상세의 사진과 확정 흠집
+      allOf:
+        - $ref: '#/components/schemas/CatalogInspectionSummary'
+        - type: object
+          required: [expiresAt, photos, photoDefects]
+          properties:
+            expiresAt:
+              $ref: './components/common.yaml#/components/schemas/DateTime'
+            photos:
+              type: array
+              description: 완료 때 올라간 부스 사진 보기 URL(건너뛴 면 제외). 만료는 expiresAt
+              items:
+                type: object
+                required: [face, light, camera, url]
+                properties:
+                  face:
+                    $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+                  light:
+                    $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+                  camera:
+                    $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
+                  url:
+                    type: string
+                    format: uri
+            photoDefects:
+              type: array
+              description: 사람이 확정한 흠집(원본 사진 px). 모든 항목의 face·light·camera와 같은 사진이 photos에 있다
+              items:
+                $ref: '#/components/schemas/CatalogPhotoDefect'
+    CatalogPhotoDefect:
+      type: object
+      required: [defectId, face, light, camera, class, polygon, groupId]
+      properties:
+        defectId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        face:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+        light:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+        camera:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
+        class:
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionDefectClass'
+        polygon:
+          $ref: '#/components/schemas/PhotoPolygon'
+        groupId:
+          description: 같은 흠집 묶음의 대표 defectId. 3D 핀은 묶음마다 하나를 찍는다
+          $ref: './components/common.yaml#/components/schemas/PublicId'
     CheckpointMedia:
       type: object
       required: [checkpointId, expiresAt, textures, crops]

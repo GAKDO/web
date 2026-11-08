@@ -1,4 +1,5 @@
 import { authHandlers } from "./auth";
+import { catalogHandlers } from "./catalog";
 import { captureHandlers } from "./capture";
 import { captureReportHandlers } from "./capture-report";
 import { deviceHandlers } from "./device";
@@ -9,6 +10,7 @@ import { verifyHandlers } from "./verify";
 
 export const handlers = [
   ...authHandlers,
+  ...catalogHandlers,
   ...deviceHandlers,
   ...rentalHandlers,
   ...verifyHandlers,

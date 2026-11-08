@@ -189,6 +189,58 @@ paths:
                     title: 렌탈 기기와 시리얼이 다릅니다
                     status: 422
                     code: DEVICE_SERIAL_MISMATCH
+  /api/v1/diagnostics/catalog:
+    get:
+      tags: [진단]
+      operationId: listCatalogDiagnostics
+      summary: 공개 기기 목록의 진단 요약
+      description: >-
+        로그인 없이 시점별 배터리·SSD·벤치마크를 본다(11/8 민서 요청, 공개 보유 기기 목록에서 비교). checkpointId는 rental-server
+        `GET /api/v1/catalog/devices`의 `checkpoints`에서 온다. 진단이 없는 시점은 목록에서 빠진다.
+        부품 식별자·점검 플래그·잠금 상태는 싣지 않는다.
+      security: []
+      x-trace-requirements: [FR-DIA-06]
+      parameters:
+        - name: checkpointIds
+          in: query
+          required: true
+          description: 쉼표로 이은 시점 ID(최대 100개)
+          style: form
+          explode: false
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 100
+            items:
+              $ref: './components/common.yaml#/components/schemas/PublicId'
+      responses:
+        '200':
+          description: 요약 목록(요청 순서와 상관없음)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogDiagnosticsList'
+              example:
+                items:
+                  - checkpointId: h40b9AN9xMQhXRHrOyJWB
+                    collectedAt: '2026-11-12T13:20:00+09:00'
+                    os: MACOS
+                    battery:
+                      cycleCount: 112
+                      designCapacity: 4382
+                      fullChargeCapacity: 3681
+                      capacityUnit: mAh
+                      maxCapacityPct: 84.0
+                      condition: NORMAL
+                      skippedReason: null
+                    ssd: null
+                    benchmarks:
+                      - metric: CPU_SINGLE
+                        median: 2580.0
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '429':
+          $ref: './components/common.yaml#/components/responses/TooManyRequests'
   /api/v1/diagnostics/checkpoints/{checkpointId}:
     parameters:
       - name: checkpointId
@@ -414,6 +466,44 @@ components:
           oneOf:
             - $ref: '#/components/schemas/RunChecks'
             - type: 'null'
+    CatalogDiagnosticsList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CatalogDiagnostics'
+    CatalogDiagnostics:
+      type: object
+      required: [checkpointId, collectedAt, os, battery, ssd, benchmarks]
+      description: 공개 진단 요약. RunSummary에서 runId·부품·잠금 상태를 뺀 것
+      properties:
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        collectedAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+        os:
+          $ref: './components/codes.gen.yaml#/components/schemas/DeviceOs'
+        battery:
+          oneOf:
+            - $ref: '#/components/schemas/BatterySummary'
+            - type: 'null'
+        ssd:
+          oneOf:
+            - $ref: '#/components/schemas/SsdSummary'
+            - type: 'null'
+        benchmarks:
+          type: array
+          items:
+            type: object
+            required: [metric, median]
+            properties:
+              metric:
+                $ref: './components/codes.gen.yaml#/components/schemas/DiagnosticsBenchmarkMetric'
+              median:
+                type: number
     CheckpointDiagnostics:
       type: object
       required: [checkpointId, current, previous, flags]

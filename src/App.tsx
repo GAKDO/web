@@ -25,6 +25,9 @@ import { MyRentalsPage } from "./features/report/components/MyRentalsPage";
 import { ReportPage } from "./features/report/components/ReportPage";
 import { ClaimRentalPage } from "./features/report/components/ClaimRentalPage";
 import { VerifyPage } from "./features/verify/components/VerifyPage";
+import { CatalogPage } from "./features/catalog/components/CatalogPage";
+import { CatalogDetailPage } from "./features/catalog/components/CatalogDetailPage";
+import { SiteHeader } from "./shared/ui/SiteHeader";
 import { RequireAdmin } from "./shared/auth/RequireAdmin";
 import { RequireCustomer } from "./shared/auth/RequireCustomer";
 import { DeviceDiagnosticsPage } from "./features/benchmark/components/DeviceDiagnosticsPage";
@@ -51,8 +54,26 @@ function RootLayout() {
   );
 }
 
+/** 로그인 없이 여는 공개 화면의 틀(위 고정 헤더 + 화면) */
+function PublicLayout() {
+  return (
+    <div className="min-h-svh bg-background">
+      <SiteHeader />
+      <Outlet />
+    </div>
+  );
+}
+
 export const routes: RouteObject[] = [
   { path: "/", element: <HomePage /> },
+  {
+    // 공개 보유 노트북 목록·상세(11/8 민서 요청): 로그인 없이 흠집·진단·벤치마크를 비교하고 3D로 흠집 위치를 본다
+    element: <PublicLayout />,
+    children: [
+      { path: "/devices", element: <CatalogPage /> },
+      { path: "/devices/:deviceId", element: <CatalogDetailPage /> },
+    ],
+  },
   // 고객 이용 안내(11/6): 대여는 창구, 고객은 QR로 렌탈을 계정에 연결. 로그인 없이 연다.
   // 안내하는 QR 연결·검증·내 렌탈이 모두 report가 보일 때만 열리므로 report를 보관하면 안내도 숨긴다
   { path: "/guide", element: <ArchivedRoute features={["report"]}><GuidePage /></ArchivedRoute> },

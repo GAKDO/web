@@ -102,3 +102,13 @@ export type RunSummary = DiagnosticsSchemas["RunSummary"];
 export type DiagnosticsFlag = DiagnosticsSchemas["InspectionFlag"];
 export type DiagnosticsFlagKind = DiagnosticsSchemas["DiagnosticsFlagKind"];
 export type DiagnosticsSkippedReason = DiagnosticsSchemas["DiagnosticsSkippedReason"];
+
+// 공개 보유 기기 목록·상세(11/8 민서 요청, contracts #33): 로그인 없이 흠집·진단·벤치마크를 비교한다
+export type CatalogDevice = RentalSchemas["CatalogDevice"];
+export type CatalogCheckpoint = RentalSchemas["CatalogCheckpoint"];
+export type ModelDimensions = RentalSchemas["ModelDimensions"];
+export type CatalogInspectionSummary = CaptureSchemas["CatalogInspectionSummary"];
+export type CatalogInspection = CaptureSchemas["CatalogInspection"];
+export type CatalogPhotoDefect = CaptureSchemas["CatalogPhotoDefect"];
+export type CatalogDiagnostics = DiagnosticsSchemas["CatalogDiagnostics"];
+export type BenchmarkMetric = DiagnosticsSchemas["DiagnosticsBenchmarkMetric"];

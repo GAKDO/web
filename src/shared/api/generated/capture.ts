@@ -283,6 +283,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/captures/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 공개 기기 목록의 흠집 요약
+         * @description 로그인 없이 시점별 등급과 흠집 수를 본다(11/8 민서 요청, 공개 보유 기기 목록). checkpointId는 rental-server `GET /api/v1/catalog/devices`의 `checkpoints`에서 온다. 부스(BOOTH)에서 찍고 등급이 난 세트만 답하고, 나머지 시점은 목록에서 빠진다. 흠집 수는 사람이 확정(CONFIRMED)한 흠집만, 조명·카메라만 다른 같은 흠집은 하나로 센다(등급 계산의 묶기와 같다).
+         */
+        get: operations["listCatalogInspections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captures/catalog/checkpoints/{checkpointId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                checkpointId: components["parameters"]["CheckpointId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 공개 기기 상세의 사진과 흠집
+         * @description 로그인 없이 시점의 부스 사진(보기 URL)과 사람이 확정한 흠집(원본 사진 px)을 본다. 기기 상세의 3D 흠집 핀·사진 보기용(11/8 민서 요청). 부스에서 찍고 등급이 난 세트만 답하고, 그 밖(폰 촬영·검사 중·없는 시점)은 404다. 기각·검수 기록·신뢰도·대여자 정보는 싣지 않는다.
+         */
+        get: operations["getCatalogInspection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/captures/benchmarks": {
         parameters: {
             query?: never;
@@ -560,6 +602,48 @@ export interface components {
             completedAt: components["schemas"]["DateTime"] | null;
             reviewCompletedAt: components["schemas"]["DateTime"] | null;
         };
+        CatalogInspectionList: {
+            items: components["schemas"]["CatalogInspectionSummary"][];
+        };
+        /** @description 공개 흠집 요약. 사람이 확정한 흠집만 센다 */
+        CatalogInspectionSummary: {
+            checkpointId: components["schemas"]["PublicId"];
+            grade: components["schemas"]["InspectionGrade"];
+            gradedAt: components["schemas"]["DateTime"];
+            /** @description 확정 흠집 수(같은 면·카메라에서 겹치는 흠집은 하나) */
+            defectCount: number;
+            /** @description 종류별 확정 흠집 수(묶음의 가장 심한 종류로 센다) */
+            defectsByClass: {
+                scratch: number;
+                dent: number;
+                crack: number;
+                stain: number;
+            };
+        };
+        /** @description 공개 기기 상세의 사진과 확정 흠집 */
+        CatalogInspection: components["schemas"]["CatalogInspectionSummary"] & {
+            expiresAt: components["schemas"]["DateTime"];
+            /** @description 완료 때 올라간 부스 사진 보기 URL(건너뛴 면 제외). 만료는 expiresAt */
+            photos: {
+                face: components["schemas"]["CaptureFace"];
+                light: components["schemas"]["CaptureLight"];
+                camera: components["schemas"]["CaptureCamera"];
+                /** Format: uri */
+                url: string;
+            }[];
+            /** @description 사람이 확정한 흠집(원본 사진 px). 모든 항목의 face·light·camera와 같은 사진이 photos에 있다 */
+            photoDefects: components["schemas"]["CatalogPhotoDefect"][];
+        };
+        CatalogPhotoDefect: {
+            defectId: components["schemas"]["PublicId"];
+            face: components["schemas"]["CaptureFace"];
+            light: components["schemas"]["CaptureLight"];
+            camera: components["schemas"]["CaptureCamera"];
+            class: components["schemas"]["InspectionDefectClass"];
+            polygon: components["schemas"]["PhotoPolygon"];
+            /** @description 같은 흠집 묶음의 대표 defectId. 3D 핀은 묶음마다 하나를 찍는다 */
+            groupId: components["schemas"]["PublicId"];
+        };
         CheckpointMedia: {
             checkpointId: components["schemas"]["PublicId"];
             expiresAt: components["schemas"]["DateTime"];
@@ -771,6 +855,24 @@ export interface components {
                  *       "title": "찾을 수 없습니다",
                  *       "status": 404,
                  *       "code": "NOT_FOUND"
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description 요청 제한 초과 (IP당 분당 10회, RATE_LIMITED) */
+        TooManyRequests: {
+            headers: {
+                /** @description 다시 시도할 수 있을 때까지 초 */
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "title": "요청이 너무 많습니다",
+                 *       "status": 429,
+                 *       "code": "RATE_LIMITED"
                  *     }
                  */
                 "application/problem+json": components["schemas"]["Problem"];
@@ -1480,6 +1582,124 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listCatalogInspections: {
+        parameters: {
+            query: {
+                /** @description 쉼표로 이은 시점 ID(최대 100개) */
+                checkpointIds: components["schemas"]["PublicId"][];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 요약 목록(요청 순서와 상관없음) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "checkpointId": "Q2xxYv8oP0aLkM3nB7cDe",
+                     *           "grade": "B",
+                     *           "gradedAt": "2026-11-12T18:05:00+09:00",
+                     *           "defectCount": 2,
+                     *           "defectsByClass": {
+                     *             "scratch": 1,
+                     *             "dent": 1,
+                     *             "crack": 0,
+                     *             "stain": 0
+                     *           }
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CatalogInspectionList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getCatalogInspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                checkpointId: components["parameters"]["CheckpointId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 사진과 흠집 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "checkpointId": "Q2xxYv8oP0aLkM3nB7cDe",
+                     *       "grade": "B",
+                     *       "gradedAt": "2026-11-12T18:05:00+09:00",
+                     *       "defectCount": 1,
+                     *       "defectsByClass": {
+                     *         "scratch": 1,
+                     *         "dent": 0,
+                     *         "crack": 0,
+                     *         "stain": 0
+                     *       },
+                     *       "expiresAt": "2026-11-12T18:15:00+09:00",
+                     *       "photos": [
+                     *         {
+                     *           "face": "TOP",
+                     *           "light": "L3",
+                     *           "camera": "CAM1",
+                     *           "url": "https://storage.example/trace-captures/a.jpg?X-Amz-Signature=abc"
+                     *         }
+                     *       ],
+                     *       "photoDefects": [
+                     *         {
+                     *           "defectId": "Z1aB2cD3eF4gH5iJ6kL7m",
+                     *           "face": "TOP",
+                     *           "light": "L3",
+                     *           "camera": "CAM1",
+                     *           "class": "scratch",
+                     *           "polygon": [
+                     *             [
+                     *               812,
+                     *               420
+                     *             ],
+                     *             [
+                     *               860,
+                     *               424
+                     *             ],
+                     *             [
+                     *               858,
+                     *               431
+                     *             ],
+                     *             [
+                     *               810,
+                     *               428
+                     *             ]
+                     *           ],
+                     *           "groupId": "Z1aB2cD3eF4gH5iJ6kL7m"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CatalogInspection"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     listCaptureBenchmarks: {

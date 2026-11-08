@@ -3,6 +3,13 @@ import type { CaptureCamera, CaptureFace, CaptureLight, CheckpointMedia, Checkpo
 // 검사 결과 화면(spec 006)의 사진·흠집 겹쳐 보기 모델. 빠른 검사(QUICK) 세트는 원본 사진(CheckpointMedia.photos) 위에
 // 원본 px 흠집(Inspection.photoDefects)을, 정합 세트는 면 사진(textures) 위에 표준 좌표 흠집(defects)을 겹친다(contracts 1.1.0).
 
+/**
+ * 사진 칸에 겹칠 흠집. 관리자·고객 리포트는 PhotoDefect 그대로, 공개 기기 상세(11/8)는 신뢰도·검수 기록이 없는
+ * CatalogPhotoDefect를 넣는다. 그래서 신뢰도·검수는 선택이다
+ */
+export type GridDefect = Pick<PhotoDefect, "defectId" | "face" | "light" | "camera" | "class" | "polygon"> &
+  Partial<Pick<PhotoDefect, "confidence" | "review">>;
+
 export interface PhotoCell {
   face: CaptureFace;
   camera: CaptureCamera;
@@ -10,7 +17,7 @@ export interface PhotoCell {
   /** 그 자리의 원본 사진. 없으면 null(아직 안 올라옴) */
   photo: CheckpointPhoto | null;
   /** 그 사진에서 찾은 흠집 */
-  defects: PhotoDefect[];
+  defects: GridDefect[];
 }
 
 export interface FaceGrid {
@@ -35,7 +42,7 @@ export function photoDefectsOf(inspection: Inspection | null | undefined): Photo
 }
 
 /** 원본 사진 격자: 면마다 카메라(행) × 조명(열). 사진이나 흠집이 있는 면·카메라·조명만 넣고 순서는 codes.yaml 순 */
-export function faceGrids(photos: CheckpointPhoto[], defects: PhotoDefect[]): FaceGrid[] {
+export function faceGrids(photos: CheckpointPhoto[], defects: GridDefect[]): FaceGrid[] {
   const refs: { face: CaptureFace; camera: CaptureCamera; light: CaptureLight }[] = [...photos, ...defects];
   const faces = FACE_ORDER.filter((face) => refs.some((r) => r.face === face));
   return faces.map((face) => {

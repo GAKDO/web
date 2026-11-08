@@ -613,6 +613,56 @@ paths:
           $ref: './components/common.yaml#/components/responses/Unauthorized'
         '403':
           $ref: './components/common.yaml#/components/responses/Forbidden'
+  /api/v1/catalog/devices:
+    get:
+      tags: [기기]
+      operationId: listCatalogDevices
+      summary: 공개 보유 기기 목록
+      description: >-
+        로그인 없이 회사가 가진 기기를 본다(11/8 민서 요청, 고객이 흠집·진단·벤치마크를 비교해 고르기 위해).
+        폐기(RETIRED)는 빼고 최근 등록 순으로 최대 200대. 시리얼·자산번호·대여자·렌탈 ID는 싣지 않는다.
+        흠집·등급은 capture-server `GET /api/v1/captures/catalog`, 진단은 diagnostics-server `GET /api/v1/diagnostics/catalog`에
+        `checkpoints`의 checkpointId를 넘겨 읽는다(서비스끼리 REST를 부르지 않으므로 화면이 모은다).
+      security: []
+      x-trace-requirements: [FR-RNT-05]
+      responses:
+        '200':
+          description: 목록
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogDeviceList'
+              example:
+                items:
+                  - deviceId: aAXQFO2Vz6ZTFbPctC2dq
+                    modelCode: MBA13-M2
+                    modelName: MacBook Air (M2, 2022)
+                    manufacturer: Apple
+                    os: MACOS
+                    color: 미드나이트
+                    status: ACTIVE
+                    available: true
+                    rentalCount: 3
+                    spec:
+                      cpu: Apple M2
+                      ramGb: 16
+                      ssdGb: 256
+                    dimensions:
+                      widthMm: 304.1
+                      depthMm: 215
+                      baseHMm: 6
+                      lidHMm: 5.3
+                    checkpoints:
+                      - checkpointId: Q2xxYv8oP0aLkM3nB7cDe
+                        type: RET
+                        status: SEALED
+                        occurredAt: '2026-11-12T18:00:00+09:00'
+                      - checkpointId: Kp9sT1uVw2Xy3Za4Bc5De
+                        type: OUT
+                        status: SEALED
+                        occurredAt: '2026-11-12T09:00:00+09:00'
+        '429':
+          $ref: './components/common.yaml#/components/responses/TooManyRequests'
   /api/v1/devices/{deviceId}:
     parameters:
       - name: deviceId
@@ -1179,6 +1229,72 @@ components:
             $ref: '#/components/schemas/Device'
         nextCursor:
           type: [string, 'null']
+    CatalogDeviceList:
+      type: object
+      required: [items]
+      description: 공개 보유 기기 목록(listCatalogDevices). 쪽 나눔 없이 최대 200대
+      properties:
+        items:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/CatalogDevice'
+    CatalogDevice:
+      type: object
+      additionalProperties: false
+      required: [deviceId, modelCode, modelName, manufacturer, os, color, status, available, rentalCount, spec, dimensions, checkpoints]
+      description: 공개 기기 한 대. 시리얼·자산번호·대여자는 없다
+      properties:
+        deviceId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        modelCode:
+          $ref: '#/components/schemas/ModelCode'
+        modelName:
+          type: string
+        manufacturer:
+          type: [string, 'null']
+        os:
+          $ref: './components/codes.gen.yaml#/components/schemas/DeviceOs'
+        color:
+          type: [string, 'null']
+        status:
+          $ref: './components/codes.gen.yaml#/components/schemas/DeviceStatus'
+        available:
+          type: boolean
+          description: 지금 빌릴 수 있는지. 상태가 ACTIVE이고 진행 중(OPEN) 렌탈이 없으면 true
+        rentalCount:
+          type: integer
+          minimum: 0
+          description: 이 기기의 렌탈 수(진행 중 포함)
+        spec:
+          description: 기종 기준 사양. 없으면 null
+          oneOf:
+            - $ref: '#/components/schemas/ModelSpec'
+            - type: 'null'
+        dimensions:
+          $ref: '#/components/schemas/ModelDimensions'
+        checkpoints:
+          type: array
+          maxItems: 12
+          description: >-
+            검사가 끝난 시점(GRADED·SEALED), 최근 것부터 최대 12개. 화면은 앞에서부터 흠집·진단이 있는 첫 시점을 그 기기의 최신 상태로 쓴다
+          items:
+            $ref: '#/components/schemas/CatalogCheckpoint'
+    CatalogCheckpoint:
+      type: object
+      additionalProperties: false
+      required: [checkpointId, type, status, occurredAt]
+      properties:
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        type:
+          $ref: './components/codes.gen.yaml#/components/schemas/RentalCheckpointType'
+        status:
+          $ref: './components/codes.gen.yaml#/components/schemas/RentalCheckpointStatus'
+        occurredAt:
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
     DeviceModelSummary:
       type: object
       required: [modelCode, name, manufacturer, formFactor]

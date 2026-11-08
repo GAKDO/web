@@ -55,7 +55,8 @@ function adminExtras(): NavItem[] {
 function siteLinks(signedIn: boolean, admin: boolean): NavItem[] {
   const report = !isArchived("report");
   const account = !isArchived("account");
-  const items: NavItem[] = [];
+  // 보유 노트북은 로그인과 상관없이 누구나 본다(11/8)
+  const items: NavItem[] = [{ to: "/devices", label: "보유 노트북" }];
   if (signedIn && report) items.push({ to: "/my/rentals", label: "마이페이지" });
   if (report && (signedIn || account)) items.push({ to: "/guide", label: "이용 안내" });
   if (signedIn && admin) items.push({ to: "/admin/devices", label: "관리자 화면" });
