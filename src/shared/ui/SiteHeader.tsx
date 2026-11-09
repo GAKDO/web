@@ -120,10 +120,12 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
   const adminLogout = admin || (signedIn && role === "ADMIN");
   // 11/9 민서: 로그아웃하면 관리자 로그인 화면이 아니라 첫 화면으로 간다.
   // 먼저 첫 화면으로 옮긴 뒤 세션을 끝내, 관리 화면 보호(RequireAdmin)가 로그인 화면으로 보내지 않게 한다
-  const onLogout = () => {
+  // 서버가 로그아웃(리프레시 폐기)을 확인하지 못했으면 내 정보 화면과 같이 로그인 화면에서 알린다(새로 고침 때 세션이 되살아날 수 있음)
+  const onLogout = async () => {
     setOpen(false);
     navigate("/", { replace: true });
-    void logout();
+    const confirmed = await logout();
+    if (!confirmed) navigate("/login?loggedOut=partial", { replace: true });
   };
   const showAccount = !isArchived("account");
 
@@ -184,7 +186,7 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
         <div className="ml-auto flex items-center gap-1">
           {guestActions}
           {adminLogout && !mobile && (
-            <button type="button" className={cn(LINK, "cursor-pointer border-0 bg-transparent")} onClick={onLogout}>
+            <button type="button" className={cn(LINK, "cursor-pointer border-0 bg-transparent")} onClick={() => void onLogout()}>
               <LogOut aria-hidden="true" className="size-4" />
               로그아웃
             </button>
@@ -231,7 +233,7 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
             <button
               type="button"
               className="mt-6 inline-flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-base font-medium text-zinc-400"
-              onClick={onLogout}
+              onClick={() => void onLogout()}
             >
               <LogOut aria-hidden="true" className="size-4" />
               로그아웃

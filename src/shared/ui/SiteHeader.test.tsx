@@ -1,7 +1,9 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
+import { http, HttpResponse } from "msw";
 import { renderApp, renderAsAdmin, renderAsCustomer } from "../../test/renderApp";
+import { server } from "../mocks/node";
 
 // 11/8: 모든 화면 맨 위 고정 헤더에서 내 정보·핵심 기능으로 바로 간다
 
@@ -84,4 +86,15 @@ test("고객 헤더에는 로그아웃 버튼을 두지 않는다(내 정보 화
   renderAsCustomer("/devices");
   await screen.findByRole("navigation", { name: "고객 메뉴" });
   expect(screen.queryByRole("button", { name: "로그아웃" })).not.toBeInTheDocument();
+});
+
+test("관리자 로그아웃을 서버가 확인하지 못하면 로그인 화면에서 서버에 알리지 못했다고 알린다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "");
+  server.use(http.post("*/api/v1/auth/logout", () => HttpResponse.error()));
+  const user = userEvent.setup();
+  const { router } = renderAsAdmin("/");
+  const header = (await screen.findByRole("link", { name: "TRACE 첫 화면" })).closest("header")!;
+  await user.click(await within(header).findByRole("button", { name: "로그아웃" }));
+  expect(await screen.findByText(/서버에 알리지 못했습니다/)).toBeInTheDocument();
+  expect(router.state.location.pathname).toBe("/login");
 });
