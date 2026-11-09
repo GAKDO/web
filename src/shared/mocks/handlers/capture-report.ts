@@ -1,5 +1,6 @@
 import { http, HttpResponse } from "msw";
-import type { DefectReview, DefectReviewQueueItem, DefectReviewRequest, Inspection, InspectionReview } from "../../api/types";
+import { nanoid } from "nanoid";
+import type { DefectReview, DefectReviewQueueItem, DefectReviewRequest, HumanDefectRequest, Inspection, InspectionReview, PhotoDefect } from "../../api/types";
 import { accountFromRequest, db } from "../db";
 import { problem } from "./problem";
 import { rentalDenied, rentalOfCheckpoint } from "./report";
@@ -33,7 +34,7 @@ export const captureReportHandlers = [
     const items: DefectReviewQueueItem[] = [];
     db.report.inspections.forEach((inspection) => {
       const review = summaryOf(inspection);
-      if (review.pending + review.confirmed + review.dismissed === 0) return;
+      if (review.pending + review.confirmed + review.dismissed === 0 && !review.open && !inspection.review?.completedAt) return;
       const open = review.completedAt === null;
       if ((status === "PENDING") !== open) return;
       items.push({
@@ -90,14 +91,57 @@ export const captureReportHandlers = [
       );
     }
     // 목은 등급 규칙을 흉내만 낸다: 남은 흠집(오염 제외) 중 찍힘·균열이 있으면 C, 긁힘만 있으면 B, 없으면 A
-    const kept = candidates(inspection).filter((d) => d.review?.status !== "DISMISSED" && d.class !== "stain");
+    const kept = [...candidates(inspection), ...humans(inspection)].filter((d) => d.review?.status !== "DISMISSED" && d.class !== "stain");
     inspection.grade = kept.some((d) => d.class === "dent" || d.class === "crack") ? "C" : kept.length > 0 ? "B" : "A";
     inspection.ruleVersion = "grade-rules-v1";
     inspection.reasons = [`사람 검수: 흠집 맞음 ${review.confirmed} · 흠집 아님 ${review.dismissed}`];
-    inspection.review = { ...review, completedAt: new Date().toISOString() };
+    inspection.review = { ...review, completedAt: new Date().toISOString(), open: false };
+    return HttpResponse.json(inspection);
+  }),
+
+  // 놓친 흠집 직접 추가·지우기(11/9)
+  http.post("*/api/v1/captures/checkpoints/:checkpointId/reviews/additions", async ({ request, params }) => {
+    const no = adminDenied(request);
+    if (no) return no;
+    const inspection = db.report.inspections.get(String(params.checkpointId));
+    if (!inspection) return problem(404, "NOT_FOUND", "검사 결과가 없습니다");
+    if (!summaryOf(inspection).open) return problem(409, "REVIEW_CLOSED", "검수가 이미 끝난 시점입니다");
+    const body = (await request.json()) as HumanDefectRequest;
+    if (body.polygon.length < 3) return problem(400, "VALIDATION_FAILED", "흠집 다각형이 올바르지 않습니다");
+    const added: PhotoDefect = {
+      defectId: nanoid(),
+      face: body.face,
+      light: body.light,
+      camera: body.camera,
+      class: body.class,
+      polygon: body.polygon,
+      confidence: 1,
+      modelVersion: "human",
+      source: "HUMAN",
+      review: { status: "CONFIRMED", reason: null, reviewedBy: "admin0000000000000001", reviewedAt: new Date().toISOString() },
+    };
+    inspection.photoDefects = [...(inspection.photoDefects ?? []), added];
+    inspection.review = summaryOf(inspection);
+    return HttpResponse.json(inspection, { status: 201 });
+  }),
+
+  http.delete("*/api/v1/captures/checkpoints/:checkpointId/reviews/additions/:defectId", ({ request, params }) => {
+    const no = adminDenied(request);
+    if (no) return no;
+    const inspection = db.report.inspections.get(String(params.checkpointId));
+    if (!inspection) return problem(404, "NOT_FOUND", "검사 결과가 없습니다");
+    if (!humans(inspection).some((d) => d.defectId === params.defectId)) return problem(404, "NOT_FOUND", "직접 추가한 흠집이 없습니다");
+    if (inspection.review?.completedAt) return problem(409, "REVIEW_CLOSED", "검수가 이미 끝난 시점입니다");
+    inspection.photoDefects = (inspection.photoDefects ?? []).filter((d) => d.defectId !== params.defectId);
+    inspection.review = summaryOf(inspection);
     return HttpResponse.json(inspection);
   }),
 ];
+
+/** 관리자가 직접 더한 흠집(11/9) */
+function humans(inspection: Inspection): PhotoDefect[] {
+  return (inspection.photoDefects ?? []).filter((d) => d.source === "HUMAN");
+}
 
 function adminDenied(request: Request) {
   const account = accountFromRequest(request);
@@ -110,12 +154,15 @@ type Candidate = { defectId: string; class: string; modelVersion: string; review
 
 /** 검수 후보: review가 있는 흠집(검수 이전 결과는 후보 없음) */
 function candidates(inspection: Inspection): Candidate[] {
-  const list: Candidate[] = [...(inspection.photoDefects ?? []), ...inspection.defects];
+  const list: Candidate[] = [...(inspection.photoDefects ?? []).filter((d) => d.source !== "HUMAN"), ...inspection.defects.filter((d) => d.source !== "HUMAN")];
   return list.filter((d) => d.review !== undefined);
 }
 
 function summaryOf(inspection: Inspection): InspectionReview {
   const list = candidates(inspection);
   const count = (s: DefectReview["status"]) => list.filter((d) => d.review?.status === s).length;
-  return { pending: count("PENDING"), confirmed: count("CONFIRMED"), dismissed: count("DISMISSED"), completedAt: inspection.review?.completedAt ?? null };
+  const completedAt = inspection.review?.completedAt ?? null;
+  // open(11/9): 목은 저장된 값이 있으면 따르고(후보 없이 검수를 기다리는 세트), 없으면 후보가 있고 완료 전일 때
+  const open = completedAt === null && (inspection.review?.open ?? list.length > 0);
+  return { pending: count("PENDING"), confirmed: count("CONFIRMED"), dismissed: count("DISMISSED"), completedAt, added: humans(inspection).length, open };
 }

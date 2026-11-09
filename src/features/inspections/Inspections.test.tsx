@@ -461,3 +461,63 @@ test("A 등급이어도 정합 실패 면이 있으면 '문제 없음' 대신 �
   expect(screen.getByRole("status", { name: "판정" })).toHaveTextContent("판정한 면은 문제 없음 · 일부 면 판정 불가");
   expect(screen.getByRole("listitem", { name: "흠집 1" })).toHaveTextContent("판정 불가 면 · 등급 미반영");
 });
+
+test("AI 후보가 없는 세트도 검수 칸이 열리고, 놓친 찍힘을 점으로 표시해 추가하면 파란 표시와 함께 등급(C)에 들어간다(11/9)", async () => {
+  const user = userEvent.setup();
+  const ids = addRental("C02AIR0002", "CAPTURED", {
+    grade: null,
+    ruleVersion: null,
+    reasons: [],
+    defects: [],
+    photoDefects: [],
+    profile: "QUICK",
+    review: { pending: 0, confirmed: 0, dismissed: 0, completedAt: null, added: 0, open: true },
+  });
+  db.report.media.set(ids.checkpointId, quickMedia(ids.checkpointId));
+  renderAsAdmin(`/admin/inspections/${ids.rentalId}/${ids.checkpointId}`);
+  const panel = await screen.findByRole("region", { name: "사람 검수 · 남은 후보 0곳" });
+  expect(within(panel).getByText(/AI가 잡은 후보가 없어요/)).toBeInTheDocument();
+  const editor = await within(panel).findByRole("region", { name: "AI가 놓친 흠집 직접 표시 · 0개" });
+
+  // jsdom은 사진 크기를 모르므로 로드된 사진 크기와 화면 위치를 정해 준다
+  const img = within(editor).getByRole("img", { name: /사진$/ }) as HTMLImageElement;
+  Object.defineProperty(img, "naturalWidth", { value: 1920 });
+  Object.defineProperty(img, "naturalHeight", { value: 1080 });
+  fireEvent.load(img);
+  const canvas = await within(editor).findByRole("application");
+  canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 960, height: 540, right: 960, bottom: 540, x: 0, y: 0, toJSON: () => ({}) });
+  expect(within(editor).getByRole("button", { name: "이 흠집 추가" })).toBeDisabled();
+  // jsdom에는 PointerEvent가 없어 좌표가 빠지므로 MouseEvent로 흉내 낸다
+  if (!("PointerEvent" in window)) Object.defineProperty(window, "PointerEvent", { value: class extends MouseEvent {}, configurable: true });
+  fireEvent.pointerDown(canvas, { clientX: 480, clientY: 270, pointerId: 1 });
+  expect(within(editor).getByTestId("draft")).toBeInTheDocument();
+  await user.click(within(editor).getByRole("button", { name: "찍힘" }));
+  await user.click(within(editor).getByRole("button", { name: "이 흠집 추가" }));
+
+  expect(await within(panel).findByRole("region", { name: "AI가 놓친 흠집 직접 표시 · 1개" })).toBeInTheDocument();
+  expect(within(panel).getByRole("list", { name: "직접 표시한 흠집" })).toHaveTextContent("찍힘");
+  const saved = db.report.inspections.get(ids.checkpointId)?.photoDefects?.[0];
+  expect(saved?.source).toBe("HUMAN");
+  // 화면 960px에서 가운데(480,270)를 누르면 원본 1920px 사진의 (960,540) 둘레
+  const xs = saved?.polygon.map(([x]) => x) ?? [];
+  expect((Math.min(...xs) + Math.max(...xs)) / 2).toBeCloseTo(960, 0);
+
+  await user.click(within(panel).getByRole("button", { name: "검수 완료하고 판정하기" }));
+  expect(await screen.findByText("✖ 문제 있음 · C등급")).toBeInTheDocument();
+  expect(screen.getByRole("listitem", { name: "흠집 1" })).toHaveTextContent("사람이 표시");
+  expect(screen.getByRole("listitem", { name: "흠집 1" })).not.toHaveTextContent("신뢰도");
+});
+
+test("직접 표시한 흠집은 검수 완료 전에 지울 수 있다(11/9)", async () => {
+  const user = userEvent.setup();
+  const { rentalId, checkpointId } = addReviewRental();
+  const human = { ...quickDefect("TOP", "L1", "CAM1", "scratch", 100, 100, 1), source: "HUMAN" as const, review: { status: "CONFIRMED" as const, reason: null, reviewedBy: "admin0000000000000001", reviewedAt: new Date().toISOString() } };
+  const inspection = db.report.inspections.get(checkpointId);
+  inspection?.photoDefects?.push(human);
+  renderAsAdmin(`/admin/inspections/${rentalId}/${checkpointId}`);
+  const editor = await screen.findByRole("region", { name: "AI가 놓친 흠집 직접 표시 · 1개" });
+  // AI 후보 목록에는 직접 표시한 흠집이 끼지 않는다
+  expect(screen.getByRole("region", { name: "사람 검수 · 남은 후보 2곳" })).toBeInTheDocument();
+  await user.click(within(editor).getByRole("button", { name: "지우기" }));
+  expect(await screen.findByRole("region", { name: "AI가 놓친 흠집 직접 표시 · 0개" })).toBeInTheDocument();
+});

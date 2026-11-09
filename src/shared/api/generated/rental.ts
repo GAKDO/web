@@ -655,8 +655,8 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description 요청 제한 초과 (IP당 분당 10회, RATE_LIMITED) */
-        TooManyRequests: {
+        /** @description 요청 제한 초과 (공개 보유 기기 목록 경로들을 합쳐 IP당 분당 300회, RATE_LIMITED) */
+        CatalogTooManyRequests: {
             headers: {
                 /** @description 다시 시도할 수 있을 때까지 초 */
                 "Retry-After"?: number;
@@ -1336,7 +1336,7 @@ export interface operations {
                     "application/json": components["schemas"]["CatalogDeviceList"];
                 };
             };
-            429: components["responses"]["TooManyRequests"];
+            429: components["responses"]["CatalogTooManyRequests"];
         };
     };
     getDevice: {

@@ -240,7 +240,7 @@ paths:
         '400':
           $ref: './components/common.yaml#/components/responses/BadRequest'
         '429':
-          $ref: './components/common.yaml#/components/responses/TooManyRequests'
+          $ref: './components/common.yaml#/components/responses/CatalogTooManyRequests'
   /api/v1/diagnostics/checkpoints/{checkpointId}:
     parameters:
       - name: checkpointId

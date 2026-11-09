@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, unwrap } from "../../../shared/api/client";
-import type { DefectReviewRequest, Inspection } from "../../../shared/api/types";
+import type { DefectReviewRequest, HumanDefectRequest, Inspection } from "../../../shared/api/types";
 import { INSPECTIONS } from "./inspections";
 
 // 사람 검수(11/8): AI가 넓게 잡은 흠집 후보를 관리자가 확정·기각하고, 검수를 완료하면 capture-server가 등급을 매긴다
@@ -51,6 +51,30 @@ export function useCompleteReview(checkpointId: string, idempotencyKey: string) 
           params: { path: { checkpointId }, header: { "Idempotency-Key": idempotencyKey } },
         }),
       ),
+    onSuccess: store,
+    onError: () => void client.invalidateQueries({ queryKey: [...INSPECTIONS, checkpointId] }),
+  });
+}
+
+/** AI가 놓친 흠집 직접 추가(11/9). 관리자가 원본 사진 한 장 위에 그린 다각형(원본 px) */
+export function useAddHumanDefect(checkpointId: string) {
+  const store = useStoreInspection(checkpointId);
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: HumanDefectRequest) =>
+      unwrap(api.POST("/api/v1/captures/checkpoints/{checkpointId}/reviews/additions", { params: { path: { checkpointId } }, body })),
+    onSuccess: store,
+    onError: () => void client.invalidateQueries({ queryKey: [...INSPECTIONS, checkpointId] }),
+  });
+}
+
+/** 직접 추가한 흠집 지우기(11/9). AI 후보는 지울 수 없고 흠집 아님으로 정한다 */
+export function useDeleteHumanDefect(checkpointId: string) {
+  const store = useStoreInspection(checkpointId);
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (defectId: string) =>
+      unwrap(api.DELETE("/api/v1/captures/checkpoints/{checkpointId}/reviews/additions/{defectId}", { params: { path: { checkpointId, defectId } } })),
     onSuccess: store,
     onError: () => void client.invalidateQueries({ queryKey: [...INSPECTIONS, checkpointId] }),
   });
