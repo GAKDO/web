@@ -74,6 +74,8 @@ interface DefectRow {
   areaMm2?: number | null;
   /** 출처(정합 세트만). 빠른 검사는 비운다 */
   note?: string;
+  /** 사람이 직접 표시(11/9): 신뢰도를 보이지 않는다 */
+  human?: boolean;
 }
 
 const fromPhotoDefect = (d: PhotoDefect): DefectRow => ({
@@ -81,7 +83,9 @@ const fromPhotoDefect = (d: PhotoDefect): DefectRow => ({
   classLabel: DEFECT_CLASS_LABEL[d.class],
   where: [CAPTURE_FACE_LABEL[d.face], `${CAPTURE_CAMERA_LABEL[d.camera]} · ${CAPTURE_LIGHT_LABEL[d.light]}`],
   confidence: d.confidence,
-  note: reviewNote(d.review),
+  // 사람이 직접 표시한 흠집(11/9)은 검수 상태 대신 출처를 적는다
+  note: d.source === "HUMAN" ? DEFECT_SOURCE_LABEL.HUMAN : reviewNote(d.review),
+  human: d.source === "HUMAN",
 });
 
 const fromDefect = (d: Defect): DefectRow => ({
@@ -92,6 +96,7 @@ const fromDefect = (d: Defect): DefectRow => ({
   lengthMm: d.lengthMm,
   areaMm2: d.areaMm2,
   note: [DEFECT_SOURCE_LABEL[d.source], reviewNote(d.review)].filter(Boolean).join(" · "),
+  human: d.source === "HUMAN",
 });
 
 function DefectCard({ row, index }: { row: DefectRow; index: number }) {
@@ -104,7 +109,7 @@ function DefectCard({ row, index }: { row: DefectRow; index: number }) {
         {row.where.map((w) => (
           <span key={w}>{w}</span>
         ))}
-        <span>신뢰도 {formatConfidence(row.confidence)}</span>
+        {!row.human && <span>신뢰도 {formatConfidence(row.confidence)}</span>}
         {row.lengthMm !== undefined && <span>길이 {formatMm(row.lengthMm)}</span>}
         {row.areaMm2 !== undefined && <span>면적 {formatMm(row.areaMm2, "mm²")}</span>}
         {row.note && <span className="text-muted-foreground">{row.note}</span>}

@@ -21,7 +21,8 @@ function QueueRow({ item, backTo }: { item: DefectReviewQueueItem; backTo: BackT
           {checkpoint && ` · ${CHECKPOINT_TYPE_LABEL[checkpoint.type]}`}
         </strong>
         <span className="text-muted-foreground">
-          AI 후보 사진 {item.pending + item.confirmed + item.dismissed}장 · 남은 {left}장{item.completedAt && ` · 촬영 ${formatDateTime(item.completedAt)}`}
+          {item.pending + item.confirmed + item.dismissed === 0 ? "AI 후보 없음 · 놓친 흠집 확인" : `AI 후보 사진 ${item.pending + item.confirmed + item.dismissed}장 · 남은 ${left}장`}
+          {item.completedAt && ` · 촬영 ${formatDateTime(item.completedAt)}`}
         </span>
       </div>
       <Link className={buttonVariants({ variant: "default", size: "sm" })} to={`/admin/inspections/${item.rentalId}/${item.checkpointId}`} state={{ serial, backTo }}>
@@ -39,7 +40,7 @@ export function ReviewQueue({ backTo }: { backTo: BackTo }) {
   return (
     <section aria-labelledby="review-queue-title" className="mb-6 rounded-xl border-2 border-warning/40 bg-warning-soft/40 p-4">
       <h2 id="review-queue-title" className="mt-0 mb-2 text-lg font-semibold tracking-tight">사람 검수 대기 · {items.length}건</h2>
-      <p className="mt-0 text-sm text-muted-foreground">AI가 흠집일 수 있는 곳을 잡았어요. 사람이 확인해야 판정과 기록 봉인이 끝납니다.</p>
+      <p className="mt-0 text-sm text-muted-foreground">AI가 흠집일 수 있는 곳을 잡았어요. 사람이 확인하고 AI가 놓친 흠집이 있으면 직접 표시해야 판정과 기록 봉인이 끝납니다.</p>
       <ul className="m-0 grid list-none gap-2 p-0" aria-label="검수 대기">
         {items.map((item) => (
           <QueueRow key={item.checkpointId} item={item} backTo={backTo} />

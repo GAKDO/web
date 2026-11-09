@@ -226,6 +226,7 @@ export interface paths {
          *     DISMISSED에는 `reason`(먼지·스티커·반사·부품·기타)을 주고, 다른 결정에는 주지 않는다. 결과로 갱신된 검사 결과를 돌려준다.
          *     - 검수 완료(`.../reviews/complete`) 뒤에는 409 REVIEW_CLOSED. 한 요청 안에서 모르는 `defectId`가 하나라도 있으면 아무것도 바꾸지 않고 404.
          *     - 저장만 하고 등급은 아직 매기지 않는다. 등급은 검수 완료 때 기각을 뺀 흠집으로 매긴다.
+         *     - 사람이 직접 더한 흠집(`source=HUMAN`, 11/9)은 결정 대상이 아니다(모르는 defectId로 404). 지우려면 `.../reviews/additions/{defectId}` DELETE.
          */
         post: operations["saveDefectReviews"];
         delete?: never;
@@ -249,13 +250,67 @@ export interface paths {
          * 검수 완료(등급 매기기)
          * @description 후보를 모두 확정·기각한 뒤 부른다(11/8 추가, 사람 검수). 기각(DISMISSED)을 뺀 흠집으로 등급을 매기고
          *     trace.checkpoint.graded를 발행한다(이벤트 `review`에 검수자·시각·건수). 그 뒤로 결정은 바꿀 수 없다.
-         *     - AI 후보가 하나도 없던 세트는 검수 없이 탐지 직후 바로 등급을 매기므로 이 경로를 부를 일이 없다(부르면 409 REVIEW_CLOSED).
+         *     - AI 후보가 하나도 없던 세트도 기본(서버 설정 `REVIEW_HOLD_EMPTY=true`, 11/9)으로는 검수를 기다린다. 관리자가 사진을 보고 놓친 흠집을
+         *       더하거나(`.../reviews/additions`) 그대로 완료하면 등급을 매긴다(`review.open`이 true). 이 설정을 끄면 예전처럼 탐지 직후 바로 등급을 매기고,
+         *       이 경로를 부르면 409 REVIEW_CLOSED.
          *     - PENDING이 남아 있으면 409 REVIEW_PENDING_REMAINS(Problem `pending`에 남은 후보 수, 1 이상).
          *     - 촬영 완료·부스 탐지·정합 결과가 아직 다 오지 않았으면 409 REVIEW_NOT_READY(후보가 더 생기거나 바뀔 수 있으니 조금 뒤 다시).
          *     `Idempotency-Key`로 한 번만 처리한다.
          */
         post: operations["completeDefectReview"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captures/checkpoints/{checkpointId}/reviews/additions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                checkpointId: components["parameters"]["CheckpointId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * AI가 놓친 흠집 직접 추가
+         * @description 관리자가 원본 사진 한 장 위에 AI가 놓친 흠집을 직접 그려 더한다(11/9 민서 요청, 사람 검수). 점으로 찍었으면 화면이 작은 다각형으로 바꿔 보낸다.
+         *     더한 흠집은 `source=HUMAN`, `confidence=1`, `modelVersion=human`, 검수 상태 CONFIRMED(검수자=요청한 관리자)로 저장되고,
+         *     AI 후보와 똑같이 등급·비교·핀·고객 리포트에 쓰인다. 검수 후보 수(`pending`·`confirmed`·`dismissed`)에는 세지 않고 `review.added`로 센다.
+         *     - 빠른 검사(QUICK)는 원본 px 그대로 센다. 전체 검사(FULL)는 그 사진의 정합 결과로 표준 좌표·길이를 구하므로 정합 결과가 와 있어야 하고
+         *       (아니면 409 REVIEW_NOT_READY), 정합하지 못한 사진·판정 불가 면이면 400이다(등급에 쓸 수 없는 위치).
+         *     - 세트에 없는 사진, 올라가지 않았거나 건너뛴 면의 사진이면 400. 검수 완료·등급 뒤에는 409 REVIEW_CLOSED.
+         *     - 부스가 탐지를 다시 보내도(통째로 바꾸기) 사람이 더한 흠집은 남는다.
+         */
+        post: operations["addHumanDefect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captures/checkpoints/{checkpointId}/reviews/additions/{defectId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                checkpointId: components["parameters"]["CheckpointId"];
+                defectId: components["schemas"]["PublicId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 직접 추가한 흠집 지우기
+         * @description 잘못 그린 흠집을 지운다(11/9 추가). 사람이 더한(`source=HUMAN`) 흠집만 지울 수 있고, AI 후보는 404(기각으로 정한다).
+         *     검수 완료·등급 뒤에는 409 REVIEW_CLOSED.
+         */
+        delete: operations["deleteHumanDefect"];
         options?: never;
         head?: never;
         patch?: never;
@@ -561,6 +616,8 @@ export interface components {
             polygon: components["schemas"]["PhotoPolygon"];
             confidence: number;
             modelVersion: string;
+            /** @description 흠집을 낸 쪽(선택 필드, 11/9 추가. 서버는 항상 보낸다). AUTO는 모델, HUMAN은 관리자가 검수 화면에서 직접 더한 흠집 */
+            source?: components["schemas"]["InspectionDefectSource"];
             /** @description 같은 면·카메라에서 겹치는 흠집(조명만 다른 사진의 같은 흠집) 묶음의 대표 defectId(선택 필드, 11/8 추가). 검수 화면이 묶음 하나를 한 번에 정할 때 쓴다 */
             groupId?: components["schemas"]["PublicId"];
             /** @description 사람 검수 상태(선택 필드, 11/8 추가. 서버는 항상 보낸다) */
@@ -577,6 +634,10 @@ export interface components {
         };
         /** @description 시점의 검수 요약(11/8 추가). 후보가 없던 세트는 모두 0이고 completedAt은 등급 시각 */
         InspectionReview: {
+            /** @description 관리자가 직접 더한 흠집 수(선택 필드, 11/9 추가. 서버는 항상 보낸다). pending·confirmed·dismissed(AI 후보)와 따로 센다 */
+            added?: number;
+            /** @description 지금 검수할 수 있음(선택 필드, 11/9 추가. 서버는 항상 보낸다). true면 화면이 검수 칸(후보 결정·놓친 흠집 추가·완료)을 연다. AI 후보가 없어도 검수를 기다리는 세트(서버 REVIEW_HOLD_EMPTY)면 true다. 검수 완료·등급 뒤, 다시 찍어야 하는 세트, 전체 검사의 정합 결과가 아직 없을 때는 false */
+            open?: boolean;
             pending: number;
             confirmed: number;
             dismissed: number;
@@ -590,6 +651,15 @@ export interface components {
                 /** @description decision=DISMISSED일 때만(필수). 다른 결정에 주면 400 */
                 reason?: components["schemas"]["InspectionDismissReason"];
             }[];
+        };
+        /** @description 관리자가 원본 사진 한 장 위에 그린 흠집(11/9 추가). 어느 사진인지는 face·light·camera로 정한다(`CheckpointMedia.photos`와 같다) */
+        HumanDefectRequest: {
+            face: components["schemas"]["CaptureFace"];
+            light: components["schemas"]["CaptureLight"];
+            camera: components["schemas"]["CaptureCamera"];
+            class: components["schemas"]["InspectionDefectClass"];
+            /** @description 그 사진의 원본 px 꼭짓점(3~200개). 점 표시는 화면이 작은 다각형으로 바꿔 보낸다 */
+            polygon: number[][];
         };
         DefectReviewQueue: {
             items: components["schemas"]["DefectReviewQueueItem"][];
@@ -1541,6 +1611,120 @@ export interface operations {
                      *       "status": 409,
                      *       "code": "REVIEW_PENDING_REMAINS",
                      *       "pending": 2
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    addHumanDefect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                checkpointId: components["parameters"]["CheckpointId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "face": "TOP",
+                 *       "light": "L1",
+                 *       "camera": "CAM1",
+                 *       "class": "scratch",
+                 *       "polygon": [
+                 *         [
+                 *           812,
+                 *           604
+                 *         ],
+                 *         [
+                 *           868,
+                 *           611
+                 *         ],
+                 *         [
+                 *           866,
+                 *           622
+                 *         ],
+                 *         [
+                 *           810,
+                 *           615
+                 *         ]
+                 *       ]
+                 *     }
+                 */
+                "application/json": components["schemas"]["HumanDefectRequest"];
+            };
+        };
+        responses: {
+            /** @description 갱신된 검사 결과(더한 흠집은 `photoDefects`, FULL이면 `defects`에도) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inspection"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description 이미 검수 완료·등급, 또는 전체 검사의 정합 결과가 아직 오지 않음 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "검수가 이미 끝난 시점입니다",
+                     *       "status": 409,
+                     *       "code": "REVIEW_CLOSED"
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deleteHumanDefect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                checkpointId: components["parameters"]["CheckpointId"];
+                defectId: components["schemas"]["PublicId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 갱신된 검사 결과 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inspection"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description 이미 검수 완료한 시점 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "검수가 이미 끝난 시점입니다",
+                     *       "status": 409,
+                     *       "code": "REVIEW_CLOSED"
                      *     }
                      */
                     "application/problem+json": components["schemas"]["Problem"];

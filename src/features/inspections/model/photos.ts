@@ -8,7 +8,7 @@ import type { CaptureCamera, CaptureFace, CaptureLight, CheckpointMedia, Checkpo
  * CatalogPhotoDefect를 넣는다. 그래서 신뢰도·검수는 선택이다
  */
 export type GridDefect = Pick<PhotoDefect, "defectId" | "face" | "light" | "camera" | "class" | "polygon"> &
-  Partial<Pick<PhotoDefect, "confidence" | "review">>;
+  Partial<Pick<PhotoDefect, "confidence" | "review" | "source">>;
 
 export interface PhotoCell {
   face: CaptureFace;

@@ -662,7 +662,7 @@ paths:
                         status: SEALED
                         occurredAt: '2026-11-12T09:00:00+09:00'
         '429':
-          $ref: './components/common.yaml#/components/responses/TooManyRequests'
+          $ref: './components/common.yaml#/components/responses/CatalogTooManyRequests'
   /api/v1/devices/{deviceId}:
     parameters:
       - name: deviceId

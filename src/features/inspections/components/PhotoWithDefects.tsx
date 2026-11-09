@@ -14,6 +14,8 @@ export interface OverlayDefect {
   polygon: number[][];
   /** 흠집 아님으로 정한 후보: 흐린 점선(11/8 검수) */
   muted?: boolean;
+  /** 사람이 직접 표시한 흠집(11/9): 파란 선으로 AI 표시와 구분 */
+  human?: boolean;
 }
 
 /**
@@ -86,7 +88,8 @@ export function PhotoWithDefects({
               points={polygonPoints(d.polygon)}
               vectorEffect="non-scaling-stroke"
               data-muted={d.muted || undefined}
-              className={d.muted ? "fill-transparent! stroke-muted-foreground! [stroke-dasharray:6_4]" : undefined}
+              data-human={d.human || undefined}
+              className={d.muted ? "fill-transparent! stroke-muted-foreground! [stroke-dasharray:6_4]" : d.human ? "fill-sky-500/25! stroke-sky-500!" : undefined}
             >
               <title>{d.title}</title>
             </polygon>

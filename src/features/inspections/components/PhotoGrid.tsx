@@ -12,13 +12,16 @@ import type { Defect } from "../../../shared/api/types";
 const overlayOf = (defects: (GridDefect | Defect)[]) =>
   defects.map((d) => {
     const dismissed = d.review?.status === "DISMISSED";
+    // 사람이 직접 표시한 흠집(11/9)은 신뢰도 대신 "사람이 표시"
+    const human = "source" in d && d.source === "HUMAN";
     // 공개 기기 상세는 신뢰도를 받지 않으므로 종류만 적는다
-    const confidence = d.confidence === undefined ? "" : ` ${formatConfidence(d.confidence)}`;
+    const confidence = human ? " · 사람이 표시" : d.confidence === undefined ? "" : ` ${formatConfidence(d.confidence)}`;
     return {
       id: d.defectId,
       title: `${DEFECT_CLASS_LABEL[d.class]}${confidence}${dismissed ? " · 흠집 아님" : ""}`,
       polygon: d.polygon,
       muted: dismissed,
+      human,
     };
   });
 

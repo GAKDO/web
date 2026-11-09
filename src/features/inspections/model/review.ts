@@ -38,7 +38,8 @@ const statusOf = (d: Candidate): ReviewStatus => d.review?.status ?? "PENDING";
 export function reviewGroups(inspection: Inspection | null | undefined): ReviewGroup[] {
   if (!inspection) return [];
   // 전체 검사(11/9)도 photoDefects를 싣지만 검수 후보는 표준 좌표가 있는 defects다(서버 reviewCandidates와 같다)
-  const list: Candidate[] = isQuickInspection(inspection) ? (inspection.photoDefects ?? []) : inspection.defects.filter((d) => d.source === "AUTO");
+  // 사람이 직접 더한 흠집(source=HUMAN, 11/9)은 결정 대상이 아니다
+  const list: Candidate[] = isQuickInspection(inspection) ? (inspection.photoDefects ?? []).filter((d) => d.source !== "HUMAN") : inspection.defects.filter((d) => d.source === "AUTO");
   const byGroup = new Map<string, Candidate[]>();
   for (const d of list) {
     const key = ("groupId" in d && d.groupId) || d.defectId;
@@ -69,7 +70,14 @@ export function reviewGroups(inspection: Inspection | null | undefined): ReviewG
 export function isReviewOpen(inspection: Inspection | null | undefined): boolean {
   const review = inspection?.review;
   if (!review || review.completedAt !== null) return false;
+  // 11/9 서버는 open을 보낸다: AI 후보가 없어도 놓친 흠집을 더할 수 있게 검수를 기다리는 세트가 있다
+  if (review.open !== undefined) return review.open;
   return review.pending + review.confirmed + review.dismissed > 0;
+}
+
+/** 관리자가 직접 더한 흠집(원본 사진 px). 빠른 검사·전체 검사 모두 photoDefects에 있다 */
+export function humanDefects(inspection: Inspection | null | undefined): PhotoDefect[] {
+  return (inspection?.photoDefects ?? []).filter((d) => d.source === "HUMAN");
 }
 
 /** 묶음에 내릴 결정을 그 묶음 후보 전부에 보내는 요청 항목 */

@@ -97,6 +97,8 @@ export type DefectReview = CaptureSchemas["DefectReview"];
 export type InspectionReview = CaptureSchemas["InspectionReview"];
 export type DefectReviewRequest = CaptureSchemas["DefectReviewRequest"];
 export type DefectReviewQueueItem = CaptureSchemas["DefectReviewQueueItem"];
+/** 관리자가 원본 사진 위에 직접 그린 흠집(11/9, AI가 놓친 것) */
+export type HumanDefectRequest = CaptureSchemas["HumanDefectRequest"];
 export type CheckpointDiagnostics = DiagnosticsSchemas["CheckpointDiagnostics"];
 export type RunSummary = DiagnosticsSchemas["RunSummary"];
 export type DiagnosticsFlag = DiagnosticsSchemas["InspectionFlag"];

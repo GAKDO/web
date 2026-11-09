@@ -10,6 +10,7 @@ import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { useCompleteReview, useSaveReviews } from "../api/reviews";
 import { decisionItems, REVIEW_LEVEL_LABEL, reviewGroups, type ReviewGroup } from "../model/review";
 import { formatConfidence } from "../model/verdict";
+import { MissedDefectEditor } from "./MissedDefectEditor";
 
 const REASONS = Object.keys(DISMISS_REASON_LABEL) as DismissReason[];
 
@@ -100,13 +101,17 @@ export function ReviewPanel({ checkpointId, inspection }: { checkpointId: string
   return (
     <section aria-labelledby="review-title" className="mb-6 rounded-xl border-2 border-warning/40 bg-warning-soft/40 p-4">
       <h2 id="review-title" className="mt-0 mb-2 text-lg font-semibold tracking-tight">사람 검수 · 남은 후보 {left}곳</h2>
-      <p className="mt-0 text-sm text-muted-foreground">
+      {groups.length === 0 && (
+        <p className="mt-0 text-sm font-medium">AI가 잡은 후보가 없어요. 아래 사진에서 놓친 흠집이 있으면 직접 표시하고, 없으면 바로 검수를 완료하세요.</p>
+      )}
+      <p className={groups.length === 0 ? "hidden" : "mt-0 text-sm text-muted-foreground"}>
         AI가 흠집일 수 있는 곳을 넓게 잡았어요. 아래 사진과 비교해 하나씩 정해 주세요. 신뢰도 {formatConfidence(0.4)} 이상은 흠집 의심, 그 아래는 확인 필요예요.
         흠집 아님으로 정한 곳은 등급에서 빠지고 다음 학습에 쓰입니다.
       </p>
       {review && (
         <p className="mt-0 mb-3 text-sm font-medium" aria-label="검수 현황">
           흠집 맞음 {review.confirmed} · 흠집 아님 {review.dismissed} · 남은 사진 {review.pending}장
+          {review.added !== undefined && review.added > 0 && ` · 직접 표시 ${review.added}개`}
         </p>
       )}
       {error && <ErrorBanner message={toMessage(error)} />}
@@ -115,6 +120,7 @@ export function ReviewPanel({ checkpointId, inspection }: { checkpointId: string
           <GroupCard key={g.groupId} group={g} index={i} busy={busy} onDecide={(decision, reason) => save.mutate(decisionItems(g, decision, reason))} />
         ))}
       </ul>
+      <MissedDefectEditor checkpointId={checkpointId} inspection={inspection} />
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Button variant="default" busy={complete.isPending} disabled={left > 0 || save.isPending} onClick={() => complete.mutate()}>
           검수 완료하고 판정하기
