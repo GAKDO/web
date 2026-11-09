@@ -102,10 +102,13 @@ const fromPhotoGroup = (members: PhotoDefect[]): DefectRow => {
   const worst = members.reduce((w, m) => (SEVERITY[m.class] > SEVERITY[w.class] ? m : w), head);
   const shots = members.map((m) => `${CAPTURE_CAMERA_LABEL[m.camera]} · ${CAPTURE_LIGHT_LABEL[m.light]}`);
   const cameras = new Set(members.map((m) => m.camera));
+  // 같은 묶음 안에서도 후보마다 따로 정할 수 있으므로, 검수 결과가 서로 다르면 모두 적는다(첫 후보만 보이면 다른 결정이 숨는다)
+  const notes = [...new Set(members.map((m) => fromPhotoDefect(m).note).filter((n): n is string => !!n))];
   return {
     ...fromPhotoDefect(head),
     classLabel: DEFECT_CLASS_LABEL[worst.class],
     where: [CAPTURE_FACE_LABEL[head.face], `${cameras.size > 1 ? "두 카메라" : CAPTURE_CAMERA_LABEL[head.camera]} 사진 ${members.length}장에서 같은 흠집`],
+    note: notes.length > 1 ? `검수 결과 섞임: ${notes.join(" / ")}` : notes[0],
     detail: shots.join(", "),
     confidence: Math.max(...members.map((m) => m.confidence)),
     human: members.every((m) => m.source === "HUMAN"),
@@ -275,7 +278,7 @@ export function InspectionDetailPage() {
               {quick && (
                 <p className="text-sm text-muted-foreground">
                   조명이나 카메라(CAM1·CAM2)만 다른 사진에 함께 잡힌 같은 흠집은 하나로 묶어 셉니다
-                  {quickShots > rows.length && ` (사진 ${quickShots}곳에서 잡힌 것 → 흠집 ${rows.length}개)`}. 등급도 이 수로 매깁니다.
+                  {quickShots > rows.length && ` (사진 ${quickShots}곳에서 잡힌 것 → 흠집 ${rows.length}개)`}. 등급은 같은 흠집을 한 번만 세고, 흠집 아님으로 정한 것은 뺍니다.
                 </p>
               )}
               <ul className="m-0 grid list-none gap-2 p-0" aria-label="흠집">
