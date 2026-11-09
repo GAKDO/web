@@ -6,7 +6,7 @@ import { server } from "../../shared/mocks/node";
 import { db } from "../../shared/mocks/db";
 import type { CatalogDevice, CatalogDiagnostics, CatalogInspectionSummary, CatalogPhotoDefect, ModelDimensions } from "../../shared/api/types";
 import { filterRows, mergeCatalog, sortRows } from "./model/catalog";
-import { faceRatio, laptopPins, placeOnLaptop } from "./model/laptop3d";
+import { FRAME, faceRatio, laptopPins, placeOnLaptop } from "./model/laptop3d";
 
 const DIMS: ModelDimensions = { widthMm: 300, depthMm: 200, baseHMm: 10, lidHMm: 6 };
 
@@ -72,16 +72,51 @@ describe("공개 보유 기기 목록 모델", () => {
 });
 
 describe("부스 사진 흠집 → 3D 핀", () => {
-  test("윗면 CAM1(앞 반) 사진 가운데 흠집은 면의 앞쪽 3/4 지점, CAM2(뒤 반)는 뒤쪽 1/4 지점", () => {
-    const size = { width: 1000, height: 1000 };
+  test("위 카메라 두 대는 각자 면 전체를 찍는다: 보정한 네 모서리는 면의 네 모서리로 간다", () => {
+    const size = { width: 1, height: 1 };
     const close = (got: { u: number; v: number }, want: { u: number; v: number }) => {
       expect(got.u).toBeCloseTo(want.u, 6);
       expect(got.v).toBeCloseTo(want.v, 6);
     };
-    close(faceRatio("TOP", "CAM1", [500, 500], size), { u: 0.5, v: 0.75 });
-    close(faceRatio("TOP", "CAM2", [500, 500], size), { u: 0.5, v: 0.25 });
+    for (const camera of ["CAM1", "CAM2"] as const) {
+      const [tl, tr, br, bl] = FRAME[camera];
+      close(faceRatio("TOP", camera, tl, size), { u: 0, v: 0 });
+      close(faceRatio("TOP", camera, tr, size), { u: 1, v: 0 });
+      close(faceRatio("TOP", camera, br, size), { u: 1, v: 1 });
+      close(faceRatio("KB", camera, bl, size), { u: 0, v: 1 });
+      // 바닥은 뒤로 넘겨 찍어 180° 돌아 있다: 사진 왼쪽 위 = 표준 면 오른쪽 아래
+      close(faceRatio("BOT", camera, tl, size), { u: 1, v: 1 });
+    }
     // 사진 밖(여백)은 면 끝으로 붙인다
-    expect(faceRatio("BOT", "CAM1", [0, 0], size)).toEqual({ u: 0, v: 0.5 });
+    expect(faceRatio("TOP", "CAM1", [0, 0], size)).toEqual({ u: 0, v: 0 });
+  });
+
+  test("실제 부스 사진의 같은 흠집은 CAM1·CAM2 어느 사진으로 옮겨도 2cm 안에서 만난다", () => {
+    // 11/5~11/6 부스 사진(1920×1080)에서 잰 같은 흠집 위치(사진 비율): [면, CAM1 위치, CAM2 위치]
+    const pairs: ["TOP" | "BOT", [number, number], [number, number]][] = [
+      ["TOP", [0.375, 0.767], [0.448, 0.736]], // MB07 윗면 scratch
+      ["TOP", [0.737, 0.738], [0.808, 0.726]], // MB13 윗면 dent
+      ["BOT", [0.717, 0.57], [0.802, 0.573]], // MB08 바닥 scratch
+      ["BOT", [0.181, 0.551], [0.242, 0.524]], // MB02 바닥 dent
+    ];
+    const size = { width: 1, height: 1 };
+    for (const [face, p1, p2] of pairs) {
+      const a = placeOnLaptop(face, faceRatio(face, "CAM1", p1, size), DIMS).position;
+      const b = placeOnLaptop(face, faceRatio(face, "CAM2", p2, size), DIMS).position;
+      expect(Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])).toBeLessThan(20);
+    }
+  });
+
+  test("바닥 사진 왼쪽은 사용자 왼쪽, 사진 위쪽은 앞 모서리(앞 모서리를 들어 뒤로 넘겨 찍음)", () => {
+    const size = { width: 1, height: 1 };
+    const [tl] = FRAME.CAM1;
+    const corner = placeOnLaptop("BOT", faceRatio("BOT", "CAM1", tl, size), DIMS);
+    expect(corner.position[0]).toBeLessThan(0); // 왼쪽
+    expect(corner.position[2]).toBeGreaterThan(0); // 앞
+  });
+
+  test("폰 사진은 사진 전체가 면이다", () => {
+    expect(faceRatio("TOP", "PHONE", [250, 500], { width: 1000, height: 1000 })).toEqual({ u: 0.25, v: 0.5 });
   });
 
   test("덮개(윗면) 핀은 덮개 좌표에, 키보드·바닥 핀은 본체 좌표에 놓인다", () => {

@@ -6,23 +6,48 @@ import type { CaptureCamera, CaptureFace, ModelDimensions } from "../api/types";
 // 면 좌표(u, v)는 contracts capture/faces.md와 같다: 그 면을 바깥에서 본 모습, 왼쪽 위가 (0, 0).
 // 윗면(TOP)·키보드(KB)·바닥(BOT)은 위쪽이 뒤(경첩), 옆면은 닫힌 상태 전체 높이(아래가 본체).
 
-/** 사진 안에서 노트북 면이 차지하는 영역(사진 크기 비율). 부스 카메라 높이·화각을 바꾸면 이 값만 다시 잰다 */
-export interface FrameRegion {
-  x0: number;
-  y0: number;
-  x1: number;
-  y1: number;
-}
+/** 사진 비율 좌표 한 점(0~1, 왼쪽 위가 0) */
+export type FramePoint = [number, number];
 
 /**
- * 부스 카메라 2대는 한 면을 앞 반(CAM1)·뒤 반(CAM2)으로 나눠 찍는다(codes 라벨 "CAM1 앞 반"·"CAM2 뒤 반").
- * 사진 위쪽이 노트북 뒤쪽이 되게 놓고 찍는다고 보고, 노트북이 사진의 가운데 대부분을 채운다고 본다.
- * 실제 부스 사진으로 한 번 맞추면 FRAME만 고치면 된다.
+ * 사진 안에서 노트북 면의 네 모서리(사진 크기 비율). 사진에 보이는 그대로 왼쪽 위·오른쪽 위·오른쪽 아래·왼쪽 아래 순서.
+ * 카메라가 조금 돌아가 있거나 기울어 있어 사각형이 아니므로 네 점 호모그래피로 옮긴다.
  */
-export const FRAME: Record<"CAM1" | "CAM2", FrameRegion> = {
-  CAM1: { x0: 0.06, y0: 0.08, x1: 0.94, y1: 0.92 },
-  CAM2: { x0: 0.06, y0: 0.08, x1: 0.94, y1: 0.92 },
+export type FrameQuad = [FramePoint, FramePoint, FramePoint, FramePoint];
+
+/**
+ * 부스 위 카메라 2대의 면 모서리(11/9 보정). 두 카메라 모두 면 **전체**를 찍는다(앞 반·뒤 반으로 나뉘지 않는다).
+ * 11/5~11/6 부스 사진(MB02·MB07·MB08·MB13 윗면·바닥 L1, 1920×1080)에서 기기마다 네 모서리를 재어 평균했다.
+ * 기기별 모서리로 옮기면 같은 흠집의 CAM1·CAM2 위치 차이가 2~4mm, 평균 모서리로는 놓는 자리 차이 때문에 6~18mm 어긋난다.
+ * 윗면 사진은 위쪽이 경첩(사과 로고가 거꾸로)이고, 바닥은 앞 모서리를 들어 뒤로 넘기므로 경첩이 사진 아래에 온다.
+ * 키보드(펼친 상태)도 본체 바닥 자리가 같아 같은 모서리를 쓴다.
+ * 부스를 다시 만들거나 카메라를 옮기면 면마다 사진 한 장씩 네 모서리를 다시 재서 이 값만 바꾼다(재는 방법은 web docs/pin-calibration.md).
+ */
+export const FRAME: Record<"CAM1" | "CAM2", FrameQuad> = {
+  CAM1: [
+    [0.159, 0.219],
+    [0.78, 0.117],
+    [0.792, 0.912],
+    [0.215, 0.921],
+  ],
+  CAM2: [
+    [0.233, 0.127],
+    [0.89, 0.154],
+    [0.844, 0.905],
+    [0.255, 0.909],
+  ],
 };
+
+/**
+ * 옆면·화면 사진(책상 높이 옆면 카메라, 파일 이름은 CAM1)은 아직 실제 사진으로 재지 않았다.
+ * 노트북이 사진 가운데 대부분을 채운다고 보고 면 전체로 옮긴다.
+ */
+export const SIDE_FRAME: FrameQuad = [
+  [0.06, 0.08],
+  [0.94, 0.08],
+  [0.94, 0.92],
+  [0.06, 0.92],
+];
 
 /** 원본 사진 크기를 모를 때(아직 안 읽힘) 쓰는 부스 카메라 기본 해상도(C920 1920×1080) */
 export const DEFAULT_PHOTO_SIZE = { width: 1920, height: 1080 };
@@ -42,18 +67,62 @@ export function centroid(polygon: number[][]): [number, number] {
   return [sx / n, sy / n];
 }
 
+type Mat3 = [number, number, number, number, number, number, number, number, number];
+
+/** 단위 사각형 (0,0)(1,0)(1,1)(0,1) → 네 모서리 호모그래피(Heckbert 닫힌 꼴) */
+function squareToQuad([[x0, y0], [x1, y1], [x2, y2], [x3, y3]]: FrameQuad): Mat3 {
+  const dx1 = x1 - x2;
+  const dx2 = x3 - x2;
+  const dy1 = y1 - y2;
+  const dy2 = y3 - y2;
+  const sx = x0 - x1 + x2 - x3;
+  const sy = y0 - y1 + y2 - y3;
+  const den = dx1 * dy2 - dx2 * dy1;
+  const g = (sx * dy2 - dx2 * sy) / den;
+  const h = (dx1 * sy - sx * dy1) / den;
+  return [x1 - x0 + g * x1, x3 - x0 + h * x3, x0, y1 - y0 + g * y1, y3 - y0 + h * y3, y0, g, h, 1];
+}
+
+function invert([a, b, c, d, e, f, g, h, i]: Mat3): Mat3 {
+  const A = e * i - f * h;
+  const B = f * g - d * i;
+  const C = d * h - e * g;
+  const det = a * A + b * B + c * C;
+  return [A / det, (c * h - b * i) / det, (b * f - c * e) / det, B / det, (a * i - c * g) / det, (c * d - a * f) / det, C / det, (b * g - a * h) / det, (a * e - b * d) / det];
+}
+
+// 모서리 값은 상수라 역행렬을 한 번만 만든다
+const cache = new Map<FrameQuad, Mat3>();
+function photoToSquare(quad: FrameQuad): Mat3 {
+  let m = cache.get(quad);
+  if (!m) {
+    m = invert(squareToQuad(quad));
+    cache.set(quad, m);
+  }
+  return m;
+}
+
+/** 사진 비율 좌표 → 네 모서리 안의 비율 좌표(s 오른쪽, t 아래, 사진에 보이는 방향 그대로). 모서리 밖은 끝에 붙인다 */
+export function quadRatio(quad: FrameQuad, x: number, y: number): { s: number; t: number } {
+  const [a, b, c, d, e, f, g, h, i] = photoToSquare(quad);
+  const w = g * x + h * y + i;
+  return { s: clamp01((a * x + b * y + c) / w), t: clamp01((d * x + e * y + f) / w) };
+}
+
+const SIDE_FACES = new Set<CaptureFace>(["SF", "SB", "SL", "SR", "SCR0", "SCR1"]);
+
 /**
- * 사진 위 점 → 면 좌표. 윗면·키보드·바닥은 CAM1이 앞 반(v 0.5~1), CAM2가 뒤 반(v 0~0.5).
- * 옆면은 길게 누운 면이라 CAM1이 왼쪽 반(u 0~0.5), CAM2가 오른쪽 반(u 0.5~1). 폰·모르는 카메라는 사진 전체가 면이다
+ * 사진 위 점 → 면 좌표. 위 카메라(CAM1·CAM2)는 각자 면 전체를 찍으므로 카메라별 네 모서리로 옮긴다.
+ * 바닥은 앞 모서리를 들어 뒤로 넘겨 찍어 사진이 표준 방향(경첩 위·사용자 오른쪽이 왼쪽)과 180° 돌아 있다.
+ * 옆면·화면은 옆면 카메라 기본 영역, 폰·모르는 카메라는 사진 전체가 면이다
  */
 export function faceRatio(face: CaptureFace, camera: CaptureCamera, point: [number, number], size: Size): { u: number; v: number } {
-  const frame = camera === "PHONE" ? { x0: 0, y0: 0, x1: 1, y1: 1 } : FRAME[camera];
-  const px = clamp01((point[0] / size.width - frame.x0) / (frame.x1 - frame.x0));
-  const py = clamp01((point[1] / size.height - frame.y0) / (frame.y1 - frame.y0));
-  if (camera === "PHONE") return { u: px, v: py };
-  const side = face === "SF" || face === "SB" || face === "SL" || face === "SR";
-  if (side) return { u: camera === "CAM1" ? px * 0.5 : 0.5 + px * 0.5, v: py };
-  return { u: px, v: camera === "CAM1" ? 0.5 + py * 0.5 : py * 0.5 };
+  const x = point[0] / size.width;
+  const y = point[1] / size.height;
+  if (camera !== "CAM1" && camera !== "CAM2") return { u: clamp01(x), v: clamp01(y) };
+  const { s, t } = quadRatio(SIDE_FACES.has(face) ? SIDE_FRAME : FRAME[camera], x, y);
+  if (face === "BOT") return { u: 1 - s, v: 1 - t };
+  return { u: s, v: t };
 }
 
 export type Vec3 = [number, number, number];

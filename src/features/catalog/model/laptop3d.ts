@@ -4,7 +4,7 @@ import { centroid, DEFAULT_PHOTO_SIZE, faceRatio, placeOnLaptop, type LocalPlace
 
 // 면 좌표 규칙은 shared/laptop3d/faces.ts로 옮겼다(리포트 3D와 함께 쓴다). 기존 import를 위해 다시 내보낸다
 export { bodyColor, centroid, DEFAULT_PHOTO_SIZE, faceRatio, FRAME, placeOnLaptop } from "../../../shared/laptop3d/faces";
-export type { FrameRegion, LocalPlacement, Size, Vec3 } from "../../../shared/laptop3d/faces";
+export type { FrameQuad, LocalPlacement, Size, Vec3 } from "../../../shared/laptop3d/faces";
 
 // 부스 사진의 흠집(원본 사진 px) → 노트북 3D 모델 위의 핀(11/8 민서 요청). 정확한 mm 위치가 아니라 대략 위치다.
 
