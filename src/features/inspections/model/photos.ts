@@ -30,7 +30,7 @@ export interface FaceGrid {
   cells: PhotoCell[];
   /** 이 면 사진들의 흠집 수(사진마다 따로 센 것) */
   defectCount: number;
-  /** 같은 흠집 묶음(groupId) 수: 조명·카메라만 다른 사진에 함께 잡힌 같은 흠집을 하나로 센 것(11/9) */
+  /** 같은 흠집 묶음(groupId) 수: 조명·카메라만 다른 사진에 함께 잡힌 같은 흠집을 하나로 센 것(11/9). 흠집 아님(DISMISSED)은 뺀다 */
   groupCount: number;
 }
 
@@ -132,7 +132,7 @@ export function faceGrids(photos: CheckpointPhoto[], defects: GridDefect[]): Fac
       })),
     );
     const inFaceDefects = defects.filter((d) => d.face === face);
-    return { face, cameras, lights, cells, defectCount: inFaceDefects.length, groupCount: groupDefects(inFaceDefects).length };
+    return { face, cameras, lights, cells, defectCount: inFaceDefects.length, groupCount: groupDefects(inFaceDefects.filter((d) => d.review?.status !== "DISMISSED")).length };
   });
 }
 
