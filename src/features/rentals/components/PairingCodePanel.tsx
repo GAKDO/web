@@ -105,7 +105,7 @@ export function PairingCodePanel({ rentalId, checkpointId, deviceSerial }: { ren
             <CommandCopyButton key={`mac:${issued.code}`} name="맥" command={commands?.mac ?? ""} />
             <CommandCopyButton key={`win:${issued.code}`} name="윈도우 PowerShell" command={commands?.windows ?? ""} />
           </div>
-          <p className="text-sm text-muted-foreground">노트북 터미널(윈도우는 관리자 PowerShell)에 붙여 넣으세요. 결과를 보여 준 뒤 y를 눌러야 올라가요.</p>
+          <p className="text-sm text-muted-foreground">노트북 터미널(윈도우는 PowerShell)에 붙여 넣으세요. 관리자 PowerShell이면 SSD 수명까지 읽어요(아니어도 진행돼요). 결과를 보여 준 뒤 y를 눌러야 올라가요.</p>
         </>
       )}
       {expired && <p role="status">페어링 코드가 만료됐습니다. 새로 만들어 주세요.</p>}
