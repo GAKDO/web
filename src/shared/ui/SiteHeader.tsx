@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Camera,
   ChartColumn,
@@ -50,7 +50,7 @@ function adminExtras(): NavItem[] {
 
 /**
  * 고객·공개 화면의 메뉴. 로그인 상태와 보관 설정(report·account)에 따라 갈 수 있는 곳만 둔다.
- * 고객 화면에는 로그아웃 버튼을 두지 않는다(내 정보 화면에 있다)
+ * 고객 화면에는 로그아웃 버튼을 두지 않는다(내 정보 화면에 있다). 관리자는 내 정보 화면이 없으므로 공개 화면 헤더에도 로그아웃을 둔다(11/9 민서)
  */
 function siteLinks(signedIn: boolean, admin: boolean): NavItem[] {
   const report = !isArchived("report");
@@ -112,9 +112,19 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
   const mobile = useIsMobile();
   const scrolled = useScrolled();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const signedIn = status === "authenticated";
   const admin = variant === "admin";
+  // 관리 화면이든 공개 화면이든 관리자로 로그인했으면 헤더에서 로그아웃한다
+  const adminLogout = admin || (signedIn && role === "ADMIN");
+  // 11/9 민서: 로그아웃하면 관리자 로그인 화면이 아니라 첫 화면으로 간다.
+  // 먼저 첫 화면으로 옮긴 뒤 세션을 끝내, 관리 화면 보호(RequireAdmin)가 로그인 화면으로 보내지 않게 한다
+  const onLogout = () => {
+    setOpen(false);
+    navigate("/", { replace: true });
+    void logout();
+  };
   const showAccount = !isArchived("account");
 
   const links = status === "unknown" ? [] : admin ? [...ADMIN_MENU, ...adminExtras()] : siteLinks(signedIn, role === "ADMIN");
@@ -173,13 +183,13 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
         )}
         <div className="ml-auto flex items-center gap-1">
           {guestActions}
-          {admin && !mobile && (
-            <button type="button" className={cn(LINK, "cursor-pointer border-0 bg-transparent")} onClick={() => void logout()}>
+          {adminLogout && !mobile && (
+            <button type="button" className={cn(LINK, "cursor-pointer border-0 bg-transparent")} onClick={onLogout}>
               <LogOut aria-hidden="true" className="size-4" />
               로그아웃
             </button>
           )}
-          {mobile && (links.length > 0 || admin || guestLogin) && (
+          {mobile && (links.length > 0 || adminLogout || guestLogin) && (
             <button
               type="button"
               aria-label={open ? "메뉴 닫기" : "메뉴 열기"}
@@ -217,11 +227,11 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
               이미 계정이 있어요. 로그인
             </Link>
           )}
-          {admin && (
+          {adminLogout && (
             <button
               type="button"
               className="mt-6 inline-flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-base font-medium text-zinc-400"
-              onClick={() => void logout()}
+              onClick={onLogout}
             >
               <LogOut aria-hidden="true" className="size-4" />
               로그아웃

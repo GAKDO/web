@@ -93,9 +93,9 @@ test("next 없이 관리자 계정으로 로그인하면 관리자 화면으로 
   expect(router.state.location.pathname).toBe("/admin/devices");
 });
 
-test("로그인 화면에 회원가입 버튼이 있고 관리자 로그인은 맨 아래 링크로만 있다", async () => {
+test("로그인 화면에 회원가입 버튼이 있고, 관리자도 같은 화면에서 로그인하므로 따로 관리자 로그인 링크를 두지 않는다", async () => {
   renderWithCustomerRoute("/login?next=/my");
   await screen.findByRole("heading", { name: "로그인" });
   expect(screen.getByRole("link", { name: "이메일로 회원가입" })).toHaveAttribute("href", `/signup?next=${encodeURIComponent("/my")}`);
-  expect(within(screen.getByRole("contentinfo")).getByRole("link", { name: "관리자 로그인" })).toHaveAttribute("href", "/admin/login");
+  expect(within(screen.getByRole("contentinfo")).queryByRole("link", { name: "관리자 로그인" })).not.toBeInTheDocument();
 });

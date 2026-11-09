@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { Camera, ScanSearch, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { useAuth } from "../../../shared/auth/AuthProvider";
@@ -27,9 +27,13 @@ export function LoginPage() {
   const unified = !isArchived("account");
   // 이 화면에서 방금 로그인했을 때만 고객을 내 계정으로 보낸다. 이미 고객으로 로그인한 채 들어오면 관리자 계정으로 바꿔 로그인할 수 있게 둔다
   const [submitted, setSubmitted] = useState(false);
+  const { search } = useLocation();
 
   if (status === "authenticated" && role === "ADMIN") return <Navigate to="/admin/devices" replace />;
   if (unified && submitted && status === "authenticated" && role === "CUSTOMER") return <Navigate to={customerHome()} replace />;
+  // 11/9 민서: 통합 로그인이 있는 배포에서 로그인 전 관리자 로그인 주소는 공용 로그인(/login)으로 보낸다(예전 링크·북마크 유지).
+  // 고객으로 로그인한 채 들어오면 관리자 계정으로 바꿔 로그인할 수 있게 이 화면을 그대로 둔다
+  if (unified && status === "anonymous") return <Navigate to={`/login${search}`} replace />;
 
   return (
     <div className="relative isolate grid min-h-svh grid-rows-[auto_1fr] overflow-hidden bg-sidebar md:grid-cols-[1.1fr_1fr] md:grid-rows-none">

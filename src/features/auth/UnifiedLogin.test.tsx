@@ -17,9 +17,10 @@ async function signIn(email: string, password: string) {
   await user.click(screen.getByRole("button", { name: "로그인" }));
 }
 
-test("고객 계정을 보이는 배포에서 로그인 화면에 관리자 계정을 넣으면 관리자 화면으로 간다", async () => {
+test("고객 계정을 보이는 배포에서 관리자 로그인 주소를 열면 공용 로그인으로 가고, 관리자 계정을 넣으면 관리자 화면으로 간다", async () => {
   vi.stubEnv("VITE_ARCHIVED_FEATURES", ACCOUNT_ON);
   const { router } = renderApp("/admin/login");
+  await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
   expect(await screen.findByRole("heading", { name: "로그인" })).toBeInTheDocument();
   await signIn(MOCK_ADMIN.email, MOCK_ADMIN.password);
   await screen.findByRole("link", { name: "기기" });
@@ -29,6 +30,7 @@ test("고객 계정을 보이는 배포에서 로그인 화면에 관리자 계�
 test("같은 로그인 화면에 고객 계정을 넣으면 내 계정 화면으로 간다", async () => {
   vi.stubEnv("VITE_ARCHIVED_FEATURES", ACCOUNT_ON);
   const { router } = renderApp("/admin/login");
+  await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
   await signIn(MOCK_CUSTOMER.email, MOCK_CUSTOMER.password);
   expect(await screen.findByRole("heading", { name: "내 정보" })).toBeInTheDocument();
   expect(router.state.location.pathname).toBe("/my/account");
@@ -54,4 +56,14 @@ test("고객 A 세션이 남은 탭에서 고객 B로 로그인하면 A의 렌�
   await signIn(other.email, other.password);
   expect(await screen.findByRole("heading", { name: "내 정보" })).toBeInTheDocument();
   expect(client.getQueryData(key)).toBeUndefined();
+});
+
+test("관리자가 관리 화면에서 로그아웃하면 관리자 로그인이 아니라 첫 화면으로 간다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", ACCOUNT_ON);
+  const { router } = renderApp("/login");
+  await signIn(MOCK_ADMIN.email, MOCK_ADMIN.password);
+  await screen.findByRole("link", { name: "기기" });
+  await userEvent.setup().click(screen.getByRole("button", { name: "로그아웃" }));
+  await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+  await waitFor(() => expect(tokenStore.get()).toBeNull());
 });

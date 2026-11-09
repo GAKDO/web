@@ -56,13 +56,15 @@ test("다시 받기도 실패하면(리프레시 만료) 로그인 화면으로 
   expect(await screen.findByText("로그인 시간이 지났습니다. 다시 로그인해 주세요.")).toBeInTheDocument();
 });
 
-test("로그아웃하면 로그인 화면으로 가고 뒤로 가기로 관리 화면을 다시 볼 수 없다", async () => {
+test("로그아웃하면 첫 화면으로 가고 관리 화면을 다시 열면 관리자 로그인으로 간다", async () => {
   const { user, router } = await loginAs(MOCK_ADMIN.email, MOCK_ADMIN.password);
   await screen.findByRole("heading", { name: "기기 목록" });
   await user.click(screen.getByRole("button", { name: "로그아웃" }));
-  expect(await screen.findByRole("heading", { name: "관리자 로그인" })).toBeInTheDocument();
+  await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+  await waitFor(() => expect(tokenStore.get()).toBeNull());
   await router.navigate("/admin/devices");
-  await waitFor(() => expect(screen.queryByRole("heading", { name: "기기 목록" })).not.toBeInTheDocument());
+  expect(await screen.findByRole("heading", { name: "관리자 로그인" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "기기 목록" })).not.toBeInTheDocument();
   expect(tokenStore.get()).toBeNull();
 });
 
