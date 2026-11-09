@@ -27,6 +27,9 @@ export function verdictOf(checkpoint: Pick<Checkpoint, "status"> | null | undefi
   return grade === "A" ? { kind: "ok", grade, label: "문제 없음" } : { kind: "bad", grade, label: `문제 있음 · ${INSPECTION_GRADE_LABEL[grade]}` };
 }
 
+/** A인데 판정 불가 면이 있을 때 판정 상자에 쓸 문구(11/9). 등급은 그대로 두고 "판정한 면만" 문제 없음을 분명히 한다 */
+export const PARTIAL_OK_LABEL = "판정한 면은 문제 없음 · 일부 면 판정 불가";
+
 /**
  * 수리 필요 여부. 화면이 새 규칙을 만들지 않고 서버 등급을 그대로 옮긴다(spec 006 FR-003):
  * A = 수리 필요 없음, B~D = 수리 필요, 등급이 없으면 아직 알 수 없음

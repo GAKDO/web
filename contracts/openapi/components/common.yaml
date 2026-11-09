@@ -182,3 +182,18 @@ components:
             title: 요청이 너무 많습니다
             status: 429
             code: RATE_LIMITED
+    CatalogTooManyRequests:
+      description: 요청 제한 초과 (공개 보유 기기 목록 경로들을 합쳐 IP당 분당 300회, RATE_LIMITED)
+      headers:
+        Retry-After:
+          description: 다시 시도할 수 있을 때까지 초
+          schema:
+            type: integer
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            title: 요청이 너무 많습니다
+            status: 429
+            code: RATE_LIMITED

@@ -1,6 +1,6 @@
 import type { Defect, Inspection } from "../../../shared/api/types";
 import { quickDefect, quickPhotos } from "../../../shared/mocks/report";
-import { faceGrids, photoDefectsOf, polygonPoints, textureOverlays } from "./photos";
+import { countedDefects, failedFaces, faceGrids, isQuickInspection, photoDefectsOf, photoOnlyDefects, polygonPoints, textureOverlays, unjudgeableOf } from "./photos";
 
 test("원본 사진 격자는 면마다 카메라 행 × 조명 열이고 사진·흠집을 제자리에 넣는다", () => {
   const defects = [quickDefect("TOP", "L1", "CAM1", "scratch", 600, 400, 0.9), quickDefect("BOT", "L3", "CAM2", "dent", 900, 700, 0.8)];
@@ -63,4 +63,64 @@ test("photoDefects가 없는(계약 1.0.0) 결과는 빈 배열이고, polygon p
       [3.5, 4],
     ]),
   ).toBe("1,2 3.5,4");
+});
+
+describe("전체 검사 판정 근거(11/9)", () => {
+  const graded: Defect = {
+    defectId: "kb1",
+    face: "KB",
+    class: "dent",
+    polygon: [
+      [0, 0],
+      [4, 0],
+      [4, 4],
+    ],
+    lengthMm: 11.5,
+    areaMm2: 62,
+    confidence: 0.43,
+    modelVersion: "v004",
+    source: "AUTO",
+    match: null,
+  };
+  const kbPhoto = { ...quickDefect("KB", "L1", "CAM1", "dent", 100, 100, 0.43), defectId: "kb1" };
+  const sidePhoto = { ...quickDefect("SF", "L1", "CAM1", "scratch", 300, 40, 0.7), defectId: "sf1" };
+  const full: Inspection = {
+    checkpointId: "cp",
+    grade: "A",
+    ruleVersion: "grade-rules-v1",
+    reasons: ["흠집 없음 → A"],
+    defects: [graded],
+    photoDefects: [kbPhoto, sidePhoto],
+    profile: "FULL",
+    unjudgeableFaces: [
+      { face: "SF", reason: "정합 실패 또는 품질 미달(CAM1) - 면이 사진 밖으로 나감(두 변 이상 잘림)" },
+      { face: "SCR1", reason: "건너뜀(스킵)" },
+    ],
+  };
+
+  test("photoDefects가 있어도 profile이 FULL이면 빠른 검사로 보지 않고 흠집은 defects로 센다", () => {
+    expect(isQuickInspection(full)).toBe(false);
+    expect(countedDefects(full)).toEqual([graded]);
+  });
+
+  test("profile이 없는 예전 서버는 photoDefects가 있으면 빠른 검사로 본다", () => {
+    expect(isQuickInspection({ ...full, profile: undefined, defects: [] })).toBe(true);
+  });
+
+  test("정합 실패 면에서 AI가 본 흠집은 등급 미반영 흠집으로 따로 나온다", () => {
+    expect(photoOnlyDefects(full).map((d) => d.defectId)).toEqual(["sf1"]);
+  });
+
+  test("건너뛴 선택 면은 경고하지 않고 정합 실패 면만 경고한다", () => {
+    expect(unjudgeableOf(full).map((u) => [u.face, u.skipped])).toEqual([
+      ["SF", false],
+      ["SCR1", true],
+    ]);
+    expect(failedFaces(full).map((u) => u.face)).toEqual(["SF"]);
+  });
+
+  test("unjudgeableFaces가 없는 예전 서버는 등급 근거 문장에서 판정 불가 면을 읽는다", () => {
+    const old: Inspection = { ...full, unjudgeableFaces: undefined, reasons: ["흠집 없음 → A", "판정 불가 면 SL: 정합 실패 또는 품질 미달(CAM1)", "판정 불가 면 SCR1: 건너뜀(스킵)"] };
+    expect(failedFaces(old)).toEqual([{ face: "SL", reason: "정합 실패 또는 품질 미달(CAM1)", skipped: false }]);
+  });
 });
