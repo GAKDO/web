@@ -8,7 +8,7 @@ import type { CaptureCamera, CaptureFace, CaptureLight, CheckpointMedia, Checkpo
  * CatalogPhotoDefect를 넣는다. 그래서 신뢰도·검수는 선택이다
  */
 export type GridDefect = Pick<PhotoDefect, "defectId" | "face" | "light" | "camera" | "class" | "polygon"> &
-  Partial<Pick<PhotoDefect, "confidence" | "review" | "source">>;
+  Partial<Pick<PhotoDefect, "confidence" | "review" | "source" | "groupId">>;
 
 export interface PhotoCell {
   face: CaptureFace;
@@ -30,6 +30,23 @@ export interface FaceGrid {
   cells: PhotoCell[];
   /** 이 면 사진들의 흠집 수(사진마다 따로 센 것) */
   defectCount: number;
+  /** 같은 흠집 묶음(groupId) 수: 조명·카메라만 다른 사진에 함께 잡힌 같은 흠집을 하나로 센 것(11/9) */
+  groupCount: number;
+}
+
+/** 묶음 열쇠: 서버 groupId(같은 면에서 조명·CAM1·CAM2 사이 같은 흠집, 11/9). 예전 서버나 공개 목록에 없으면 흠집 하나가 묶음 하나 */
+export const groupKeyOf = (d: Pick<GridDefect, "defectId" | "groupId">) => d.groupId ?? d.defectId;
+
+/** 흠집을 같은 흠집 묶음으로 나눈다(처음 나온 순서 유지) */
+export function groupDefects<T extends Pick<GridDefect, "defectId" | "groupId">>(defects: T[]): T[][] {
+  const groups = new Map<string, T[]>();
+  for (const d of defects) {
+    const key = groupKeyOf(d);
+    const list = groups.get(key);
+    if (list) list.push(d);
+    else groups.set(key, [d]);
+  }
+  return [...groups.values()];
 }
 
 const FACE_ORDER: CaptureFace[] = ["TOP", "BOT", "KB", "SF", "SB", "SL", "SR", "SCR0", "SCR1"];
@@ -114,7 +131,8 @@ export function faceGrids(photos: CheckpointPhoto[], defects: GridDefect[]): Fac
         defects: defects.filter((d) => d.face === face && d.camera === camera && d.light === light),
       })),
     );
-    return { face, cameras, lights, cells, defectCount: defects.filter((d) => d.face === face).length };
+    const inFaceDefects = defects.filter((d) => d.face === face);
+    return { face, cameras, lights, cells, defectCount: inFaceDefects.length, groupCount: groupDefects(inFaceDefects).length };
   });
 }
 

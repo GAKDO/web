@@ -5,7 +5,7 @@ import { PhotoWithDefects, type OverlayDefect } from "./PhotoWithDefects";
 
 export interface LightboxPhoto {
   key: string;
-  /** 촬영 부위 이름(예: "윗면(덮개) · CAM1 앞 반 · L1 확산") */
+  /** 촬영 부위 이름(예: "윗면(덮개) · CAM1 · L1 확산") */
   name: string;
   src: string;
   defects: OverlayDefect[];

@@ -121,6 +121,33 @@ test("A 등급 시점의 상세는 문제 없음과 흠집이 없다는 문장�
   expect(within(await screen.findByRole("list", { name: "면 사진" })).getAllByRole("listitem")).toHaveLength(8);
 });
 
+test("빠른 검사에서 CAM1·CAM2와 L1·L2 사진 네 곳에 잡힌 같은 흠집(groupId 하나)은 요약에 흠집 1개 한 줄로 보인다", async () => {
+  const same = [
+    quickDefect("BOT", "L1", "CAM1", "scratch", 1269, 756, 0.48),
+    quickDefect("BOT", "L1", "CAM2", "scratch", 1432, 744, 0.3),
+    quickDefect("BOT", "L2", "CAM1", "scratch", 1269, 756, 0.57),
+    quickDefect("BOT", "L2", "CAM2", "scratch", 1432, 744, 0.37),
+  ];
+  const groupId = same[0].defectId;
+  const { rentalId, checkpointId } = addRental("C02X391000", "GRADED", {
+    grade: "B",
+    ruleVersion: "grade-rules-v1",
+    reasons: ["긁힘 1개(최대 0mm) → B", "CAM1·CAM2 두 카메라에 함께 찍힌 같은 흠집 1개는 하나로 셈"],
+    defects: [],
+    photoDefects: same.map((d) => ({ ...d, groupId })),
+  });
+  db.report.media.set(checkpointId, quickMedia(checkpointId));
+  renderAsAdmin(`/admin/inspections/${rentalId}/${checkpointId}`);
+  expect(await screen.findByRole("heading", { name: "문제 항목 요약 · 흠집 1개" })).toBeInTheDocument();
+  expect(screen.getByText(/사진 4곳에서 잡힌 것 → 흠집 1개/)).toBeInTheDocument();
+  const first = screen.getByRole("listitem", { name: "흠집 1" });
+  expect(first).toHaveTextContent("두 카메라 사진 4장에서 같은 흠집");
+  expect(first).toHaveTextContent("신뢰도 57%");
+  expect(screen.queryByRole("listitem", { name: "흠집 2" })).not.toBeInTheDocument();
+  const bot = await screen.findByRole("region", { name: "바닥 사진" });
+  expect(within(bot).getByRole("heading", { name: /바닥 · 흠집 1개/ })).toHaveTextContent("사진 4곳에서 잡힘");
+});
+
 /** 사진이 로드된 것처럼 natural 크기를 넣고 load 이벤트를 낸다(jsdom은 이미지를 읽지 않는다) */
 function loadImage(img: HTMLElement, width = 1600, height = 1200) {
   Object.defineProperty(img, "naturalWidth", { value: width });
@@ -145,13 +172,13 @@ test("빠른 검사(QUICK) 시점의 상세는 면마다 카메라 2 × 조명 3
   expect(await screen.findByRole("heading", { name: "문제 항목 요약 · 흠집 3개" })).toBeInTheDocument();
   const first = screen.getByRole("listitem", { name: "흠집 1" });
   expect(first).toHaveTextContent("긁힘");
-  expect(first).toHaveTextContent("CAM1 앞 반 · L1 확산");
+  expect(first).toHaveTextContent("CAM1 · L1 확산");
   expect(first).not.toHaveTextContent("길이");
   const top = await screen.findByRole("region", { name: "윗면(덮개) 사진" });
   expect(within(top).getByRole("heading", { name: "윗면(덮개) · 흠집 2개" })).toBeInTheDocument();
   expect(within(top).getAllByRole("listitem")).toHaveLength(6);
   const cell = within(top).getByRole("listitem", { name: "윗면(덮개) CAM1 L1" });
-  expect(cell).toHaveTextContent("CAM1 앞 반 · L1 확산 · 흠집 1개");
+  expect(cell).toHaveTextContent("CAM1 · L1 확산 · 흠집 1개");
   expect(within(cell).queryByRole("img", { name: "흠집 1개 표시" })).not.toBeInTheDocument();
   loadImage(within(cell).getByRole("img", { name: "윗면(덮개) CAM1 L1 사진" }));
   const overlay = within(cell).getByRole("img", { name: "흠집 1개 표시" });
@@ -321,7 +348,7 @@ test("빠른 검사 사진을 누르면 크게 보기 팝업이 열리고, 이�
   const top = await screen.findByRole("region", { name: "윗면(덮개) 사진" });
   await user.click(within(top).getByRole("button", { name: "윗면(덮개) CAM1 L1 사진 크게 보기" }));
   const dialog = screen.getByRole("dialog");
-  expect(dialog).toHaveAccessibleName("사진 크게 보기: 윗면(덮개) · CAM1 앞 반 · L1 확산");
+  expect(dialog).toHaveAccessibleName("사진 크게 보기: 윗면(덮개) · CAM1 · L1 확산");
   expect(dialog).toHaveTextContent("1 / 12");
   expect(within(dialog).getByRole("button", { name: "← 이전 사진" })).toBeDisabled();
   // 열린 동안 Tab은 팝업 안에서만 돈다: 마지막(다음 사진)에서 Tab은 처음(닫기)으로, 처음에서 Shift+Tab은 마지막으로
@@ -341,7 +368,7 @@ test("빠른 검사 사진을 누르면 크게 보기 팝업이 열리고, 이�
   expect(close).toHaveFocus();
   for (let i = 0; i < 11; i++) await user.keyboard("{ArrowLeft}");
   await user.click(within(dialog).getByRole("button", { name: "다음 사진 →" }));
-  expect(screen.getByRole("dialog")).toHaveAccessibleName("사진 크게 보기: 윗면(덮개) · CAM1 앞 반 · L2 왼쪽 스침광");
+  expect(screen.getByRole("dialog")).toHaveAccessibleName("사진 크게 보기: 윗면(덮개) · CAM1 · L2 왼쪽 스침광");
   expect(screen.getByRole("dialog")).toHaveTextContent("2 / 12");
   await user.keyboard("{ArrowLeft}");
   expect(screen.getByRole("dialog")).toHaveTextContent("1 / 12");
@@ -422,7 +449,7 @@ test("검수 화면에서 같은 흠집 묶음을 한 번에 정하고, 흠집 �
   // 찍힘은 흠집 아님이라 빠지고 긁힘만 남아 B
   expect(await screen.findByText("✖ 문제 있음 · B등급")).toBeInTheDocument();
   expect(screen.queryByRole("region", { name: /사람 검수/ })).not.toBeInTheDocument();
-  expect(screen.getByRole("listitem", { name: "흠집 3" })).toHaveTextContent("흠집 아님 · 스티커·테이프");
+  expect(screen.getByRole("listitem", { name: "흠집 2" })).toHaveTextContent("흠집 아님 · 스티커·테이프");
 });
 
 test("모두 정해도 서버가 탐지 결과를 아직 기다리면(409 REVIEW_NOT_READY) 그 문장을 보이고 등급을 내지 않는다", async () => {
