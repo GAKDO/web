@@ -1,5 +1,5 @@
 // 화면 라우트. 관리자 화면(WE1)은 /admin 아래, 고객 폰 촬영·3D 리포트·검증 페이지는 이 아래에 더한다
-import { Navigate, type RouteObject } from "react-router-dom";
+import { Navigate, Outlet, ScrollRestoration, type RouteObject } from "react-router-dom";
 import { HomePage } from "./features/home/components/HomePage";
 import { GuidePage } from "./features/guide/components/GuidePage";
 import { BoothPage } from "./features/booth/components/BoothPage";
@@ -25,6 +25,9 @@ import { MyRentalsPage } from "./features/report/components/MyRentalsPage";
 import { ReportPage } from "./features/report/components/ReportPage";
 import { ClaimRentalPage } from "./features/report/components/ClaimRentalPage";
 import { VerifyPage } from "./features/verify/components/VerifyPage";
+import { CatalogPage } from "./features/catalog/components/CatalogPage";
+import { CatalogDetailPage } from "./features/catalog/components/CatalogDetailPage";
+import { SiteHeader } from "./shared/ui/SiteHeader";
 import { RequireAdmin } from "./shared/auth/RequireAdmin";
 import { RequireCustomer } from "./shared/auth/RequireCustomer";
 import { DeviceDiagnosticsPage } from "./features/benchmark/components/DeviceDiagnosticsPage";
@@ -37,8 +40,40 @@ function CaptureOrClaim() {
 }
 
 
+/**
+ * 모든 화면을 감싸는 틀. 화면을 옮길 때(링크·버튼) 새 화면은 맨 위에서 열고, 뒤로 가기는 보던 자리로 돌아간다.
+ * 주소에 #앵커가 있으면 그 구역으로 내린다. 없으면 앞 화면의 스크롤 위치가 그대로 남아
+ * 첫 화면 아래쪽의 "이용 안내 자세히 보기"를 누르면 이용 안내가 자주 묻는 질문쯤에서 열렸다(11/8)
+ */
+function RootLayout() {
+  return (
+    <>
+      <ScrollRestoration />
+      <Outlet />
+    </>
+  );
+}
+
+/** 로그인 없이 여는 공개 화면의 틀(위 고정 헤더 + 화면) */
+function PublicLayout() {
+  return (
+    <div className="min-h-svh bg-background">
+      <SiteHeader />
+      <Outlet />
+    </div>
+  );
+}
+
 export const routes: RouteObject[] = [
   { path: "/", element: <HomePage /> },
+  {
+    // 공개 보유 노트북 목록·상세(11/8 민서 요청): 로그인 없이 흠집·진단·벤치마크를 비교하고 3D로 흠집 위치를 본다
+    element: <PublicLayout />,
+    children: [
+      { path: "/devices", element: <CatalogPage /> },
+      { path: "/devices/:deviceId", element: <CatalogDetailPage /> },
+    ],
+  },
   // 고객 이용 안내(11/6): 대여는 창구, 고객은 QR로 렌탈을 계정에 연결. 로그인 없이 연다.
   // 안내하는 QR 연결·검증·내 렌탈이 모두 report가 보일 때만 열리므로 report를 보관하면 안내도 숨긴다
   { path: "/guide", element: <ArchivedRoute features={["report"]}><GuidePage /></ArchivedRoute> },
@@ -90,3 +125,8 @@ export const routes: RouteObject[] = [
     ],
   },
 ];
+
+/** 실제 앱 라우터에 넣는 라우트: 위 화면들을 스크롤 위치 관리 틀로 감싼다. 테스트에서 화면 하나만 바꿔 끼울 때는 routes를 쓴다 */
+export function withRoot(children: RouteObject[]): RouteObject[] {
+  return [{ element: <RootLayout />, children }];
+}

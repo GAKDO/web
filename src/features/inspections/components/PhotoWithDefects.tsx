@@ -12,6 +12,8 @@ export interface OverlayDefect {
   /** 폴리곤 위에 올리면 보이는 설명 */
   title: string;
   polygon: number[][];
+  /** 흠집 아님으로 정한 후보: 흐린 점선(11/8 검수) */
+  muted?: boolean;
 }
 
 /**
@@ -79,7 +81,13 @@ export function PhotoWithDefects({
           aria-label={`흠집 ${defects.length}개 표시`}
         >
           {defects.map((d) => (
-            <polygon key={d.id} points={polygonPoints(d.polygon)} vectorEffect="non-scaling-stroke">
+            <polygon
+              key={d.id}
+              points={polygonPoints(d.polygon)}
+              vectorEffect="non-scaling-stroke"
+              data-muted={d.muted || undefined}
+              className={d.muted ? "fill-transparent! stroke-muted-foreground! [stroke-dasharray:6_4]" : undefined}
+            >
               <title>{d.title}</title>
             </polygon>
           ))}

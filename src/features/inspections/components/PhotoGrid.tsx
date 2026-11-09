@@ -2,14 +2,25 @@ import { useState, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "../../../shared/ui/useMediaQuery";
 import { CAPTURE_CAMERA_LABEL, CAPTURE_FACE_LABEL, CAPTURE_LIGHT_LABEL, DEFECT_CLASS_LABEL } from "../../../shared/codes/labels";
-import type { FaceGrid, TextureOverlay } from "../model/photos";
+import type { FaceGrid, GridDefect, TextureOverlay } from "../model/photos";
 import { formatConfidence } from "../model/verdict";
 import { PhotoLightbox, type LightboxPhoto } from "./PhotoLightbox";
 import { PHOTO_MISSING, PhotoWithDefects } from "./PhotoWithDefects";
-import type { PhotoDefect } from "../../../shared/api/types";
+import type { Defect } from "../../../shared/api/types";
 
-const overlayOf = (defects: PhotoDefect[]) =>
-  defects.map((d) => ({ id: d.defectId, title: `${DEFECT_CLASS_LABEL[d.class]} ${formatConfidence(d.confidence)}`, polygon: d.polygon }));
+/** 사람이 흠집 아님으로 정한 후보는 흐린 점선으로 그린다(11/8 검수) */
+const overlayOf = (defects: (GridDefect | Defect)[]) =>
+  defects.map((d) => {
+    const dismissed = d.review?.status === "DISMISSED";
+    // 공개 기기 상세는 신뢰도를 받지 않으므로 종류만 적는다
+    const confidence = d.confidence === undefined ? "" : ` ${formatConfidence(d.confidence)}`;
+    return {
+      id: d.defectId,
+      title: `${DEFECT_CLASS_LABEL[d.class]}${confidence}${dismissed ? " · 흠집 아님" : ""}`,
+      polygon: d.polygon,
+      muted: dismissed,
+    };
+  });
 
 /**
  * 빠른 검사(QUICK): 면마다 카메라 2(행) × 조명 3(열) 원본 사진 격자(11/3 A 답변), 사진 위에 그 사진의 흠집.
@@ -120,7 +131,7 @@ export function TextureList({ overlays }: { overlays: TextureOverlay[] }) {
           <PhotoWithDefects
             src={o.url}
             alt={`${CAPTURE_FACE_LABEL[o.face]} 사진`}
-            defects={o.defects.map((d) => ({ id: d.defectId, title: `${DEFECT_CLASS_LABEL[d.class]} ${formatConfidence(d.confidence)}`, polygon: d.polygon }))}
+            defects={overlayOf(o.defects)}
           />
           <p className="mt-1 mb-0 text-[0.8125rem] text-muted-foreground">
             {CAPTURE_FACE_LABEL[o.face]} · 흠집 {o.defects.length}개

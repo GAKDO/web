@@ -1,6 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { nanoid } from "nanoid";
+import { vi } from "vitest";
 import { renderApp, renderAsAdmin } from "../../test/renderApp";
 import type { Checkpoint, Inspection } from "../../shared/api/types";
 import { db } from "../../shared/mocks/db";
@@ -78,4 +79,25 @@ test("렌탈이 한 쪽(20건)보다 많아도 오래전에 만든 기다리는 
   renderAsAdmin("/booth");
   const waiting = await screen.findByRole("region", { name: "검사 기다리는 기기" });
   expect(await within(waiting).findByRole("button", { name: /C02AIR0002/ })).toBeInTheDocument();
+});
+
+test("폰 폭에서 기기를 처음 고르면 고른 기기 칸이 그려진 뒤에 그 칸으로 내린다", async () => {
+  addRental("C02AIR0002", "OPEN");
+  const width = vi.spyOn(window, "innerWidth", "get").mockReturnValue(375);
+  // 내릴 때 고른 기기 칸에 결과가 이미 그려져 있었는지 기록한다
+  const rendered: boolean[] = [];
+  const original = Element.prototype.scrollIntoView;
+  Element.prototype.scrollIntoView = function (this: Element) {
+    if (this.id === "booth-panel") rendered.push(this.textContent?.includes("부스 코드 발급") ?? false);
+  };
+  try {
+    const u = userEvent.setup();
+    renderAsAdmin("/booth");
+    const waiting = await screen.findByRole("region", { name: "검사 기다리는 기기" });
+    await u.click(await within(waiting).findByRole("button", { name: /C02AIR0002/ }));
+    await vi.waitFor(() => expect(rendered).toEqual([true]));
+  } finally {
+    Element.prototype.scrollIntoView = original;
+    width.mockRestore();
+  }
 });

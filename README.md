@@ -12,7 +12,6 @@ TRACE(노트북 렌탈 상태 기록 서비스)의 **화면**: 관리자 화면�
   |---|---|---|
   | `/api/` | gateway | `API_UPSTREAM`(`gateway:8080`) |
   | `/trace-captures/`·`/trace-derived/` | MinIO S3 API, Host도 이 값 | `MINIO_UPSTREAM`(`minio:9000`, 같은 Compose 안 MinIO) |
-  | `/grafana/` | 파일럿 Grafana | `GRAFANA_UPSTREAM`(`grafana:3000`) |
 
   capture-server가 사전 서명 URL 앞부분을 `MINIO_PUBLIC_BASE`(이 web 주소)로 바꿔 주므로, HTTPS 화면에서 http:// MinIO를 직접 부르지 않습니다. MinIO 경로는 객체 GET·HEAD·PUT만 넘깁니다.
 
@@ -32,7 +31,7 @@ npm run dev
 |---|---|---|
 | `VITE_API_BASE` | gateway 주소. 비우면 같은 출처의 `/api`(개발은 vite 프록시) | 비움 |
 | `VITE_USE_MOCK` | `true`면 브라우저에서 MSW 목 서버를 켠다 | 비움 |
-| `VITE_ARCHIVED_FEATURES` | MVP 배포에서 메뉴·링크를 숨기는 보관 기능(쉼표 구분): `phoneCapture`(수령 QR) `diagnostics`(페어링 코드) `report`(리포트 보기) `account`(가입·재설정) `pilot`(Grafana) `laterCheckpoints`(수령·반납 시작·렌탈 종료, MVP는 렌탈당 출고 검사 1번). 코드·주소는 그대로다 | 개발·테스트 비움, Docker 이미지는 `phoneCapture,pilot`(수령·반납은 11/6부터 부스 빠른 검사로 보임, 가입·재설정·탈퇴 `account`와 리포트·내 렌탈·검증 `report`는 서버가 학교 서버에 올라가 11/6부터 보임, 진단 페어링 코드 `diagnostics`도 11/6부터 보임) |
+| `VITE_ARCHIVED_FEATURES` | MVP 배포에서 메뉴·링크를 숨기는 보관 기능(쉼표 구분): `phoneCapture`(수령 QR) `diagnostics`(페어링 코드) `report`(리포트 보기) `account`(가입·재설정) `pilot`(Grafana) `laterCheckpoints`(수령·반납 시작·렌탈 종료, MVP는 렌탈당 출고 검사 1번). 코드·주소는 그대로다 | 개발·테스트 비움, Docker 이미지는 `pilot`(폰 수령 촬영 `phoneCapture`는 폰 사진 검사 워커가 학교 서버 Compose에 올라가 11/8부터 보임, 수령·반납은 11/6부터 부스 빠른 검사로 보임, 가입·재설정·탈퇴 `account`와 리포트·내 렌탈·검증 `report`는 서버가 학교 서버에 올라가 11/6부터 보임, 진단 페어링 코드 `diagnostics`도 11/6부터 보임) |
 | `VITE_PILOT_DASHBOARD_URL` | 파일럿 추이 Grafana 주소. 비우면 메뉴를 숨긴다 | 비움 |
 | `VITE_DEMO_CUSTOMER_EMAILS` | 시연용 고객 계정 이메일(쉼표 구분). 비밀번호는 넣지 않는다 | Docker 이미지만 기본값 있음 |
 

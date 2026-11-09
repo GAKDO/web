@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import type { CheckpointDiagnostics } from "../../../shared/api/types";
-import { ApiError } from "../../../shared/api/problem";
 import { formatDateTime } from "../../../shared/ui/format";
 import { useDiagnostics } from "../../report/api/report";
 import { diagnosticsReadings, flagText, type Reading } from "../../report/model/compare";
@@ -52,16 +51,17 @@ export function DiagnosticsPanel({ checkpointId, live }: { checkpointId: string;
     if (wasLive.current && !live && !data) void refetch();
     wasLive.current = live;
   }, [live, data, refetch]);
-  if (diag.isPending) return null;
-  const notFound = diag.isError && diag.error instanceof ApiError && diag.error.status === 404;
-  if (notFound) {
+  // 첫 조회 전에만 비워 둔다. 다시 읽는 동안에는 지난 결과를 그대로 둬 화면이 깜빡이지 않게 한다
+  if (!diag.isFetched) return null;
+  if (diag.data === null) {
     return (
       <p className="w-full text-sm text-muted-foreground">
         아직 올라온 진단이 없습니다{live ? " (올라오면 바로 보입니다)" : ""}.
       </p>
     );
   }
-  if (diag.isError) {
+  // 오류이거나, 오류 뒤 다시 읽는 중(데이터가 없어 status가 pending으로 돌아감)이면 오류 문장을 그대로 둔다
+  if (!diag.data) {
     return (
       <p className="w-full text-sm text-muted-foreground">
         진단을 불러오지 못했습니다.{" "}
@@ -124,7 +124,8 @@ export function CheckpointDiagnostics({ rentalId, checkpointId, open, serial }: 
   // DiagnosticsPanel과 같은 쿼리 키라 요청은 한 번만 나간다
   const diag = useDiagnostics(checkpointId, open ? 5_000 : undefined);
   // 조회가 끝나 진단이 없다고 확인된 뒤에만 코드를 만들 수 있게 한다(로딩 중에 눌러 쓸데없는 코드가 나가지 않게)
-  const canPair = open && !diag.isPending && !diag.data;
+  // isPending은 쓰지 않는다: 데이터가 없는 쿼리는 다시 읽을 때마다 pending으로 돌아가 코드 칸이 사라졌다 다시 생긴다
+  const canPair = open && diag.isFetched && !diag.data;
   return (
     <>
       {canPair && <PairingCodePanel key={`${rentalId}:${checkpointId}`} rentalId={rentalId} checkpointId={checkpointId} deviceSerial={serial} />}

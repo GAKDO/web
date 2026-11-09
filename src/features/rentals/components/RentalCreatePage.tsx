@@ -48,7 +48,7 @@ export function RentalCreatePage() {
 
   return (
     <section className="max-w-xl">
-      <PageHeader title="렌탈 만들기" description="기기와 대여자 참조 번호로 렌탈을 만듭니다. 기본은 사용 가능 기기만 보입니다." />
+      <PageHeader back={{ to: "/admin/rentals", label: "렌탈 목록" }} title="렌탈 만들기" description="기기와 대여자 참조 번호로 렌탈을 만듭니다. 기본은 사용 가능 기기만 보입니다." />
       {error && (
         <ErrorBanner message={messageFor(error, { deviceStatus: picked?.status })}>
           {error.code === "RENTAL_OPEN_EXISTS" && <Link to="/admin/rentals?status=OPEN">진행 중인 렌탈 보기</Link>}

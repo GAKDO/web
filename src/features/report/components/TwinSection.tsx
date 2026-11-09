@@ -1,4 +1,4 @@
-import { Component, lazy, Suspense, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useMemo, useState, type ReactNode } from "react";
 import type { Pin, TimelineCheckpoint } from "../../../shared/api/types";
 import { CHECKPOINT_TYPE_LABEL } from "../../../shared/codes/labels";
 import { useCheckpointMedia, useDeviceModel, useInspection } from "../api/report";
@@ -9,6 +9,8 @@ import { PinList } from "./PinList";
 import { TwinFallback } from "./TwinFallback";
 import { PhotoGrid } from "../../inspections/components/PhotoGrid";
 import { faceGrids, photoDefectsOf } from "../../inspections/model/photos";
+import { usePhotoSizes } from "../../../shared/laptop3d/usePhotoSizes";
+import { quickShapes, SHAPE_KNOWN, standardShapes } from "../model/twinShapes";
 
 const TwinViewer = lazy(() => import("./TwinViewer"));
 
@@ -57,6 +59,17 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
   const photos = media.data?.photos ?? [];
   const quick = photoDefects.length > 0 || (photos.length > 0 && (media.data?.textures ?? []).length === 0);
 
+  // 3D 위에 그릴 실제 흠집 모양: 정합 검사는 표준 좌표 폴리곤, 빠른 검사는 원본 사진 px 폴리곤(대표 하나씩)
+  const textureSizes = usePhotoSizes(useMemo(() => (media.data?.textures ?? []).map((t) => ({ key: t.face, url: t.url })), [media.data]));
+  const photoKey = (p: { face: string; camera: string; light: string }) => `${p.face}:${p.camera}:${p.light}`;
+  const photoSizes = usePhotoSizes(useMemo(() => photos.filter((p) => photoDefects.some((d) => photoKey(d) === photoKey(p))).map((p) => ({ key: photoKey(p), url: p.url })), [photos, photoDefects]));
+  const dims = model.data?.dimensions;
+  const shapes = useMemo(() => {
+    if (!dims) return [];
+    if (quick) return quickShapes(photoDefects, (d) => photoSizes[photoKey(d)]);
+    return standardShapes(inspection.data, dims, textureSizes, new Set(pins.filter((p) => p.isNew).map((p) => p.defectId)), selected?.defectId ?? null);
+  }, [dims, quick, photoDefects, photoSizes, inspection.data, textureSizes, pins, selected]);
+
   const fallbackReason = !webgl
     ? "이 브라우저에서는 3D를 볼 수 없어 면별 사진으로 보여 드립니다."
     : model.isError
@@ -68,7 +81,7 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
   return (
     <section aria-labelledby="twin-title" className="twin">
       <h2 id="twin-title">
-        {quick ? "부스 사진" : "3D로 보기"}
+        {quick && !(webgl && dimensions && !model.isError) ? "부스 사진" : "3D로 보기"}
         {current ? ` · ${CHECKPOINT_TYPE_LABEL[current.type]}` : ""}
       </h2>
       <CheckpointSlider
@@ -80,19 +93,38 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
         }}
       />
       {pending.map((c) => (
-        <p key={c.checkpointId} className="muted">
+        <p key={c.checkpointId} className="muted m-0 text-sm">
           {CHECKPOINT_TYPE_LABEL[c.type]}: 검사 중이라 아직 볼 수 없습니다.
         </p>
       ))}
       {inspection.data?.ruleVersion && (
         // 흠집이 없는 검사도 어떤 규칙으로 판정했는지 보이도록 핀 선택과 상관없이 둔다(defect_match.rule_version)
-        <p className="muted">판정 규칙: {inspection.data.ruleVersion}</p>
+        <p className="muted mt-0 mb-3 text-sm">판정 규칙: {inspection.data.ruleVersion}</p>
+      )}
+      {current && quick && webgl && dimensions && !model.isError && (
+        <div className="twin-body">
+          <TwinBoundary fallback={null}>
+            <Suspense fallback={<p>3D를 준비하는 중…</p>}>
+              <TwinViewer dimensions={dimensions} modelCode={modelCode} sizes={{}} shapes={shapes} pins={[]} selected={null} onSelect={() => undefined} />
+            </Suspense>
+          </TwinBoundary>
+          <div key={current.checkpointId} className="twin-side animate-fade text-sm">
+            <p className="m-0 font-semibold">흠집 {shapes.length}곳 <span className="font-normal text-muted-foreground">(조명만 다른 사진의 같은 흠집은 한 곳으로 셈)</span></p>
+            <p className="muted m-0">부스 사진에서 찾은 실제 흠집 모양을 노트북 모형 위에 옮겨 그렸습니다. 위치는 사진에서 옮긴 대략 위치이고, 정확한 모습은 아래 사진에서 볼 수 있습니다.</p>
+            <p className="m-0 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: SHAPE_KNOWN }} />
+              이 시점은 앞 기록과 비교하지 않아 모두 같은 색입니다.
+            </p>
+          </div>
+        </div>
       )}
       {current && quick && (
-        <div>
+        // 시점을 바꾸면 그 시점의 사진·흠집 표시로 짧게 바뀐다(11/8). 3D 위 흠집 모양은 같은 데이터로 바로 바뀐다.
+        // transform이 있는 등장은 안쪽 사진 확대(fixed)의 기준을 이 칸으로 바꾸므로 투명도만 쓰는 fade로 둔다
+        <div key={current.checkpointId} className="animate-fade">
           <p className="muted">
             부스에서 찍은 사진 {photos.length}장
-            {photoDefects.length > 0 ? ` · 흠집 표시 ${photoDefects.length}곳` : " · 표시된 흠집 없음"}
+            {photoDefects.length > 0 ? ` · 사진 속 표시 ${photoDefects.length}개` : " · 표시된 흠집 없음"}
           </p>
           <PhotoGrid grids={faceGrids(photos, photoDefects)} />
         </div>
@@ -110,7 +142,7 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
           {webgl && dimensions && !model.isError ? (
             <TwinBoundary fallback={fallback}>
               <Suspense fallback={<p>3D를 준비하는 중…</p>}>
-                <TwinViewer dimensions={dimensions} media={media.data} pins={pins} selected={selected?.defectId ?? null} onSelect={setSelected} />
+                <TwinViewer dimensions={dimensions} modelCode={modelCode} sizes={textureSizes} shapes={shapes} pins={pins} selected={selected?.defectId ?? null} onSelect={setSelected} />
               </Suspense>
             </TwinBoundary>
           ) : webgl && model.isPending ? (
@@ -118,10 +150,12 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
           ) : (
             fallback
           )}
-          <div className="twin-side">
+          <div key={current.checkpointId} className="twin-side animate-fade">
+            <NewDefectSummary checkpoint={current} pins={pins} previous={previousName(sealed, current)} />
             <PinList pins={pins} selected={selected?.defectId ?? null} onSelect={setSelected} />
             {selected && (
               <PinDetail
+                key={selected.defectId}
                 pin={selected}
                 checkpointType={current.type}
                 inspection={inspection.data}
@@ -135,5 +169,42 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
         </div>
       )}
     </section>
+  );
+}
+
+/** 바로 앞 봉인 시점 이름(출고·수령). 앞 시점이 없으면 null */
+function previousName(sealed: TimelineCheckpoint[], current: TimelineCheckpoint): string | null {
+  const i = sealed.findIndex((c) => c.checkpointId === current.checkpointId);
+  return i > 0 ? CHECKPOINT_TYPE_LABEL[sealed[i - 1].type] : null;
+}
+
+/**
+ * 전후 비교 요약(11/8 민서: 2D 사진 비교 대신 3D 핀으로). 신규 여부는 서버 판정(pin.isNew)만 쓰고,
+ * 비교하지 않은 시점(출고·빠른 검사, compared=false)에는 "신규 없음"으로 읽히지 않게 이유만 적는다
+ */
+function NewDefectSummary({ checkpoint, pins, previous }: { checkpoint: TimelineCheckpoint; pins: Pin[]; previous: string | null }) {
+  const compared = checkpoint.type !== "OUT" && checkpoint.compared !== false && previous !== null;
+  const fresh = pins.filter((p) => p.isNew).length;
+  return (
+    <div className="grid gap-1.5 text-sm">
+      {compared ? (
+        <p className="m-0 font-semibold">
+          {previous} 기록과 비교 ·{" "}
+          {fresh > 0 ? <span className="text-brand">새로 생긴 흠집 {fresh}개</span> : "새로 생긴 흠집 없음"}
+        </p>
+      ) : (
+        <p className="muted m-0">{checkpoint.type === "OUT" ? "출고 기록은 이후 비교의 기준이라 신규 표시가 없습니다." : "이 시점은 앞 기록과 비교하지 않았습니다."}</p>
+      )}
+      <ul aria-label="핀 색" className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-xs text-muted-foreground">
+        <li className="inline-flex items-center gap-1.5">
+          <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: SHAPE_KNOWN }} />
+          앞 시점부터 있던 흠집
+        </li>
+        <li className="inline-flex items-center gap-1.5">
+          <span aria-hidden="true" className="size-2.5 rounded-full bg-brand ring-2 ring-brand/35 ring-offset-1" />
+          새로 생긴 흠집(신규)
+        </li>
+      </ul>
+    </div>
   );
 }

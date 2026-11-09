@@ -7,6 +7,7 @@ import { useAuth } from "../../../shared/auth/AuthProvider";
 import { Button } from "../../../shared/ui/Button";
 import { Field } from "../../../shared/ui/Field";
 import { safeNext } from "../../customer-auth/safeNext";
+import { ReceiveQrNotice } from "../../customer-auth/ReceiveQrNotice";
 import { looksLikeEmail, pendingSignup } from "../pendingSignup";
 import { customerHome } from "../../../shared/config/customerHome";
 import { AuthHeading, AuthShell } from "../../../shared/ui/AuthShell";
@@ -82,6 +83,7 @@ export function VerifyEmailPage() {
       <AuthHeading title="메일 인증">
         {knownEmail ? `${email}로 보낸 6자리 코드를 입력해 주세요.` : "가입한 이메일과 메일로 받은 6자리 코드를 입력해 주세요."}
       </AuthHeading>
+      <ReceiveQrNotice next={next} signup />
       <p className="m-0 mb-4 text-sm text-zinc-400">메일이 보이지 않으면 스팸함(Gmail은 스팸·프로모션)도 확인해 주세요.</p>
       {notice && (
         <p role="status" className="m-0 mb-3 text-sm text-warning">

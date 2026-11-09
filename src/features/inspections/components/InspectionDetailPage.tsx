@@ -17,6 +17,8 @@ import {
   CHECKPOINT_TYPE_LABEL,
   DEFECT_CLASS_LABEL,
   DEFECT_SOURCE_LABEL,
+  DISMISS_REASON_LABEL,
+  REVIEW_STATUS_LABEL,
 } from "../../../shared/codes/labels";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { formatDateTime } from "../../../shared/ui/format";
@@ -26,6 +28,8 @@ import { useCheckpointInspection, useCheckpointMedia } from "../api/inspections"
 import { faceGrids, photoDefectsOf, textureOverlays } from "../model/photos";
 import { formatConfidence, formatMm, repairOf, verdictOf, type Verdict } from "../model/verdict";
 import { PhotoGrid, TextureList } from "./PhotoGrid";
+import { isReviewOpen } from "../model/review";
+import { ReviewPanel } from "./ReviewPanel";
 
 /** 판정 상자 색. 늘 기호(✔·✖)와 글자를 같이 보여 색만으로 뜻을 전하지 않는다 */
 const BOX = {
@@ -52,6 +56,12 @@ export interface BackTo {
   label: string;
 }
 
+/** 검수 상태 글자(11/8). 검수 기록이 없는 예전 결과는 비운다 */
+function reviewNote(review: PhotoDefect["review"]): string | undefined {
+  if (!review) return undefined;
+  return review.reason ? `${REVIEW_STATUS_LABEL[review.status]} · ${DISMISS_REASON_LABEL[review.reason]}` : REVIEW_STATUS_LABEL[review.status];
+}
+
 /** 흠집 카드 한 줄. 빠른 검사(원본 px)와 정합 세트(표준 좌표·mm) 둘 다 이 모양으로 */
 interface DefectRow {
   id: string;
@@ -70,6 +80,7 @@ const fromPhotoDefect = (d: PhotoDefect): DefectRow => ({
   classLabel: DEFECT_CLASS_LABEL[d.class],
   where: [CAPTURE_FACE_LABEL[d.face], `${CAPTURE_CAMERA_LABEL[d.camera]} · ${CAPTURE_LIGHT_LABEL[d.light]}`],
   confidence: d.confidence,
+  note: reviewNote(d.review),
 });
 
 const fromDefect = (d: Defect): DefectRow => ({
@@ -79,7 +90,7 @@ const fromDefect = (d: Defect): DefectRow => ({
   confidence: d.confidence,
   lengthMm: d.lengthMm,
   areaMm2: d.areaMm2,
-  note: DEFECT_SOURCE_LABEL[d.source],
+  note: [DEFECT_SOURCE_LABEL[d.source], reviewNote(d.review)].filter(Boolean).join(" · "),
 });
 
 function DefectCard({ row, index }: { row: DefectRow; index: number }) {
@@ -160,6 +171,8 @@ export function InspectionDetailPage() {
   const rows = photoDefects.length > 0 ? photoDefects.map(fromPhotoDefect) : (data?.defects ?? []).map(fromDefect);
 
   const repair = repairOf(verdict);
+  // 사람 검수 중이면 사진과 후보를 판정보다 먼저 보인다(사진을 보며 정하게)
+  const reviewing = !!checkpoint && isReviewOpen(data);
   const back: BackTo = backTo ?? { path: "/admin/inspections", label: "검사 결과 목록으로" };
 
   return (
@@ -182,8 +195,17 @@ export function InspectionDetailPage() {
         }
       />
 
+      {/* ①-1 사람 검수(11/8): AI 후보를 사진과 비교해 정한다 */}
+      {reviewing && data && (
+        <>
+          <ReviewPanel checkpointId={checkpointId} inspection={data} />
+          <SectionTitle>검사 사진</SectionTitle>
+          <Photos checkpointId={checkpointId} inspection={data} />
+        </>
+      )}
+
       {/* ② 문제 항목 요약 */}
-      {data && (
+      {data && !reviewing && (
         <section aria-labelledby="summary-title">
           <SectionTitle id="summary-title">문제 항목 요약 · 흠집 {rows.length}개</SectionTitle>
           {rows.length === 0 ? (
@@ -210,7 +232,7 @@ export function InspectionDetailPage() {
           <p className={VERDICT_TITLE}>
             {VERDICT_MARK[verdict.kind]} {verdict.label}
           </p>
-          {verdict.kind === "pending" && <p>부스 사진이 올라오고 등급이 매겨지면 여기에 보입니다.</p>}
+          {verdict.kind === "pending" && <p>{reviewing ? "위에서 AI 후보를 모두 정하고 검수를 완료하면 등급이 매겨집니다." : "부스 사진이 올라오고 등급이 매겨지면 여기에 보입니다."}</p>}
           {verdict.kind === "none" && <p>이 렌탈에 그런 시점이 없습니다.</p>}
           {data?.reasons.map((reason) => (
             <p key={reason}>{reason}</p>
@@ -240,7 +262,7 @@ export function InspectionDetailPage() {
       />
 
       {/* ⑤ 검사 사진 */}
-      {checkpoint && (
+      {checkpoint && !reviewing && (
         <>
           <SectionTitle>검사 사진</SectionTitle>
           <Photos checkpointId={checkpointId} inspection={data} />

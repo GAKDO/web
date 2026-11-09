@@ -187,6 +187,26 @@
       ],
       "description": "codes.yaml inspection.defect_source"
     },
+    "InspectionReviewStatus": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "CONFIRMED",
+        "DISMISSED"
+      ],
+      "description": "codes.yaml inspection.review_status"
+    },
+    "InspectionDismissReason": {
+      "type": "string",
+      "enum": [
+        "DUST",
+        "TAPE",
+        "REFLECTION",
+        "PART",
+        "OTHER"
+      ],
+      "description": "codes.yaml inspection.dismiss_reason"
+    },
     "InspectionMatchStatus": {
       "type": "string",
       "enum": [
@@ -426,6 +446,9 @@
         "CAPTURE_FACES_MISSING",
         "CAPTURE_HASH_MISMATCH",
         "CAPTURE_SET_CLOSED",
+        "REVIEW_PENDING_REMAINS",
+        "REVIEW_NOT_READY",
+        "REVIEW_CLOSED",
         "DIAGNOSTIC_ALREADY_UPLOADED",
         "DIAGNOSTIC_SCHEMA_INVALID",
         "DEVICE_SERIAL_MISMATCH",

@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useBlocker } from "react-router-dom";
+import { CircleCheck } from "lucide-react";
+import { Link, useBlocker } from "react-router-dom";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { CaptureFace } from "../../../shared/api/types";
 import { captureTokenStore, type CaptureGrant } from "../../../shared/auth/captureTokenStore";
 import { CAPTURE_FACE_LABEL } from "../../../shared/codes/labels";
@@ -44,7 +47,7 @@ function useInAppLeaveConfirm(active: boolean): void {
 }
 
 /** 면 목록 → 면 하나 찍기 → 다음 면(US3·US4-1) */
-export function CapturePage({ grant }: { grant: CaptureGrant }) {
+export function CapturePage({ grant, linked = false }: { grant: CaptureGrant; linked?: boolean }) {
   const [shots, setShots] = useState<Shots>({});
   const [active, setActive] = useState<CaptureFace | null>(null);
   const [done, setDone] = useState(false);
@@ -55,6 +58,7 @@ export function CapturePage({ grant }: { grant: CaptureGrant }) {
   const minutesLeft = useMinutesLeft(grant.expiresAt);
   const { faces, loading: facesLoading, device } = useFaceGuides(grant.rentalId);
   const remaining = faces.filter((f) => f.required && !shots[f.face]).map((f) => f.face);
+  const requiredCount = faces.filter((f) => f.required).length;
   const guide = faces.find((f) => f.face === active);
   const expired = minutesLeft <= 0;
 
@@ -81,9 +85,19 @@ export function CapturePage({ grant }: { grant: CaptureGrant }) {
 
   if (done) {
     return (
-      <main className="page capture">
-        <h1>제출 완료</h1>
-        <p role="status">수령 사진이 접수되었습니다.{isArchived("report") ? "" : " 검사가 끝나면 내 렌탈에서 결과를 볼 수 있습니다."}</p>
+      <main className="page capture grid justify-items-start gap-3">
+        <span aria-hidden="true" className="grid size-12 place-items-center rounded-full bg-success-soft text-success">
+          <CircleCheck className="size-6" />
+        </span>
+        <h1 className="m-0">제출 완료</h1>
+        <p role="status" className="m-0 text-muted-foreground">
+          수령 사진이 접수되었습니다.{isArchived("report") ? "" : " 검사가 끝나면 내 렌탈에서 결과를 볼 수 있습니다."}
+        </p>
+        {!isArchived("report") && (
+          <Link className={cn(buttonVariants(), "no-underline")} to="/my/rentals">
+            마이페이지로 가기
+          </Link>
+        )}
       </main>
     );
   }
@@ -91,6 +105,13 @@ export function CapturePage({ grant }: { grant: CaptureGrant }) {
   return (
     <main className="page capture">
       <h1>수령 사진 찍기</h1>
+      {/* 수령 QR 하나로 계정 연결까지 끝난다(11/8). 고객이 따로 연결할 일이 없다는 걸 알린다 */}
+      {linked && (
+        <p role="status" className="m-0 mb-3 flex items-center gap-2 rounded-lg bg-success-soft px-3 py-2 text-sm text-success">
+          <CircleCheck aria-hidden="true" className="size-4 shrink-0" />
+          이 렌탈이 내 계정에 연결되었습니다{isArchived("report") ? "." : ". 내 렌탈에서 출고 기록도 볼 수 있습니다."}
+        </p>
+      )}
       <p className="notice">촬영이 끝날 때까지 새로 고치거나 창을 닫지 마세요. 찍은 사진이 사라지고 QR을 다시 받아야 합니다.</p>
       {expired ? (
         <p role="alert">촬영 시간이 지났습니다. 대여 담당자에게 새 QR을 받아 주세요.</p>
@@ -102,20 +123,38 @@ export function CapturePage({ grant }: { grant: CaptureGrant }) {
       ) : (
         <>
           {facesLoading && <p role="status">기종 치수를 불러오는 중입니다. 잠시만 기다려 주세요.</p>}
+          {requiredCount > 0 && (
+            <div className="mt-4 mb-2 grid gap-1.5">
+              <p className="m-0 flex justify-between text-sm">
+                <span className="font-semibold">면을 하나씩 눌러 찍어 주세요</span>
+                <span className="text-muted-foreground tabular-nums">
+                  {requiredCount - remaining.length} / {requiredCount}
+                </span>
+              </p>
+              <span aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-muted">
+                <span className="block h-full rounded-full bg-brand transition-[width]" style={{ width: `${((requiredCount - remaining.length) / requiredCount) * 100}%` }} />
+              </span>
+            </div>
+          )}
           <ol className="faces">
             {faces.map((f) => (
               <li key={f.face}>
-                <button type="button" className="face" disabled={submitting || facesLoading} onClick={() => setActive(f.face)}>
+                <button
+                  type="button"
+                  className={cn("face", shots[f.face] && "border-success/40! bg-success-soft!")}
+                  disabled={submitting || facesLoading}
+                  onClick={() => setActive(f.face)}
+                >
                   <span>
                     {CAPTURE_FACE_LABEL[f.face]}
                     {!f.required && " (선택)"}
                   </span>
-                  <span>{shots[f.face] ? "✓ 찍음" : "찍기"}</span>
+                  <span className={shots[f.face] ? "font-semibold text-success" : "font-semibold text-brand"}>{shots[f.face] ? "✓ 찍음" : "찍기"}</span>
                 </button>
               </li>
             ))}
           </ol>
-          <p role="status">
+          <p role="status" className="my-3 text-sm text-muted-foreground">
             {remaining.length > 0
               ? `남은 필수 면: ${remaining.map((f) => CAPTURE_FACE_LABEL[f]).join(", ")}`
               : "필수 면을 모두 찍었습니다."}

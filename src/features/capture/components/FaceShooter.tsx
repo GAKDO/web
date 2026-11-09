@@ -108,8 +108,8 @@ export function FaceShooter({ guide, onAccept, onCancel }: Props) {
   return (
     <section className="shooter" aria-label={`${label} 찍기`}>
       <h2>{label}</h2>
-      <p>{guide.guide}</p>
-      <p>
+      <p className="m-0">{guide.guide}</p>
+      <p className="mt-1 mb-3 text-sm text-muted-foreground">
         화면 위쪽: {guide.top} · 왼쪽: {guide.left}
       </p>
       {failed && <CameraHelp kind={phase} onRetry={() => setAttempt((n) => n + 1)} />}
@@ -120,15 +120,18 @@ export function FaceShooter({ guide, onAccept, onCancel }: Props) {
       {review && (
         <div className="review">
           <img src={review.shot.previewUrl} alt={`찍은 사진: ${label}`} />
-          <p role="status">{review.check.ok ? "선명하게 찍혔습니다." : REASON[review.check.reason ?? "BLUR"]}</p>
-          <small>
+          <p role="status" className={review.check.ok ? "mt-2 mb-0 font-semibold text-success" : "mt-2 mb-0 font-semibold text-destructive"}>
+            {review.check.ok ? "선명하게 찍혔습니다." : REASON[review.check.reason ?? "BLUR"]}
+          </p>
+          <small className="text-xs text-muted-foreground">
             흔들림 점수 {review.check.blurScore} · 반사 비율 {review.check.glareRatio}
           </small>
         </div>
       )}
-      <div className="row">
+      <div className="row mt-3">
         {review?.check.ok && (
           <Button
+            variant="default"
             onClick={() => {
               unaccepted.current = null;
               onAccept(review);
@@ -148,7 +151,7 @@ export function FaceShooter({ guide, onAccept, onCancel }: Props) {
           </Button>
         )}
         {!review && phase === "live" && (
-          <Button busy={busy} onClick={() => void take()}>
+          <Button variant="default" className="min-w-28" busy={busy} onClick={() => void take()}>
             찍기
           </Button>
         )}

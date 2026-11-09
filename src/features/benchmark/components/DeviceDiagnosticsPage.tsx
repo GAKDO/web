@@ -218,7 +218,7 @@ export function DeviceDiagnosticsPage() {
     const next = new URLSearchParams(params);
     next.set(key, value);
     if (key === "deviceId") next.delete("rentalId");
-    setParams(next, { replace: true });
+    setParams(next, { replace: true, preventScrollReset: true });
   };
 
   return (
@@ -250,6 +250,7 @@ export function DeviceDiagnosticsPage() {
         <label className="grid gap-1 text-sm font-medium">
           렌탈
           <NativeSelect value={rentalId ?? ""} onChange={(e) => select("rentalId", e.target.value)} disabled={!rentalIds.length}>
+            {!rentalIds.length && <option value="">{data.loading ? "불러오는 중…" : "진단한 렌탈 없음"}</option>}
             {rentalIds.map((id) => {
               const first = data.diagnosed.find((d) => d.rentalId === id);
               return (

@@ -3,7 +3,8 @@ import { MaskedSerial } from "../../../shared/ui/MaskedSerial";
 import { PageHeader, SectionTitle } from "../../../shared/ui/PageHeader";
 import { InfoList } from "../../../shared/ui/InfoList";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw } from "lucide-react";
+import { FileText, RefreshCw } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import type { CheckpointType, Rental } from "../../../shared/api/types";
@@ -128,12 +129,23 @@ export function RentalDetailPage() {
   return (
     <section>
       <PageHeader
+        back={{ to: "/admin/rentals", label: "렌탈 목록" }}
         title={`렌탈 ${serial ? maskSerial(serial) : ""}`}
         description={
-          <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-            대여자 참조 번호 {data.renterRef} · <Badge variant={RENTAL_STATUS_VARIANT[data.status]}>{RENTAL_STATUS_LABEL[data.status]}</Badge> · 만든 날{" "}
-            {formatDate(data.createdAt)}
+          <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Badge variant={RENTAL_STATUS_VARIANT[data.status]}>{RENTAL_STATUS_LABEL[data.status]}</Badge>
+            <span>대여자 참조 번호 {data.renterRef}</span>
+            <span>만든 날 {formatDate(data.createdAt)}</span>
           </span>
+        }
+        actions={
+          // 3D 리포트(WE3)는 MVP 배포에서 보관(숨김)
+          data.checkpoints.length > 0 && !isArchived("report") ? (
+            <Link className={buttonVariants({ variant: "outline" })} to={`/my/rentals/${data.rentalId}`}>
+              <FileText aria-hidden="true" />
+              리포트 보기
+            </Link>
+          ) : undefined
         }
       />
       {rental.isError && <ErrorBanner message={toMessage(rental.error)} onRetry={() => void rental.refetch()} />}
@@ -170,18 +182,10 @@ export function RentalDetailPage() {
           <DiagnosticsTrendToggle deviceId={data.deviceId} />
         </>
       )}
-      {/* 3D 리포트(WE3)는 MVP 배포에서 보관(숨김) */}
-      {data.checkpoints.length > 0 && !isArchived("report") && (
-        <p className="mt-4">
-          <Link className="text-info underline-offset-4 hover:underline" to={`/my/rentals/${data.rentalId}`}>
-            리포트 보기
-          </Link>
-        </p>
-      )}
       {/* 폰 촬영을 숨긴 배포에서도 같은 QR로 렌탈을 고객 계정에 연결한다(11/6). 연결하면 고객 내 렌탈에 리포트가 보인다 */}
       {claimCheckpoint && data.status !== "CLOSED" && isArchived("phoneCapture") && !isArchived("report") && (
         <>
-          <SectionTitle>고객 계정 연결</SectionTitle>
+          <SectionTitle>수령 QR(고객 계정 연결)</SectionTitle>
           <CaptureLinkPanel key={claimCheckpoint.checkpointId} rentalId={data.rentalId} checkpointId={claimCheckpoint.checkpointId} purpose="claim" />
         </>
       )}
@@ -206,6 +210,9 @@ export function RentalDetailPage() {
             <Button disabled={action.kind !== "close"} onClick={() => setAsking(true)}>
               렌탈 종료
             </Button>
+          )}
+          {!laterArchived && action.kind === "start" && (
+            <span className="self-center text-xs text-muted-foreground">반납 기록까지 봉인되면 종료할 수 있습니다.</span>
           )}
         </div>
       )}

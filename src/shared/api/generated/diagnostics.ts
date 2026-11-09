@@ -48,6 +48,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/diagnostics/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 공개 기기 목록의 진단 요약
+         * @description 로그인 없이 시점별 배터리·SSD·벤치마크를 본다(11/8 민서 요청, 공개 보유 기기 목록에서 비교). checkpointId는 rental-server `GET /api/v1/catalog/devices`의 `checkpoints`에서 온다. 진단이 없는 시점은 목록에서 빠진다. 부품 식별자·점검 플래그·잠금 상태는 싣지 않는다.
+         */
+        get: operations["listCatalogDiagnostics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/diagnostics/checkpoints/{checkpointId}": {
         parameters: {
             query?: never;
@@ -132,6 +152,21 @@ export interface components {
             }[];
             /** @description 선택(11/7 추가, 서버는 항상 보냄). 진단 JSON에 checks가 없던 옛 에이전트 진단은 null */
             checks?: components["schemas"]["RunChecks"] | null;
+        };
+        CatalogDiagnosticsList: {
+            items: components["schemas"]["CatalogDiagnostics"][];
+        };
+        /** @description 공개 진단 요약. RunSummary에서 runId·부품·잠금 상태를 뺀 것 */
+        CatalogDiagnostics: {
+            checkpointId: components["schemas"]["PublicId"];
+            collectedAt: components["schemas"]["DateTime"];
+            os: components["schemas"]["DeviceOs"];
+            battery: components["schemas"]["BatterySummary"] | null;
+            ssd: components["schemas"]["SsdSummary"] | null;
+            benchmarks: {
+                metric: components["schemas"]["DiagnosticsBenchmarkMetric"];
+                median: number;
+            }[];
         };
         CheckpointDiagnostics: {
             checkpointId: components["schemas"]["PublicId"];
@@ -417,7 +452,7 @@ export interface components {
          * @description codes.yaml error_code
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "NOT_TEST_DATA" | "BOOTH_CODE_INVALID" | "BOOTH_CODE_EXPIRED" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "NOT_TEST_DATA" | "BOOTH_CODE_INVALID" | "BOOTH_CODE_EXPIRED" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "REVIEW_PENDING_REMAINS" | "REVIEW_NOT_READY" | "REVIEW_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
         FieldError: {
             /** @description camelCase 필드 경로 (예 photos[0].sha256) */
             field: string;
@@ -506,6 +541,24 @@ export interface components {
                  *       "title": "접근할 수 없는 렌탈입니다",
                  *       "status": 403,
                  *       "code": "OUT_OF_SCOPE"
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description 요청 제한 초과 (IP당 분당 10회, RATE_LIMITED) */
+        TooManyRequests: {
+            headers: {
+                /** @description 다시 시도할 수 있을 때까지 초 */
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "title": "요청이 너무 많습니다",
+                 *       "status": 429,
+                 *       "code": "RATE_LIMITED"
                  *     }
                  */
                 "application/problem+json": components["schemas"]["Problem"];
@@ -783,6 +836,58 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+        };
+    };
+    listCatalogDiagnostics: {
+        parameters: {
+            query: {
+                /** @description 쉼표로 이은 시점 ID(최대 100개) */
+                checkpointIds: components["schemas"]["PublicId"][];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 요약 목록(요청 순서와 상관없음) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "checkpointId": "h40b9AN9xMQhXRHrOyJWB",
+                     *           "collectedAt": "2026-11-12T13:20:00+09:00",
+                     *           "os": "MACOS",
+                     *           "battery": {
+                     *             "cycleCount": 112,
+                     *             "designCapacity": 4382,
+                     *             "fullChargeCapacity": 3681,
+                     *             "capacityUnit": "mAh",
+                     *             "maxCapacityPct": 84,
+                     *             "condition": "NORMAL",
+                     *             "skippedReason": null
+                     *           },
+                     *           "ssd": null,
+                     *           "benchmarks": [
+                     *             {
+                     *               "metric": "CPU_SINGLE",
+                     *               "median": 2580
+                     *             }
+                     *           ]
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CatalogDiagnosticsList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     getCheckpointDiagnostics: {

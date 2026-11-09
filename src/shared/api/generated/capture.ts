@@ -174,10 +174,87 @@ export interface paths {
         /**
          * 흠집·신규 판정·등급
          * @description 시점의 흠집 목록(표준 좌표), 이전 시점과의 매칭(NEW·EXISTING), 등급과 규칙 버전. 아직 등급 전이면 grade는 null. (FR-INS-03·04)
+         *     사람 검수(11/8): AI 후보가 있는 세트는 관리자가 검수를 완료해야 등급이 매겨진다. ADMIN에게는 기각(DISMISSED) 후보까지 모두 보내고,
+         *     CUSTOMER에게는 기각 후보를 빼고 보낸다.
          */
         get: operations["getCheckpointInspection"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captures/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 검수 대기 시점 목록
+         * @description AI가 잡은 흠집 후보를 사람이 확인해야 하는 시점 목록(11/8 추가, 사람 검수). 오래 기다린 시점부터.
+         *     `status=PENDING`(기본)은 검수 완료 전이고 후보가 하나 이상인 시점, `status=CONFIRMED`는 검수 완료한 시점(최근 완료부터)이다.
+         *     시점마다 후보 수(`pending`·`confirmed`·`dismissed`)와 세트 정보를 준다. 시험 데이터 지우기로 지운 세트는 나오지 않는다.
+         */
+        get: operations["listDefectReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captures/checkpoints/{checkpointId}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                checkpointId: components["parameters"]["CheckpointId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 흠집 후보 확정·기각
+         * @description 관리자가 AI 흠집 후보마다 흠집 맞음(CONFIRMED)·흠집 아님(DISMISSED)·되돌리기(PENDING)를 정한다(11/8 추가, 사람 검수).
+         *     같은 흠집이 조명만 다른 사진마다 따로 있으므로 여러 개를 한 번에 보낼 수 있다(`photoDefects[].groupId`가 같은 것끼리 묶으면 편하다).
+         *     DISMISSED에는 `reason`(먼지·스티커·반사·부품·기타)을 주고, 다른 결정에는 주지 않는다. 결과로 갱신된 검사 결과를 돌려준다.
+         *     - 검수 완료(`.../reviews/complete`) 뒤에는 409 REVIEW_CLOSED. 한 요청 안에서 모르는 `defectId`가 하나라도 있으면 아무것도 바꾸지 않고 404.
+         *     - 저장만 하고 등급은 아직 매기지 않는다. 등급은 검수 완료 때 기각을 뺀 흠집으로 매긴다.
+         */
+        post: operations["saveDefectReviews"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captures/checkpoints/{checkpointId}/reviews/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                checkpointId: components["parameters"]["CheckpointId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 검수 완료(등급 매기기)
+         * @description 후보를 모두 확정·기각한 뒤 부른다(11/8 추가, 사람 검수). 기각(DISMISSED)을 뺀 흠집으로 등급을 매기고
+         *     trace.checkpoint.graded를 발행한다(이벤트 `review`에 검수자·시각·건수). 그 뒤로 결정은 바꿀 수 없다.
+         *     - AI 후보가 하나도 없던 세트는 검수 없이 탐지 직후 바로 등급을 매기므로 이 경로를 부를 일이 없다(부르면 409 REVIEW_CLOSED).
+         *     - PENDING이 남아 있으면 409 REVIEW_PENDING_REMAINS(Problem `pending`에 남은 후보 수, 1 이상).
+         *     - 촬영 완료·부스 탐지·정합 결과가 아직 다 오지 않았으면 409 REVIEW_NOT_READY(후보가 더 생기거나 바뀔 수 있으니 조금 뒤 다시).
+         *     `Idempotency-Key`로 한 번만 처리한다.
+         */
+        post: operations["completeDefectReview"];
         delete?: never;
         options?: never;
         head?: never;
@@ -198,6 +275,48 @@ export interface paths {
          * @description 3D 트윈에 입힐 면별 텍스처와 흠집 크롭의 사전 서명 GET URL(10분). (FR-RPT-01)
          */
         get: operations["getCheckpointMedia"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captures/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 공개 기기 목록의 흠집 요약
+         * @description 로그인 없이 시점별 등급과 흠집 수를 본다(11/8 민서 요청, 공개 보유 기기 목록). checkpointId는 rental-server `GET /api/v1/catalog/devices`의 `checkpoints`에서 온다. 부스(BOOTH)에서 찍고 등급이 난 세트만 답하고, 나머지 시점은 목록에서 빠진다. 흠집 수는 사람이 확정(CONFIRMED)한 흠집만, 조명·카메라만 다른 같은 흠집은 하나로 센다(등급 계산의 묶기와 같다).
+         */
+        get: operations["listCatalogInspections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captures/catalog/checkpoints/{checkpointId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                checkpointId: components["parameters"]["CheckpointId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 공개 기기 상세의 사진과 흠집
+         * @description 로그인 없이 시점의 부스 사진(보기 URL)과 사람이 확정한 흠집(원본 사진 px)을 본다. 기기 상세의 3D 흠집 핀·사진 보기용(11/8 민서 요청). 부스에서 찍고 등급이 난 세트만 답하고, 그 밖(폰 촬영·검사 중·없는 시점)은 404다. 기각·검수 기록·신뢰도·대여자 정보는 싣지 않는다.
+         */
+        get: operations["getCatalogInspection"];
         put?: never;
         post?: never;
         delete?: never;
@@ -411,6 +530,8 @@ export interface components {
             modelVersion: string;
             source: components["schemas"]["InspectionDefectSource"];
             match: components["schemas"]["DefectMatch"] | null;
+            /** @description 사람 검수 상태(선택 필드, 11/8 추가. 서버는 항상 보낸다) */
+            review?: components["schemas"]["DefectReview"];
         };
         Inspection: {
             checkpointId: components["schemas"]["PublicId"];
@@ -421,6 +542,8 @@ export interface components {
             defects: components["schemas"]["Defect"][];
             /** @description 원본 사진 px 흠집(선택 필드, 11/3 추가). 정합 없이 판정한 부스 빠른 검사(QUICK) 세트에만 있고, 그때 `defects`는 빈 배열이다 (`defects[].polygon`은 늘 표준 좌표). 조명만 다른 사진의 같은 흠집도 사진마다 따로 있으며, 관리자 화면은 camera·light로 그 사진(`CheckpointMedia.photos`)을 찾아 겹쳐 그린다 */
             photoDefects?: components["schemas"]["PhotoDefect"][];
+            /** @description 검수 요약(선택 필드, 11/8 추가. 서버는 항상 보낸다). 후보가 있으면 검수 완료 전까지 grade는 null이고, `defects`·`photoDefects`에는 기각(DISMISSED)도 들어 있다(화면은 review.status로 거른다) */
+            review?: components["schemas"]["InspectionReview"];
         };
         PhotoDefect: {
             defectId: components["schemas"]["PublicId"];
@@ -431,6 +554,95 @@ export interface components {
             polygon: components["schemas"]["PhotoPolygon"];
             confidence: number;
             modelVersion: string;
+            /** @description 같은 면·카메라에서 겹치는 흠집(조명만 다른 사진의 같은 흠집) 묶음의 대표 defectId(선택 필드, 11/8 추가). 검수 화면이 묶음 하나를 한 번에 정할 때 쓴다 */
+            groupId?: components["schemas"]["PublicId"];
+            /** @description 사람 검수 상태(선택 필드, 11/8 추가. 서버는 항상 보낸다) */
+            review?: components["schemas"]["DefectReview"];
+        };
+        /** @description 사람 검수 상태(11/8 추가). AI 후보는 PENDING으로 시작하고, 관리자가 CONFIRMED·DISMISSED로 바꾼다 */
+        DefectReview: {
+            status: components["schemas"]["InspectionReviewStatus"];
+            /** @description DISMISSED일 때 기각 사유, 그 밖에는 null */
+            reason: components["schemas"]["InspectionDismissReason"] | null;
+            /** @description 마지막으로 정한 관리자 계정 ID. PENDING이면 null */
+            reviewedBy: components["schemas"]["PublicId"] | null;
+            reviewedAt: components["schemas"]["DateTime"] | null;
+        };
+        /** @description 시점의 검수 요약(11/8 추가). 후보가 없던 세트는 모두 0이고 completedAt은 등급 시각 */
+        InspectionReview: {
+            pending: number;
+            confirmed: number;
+            dismissed: number;
+            /** @description 검수 완료(등급 발행) 시각. 아직이면 null */
+            completedAt: components["schemas"]["DateTime"] | null;
+        };
+        DefectReviewRequest: {
+            items: {
+                defectId: components["schemas"]["PublicId"];
+                decision: components["schemas"]["InspectionReviewStatus"];
+                /** @description decision=DISMISSED일 때만(필수). 다른 결정에 주면 400 */
+                reason?: components["schemas"]["InspectionDismissReason"];
+            }[];
+        };
+        DefectReviewQueue: {
+            items: components["schemas"]["DefectReviewQueueItem"][];
+        };
+        DefectReviewQueueItem: {
+            checkpointId: components["schemas"]["PublicId"];
+            rentalId: components["schemas"]["PublicId"];
+            captureSetId: components["schemas"]["PublicId"];
+            source: components["schemas"]["CaptureSource"];
+            profile: components["schemas"]["CaptureProfile"];
+            /** @description 후보를 낸 모델. 여럿이면 첫 번째 */
+            modelVersion: string | null;
+            pending: number;
+            confirmed: number;
+            dismissed: number;
+            /** @description 촬영 완료 시각 */
+            completedAt: components["schemas"]["DateTime"] | null;
+            reviewCompletedAt: components["schemas"]["DateTime"] | null;
+        };
+        CatalogInspectionList: {
+            items: components["schemas"]["CatalogInspectionSummary"][];
+        };
+        /** @description 공개 흠집 요약. 사람이 확정한 흠집만 센다 */
+        CatalogInspectionSummary: {
+            checkpointId: components["schemas"]["PublicId"];
+            grade: components["schemas"]["InspectionGrade"];
+            gradedAt: components["schemas"]["DateTime"];
+            /** @description 확정 흠집 수(같은 면·카메라에서 겹치는 흠집은 하나) */
+            defectCount: number;
+            /** @description 종류별 확정 흠집 수(묶음의 가장 심한 종류로 센다) */
+            defectsByClass: {
+                scratch: number;
+                dent: number;
+                crack: number;
+                stain: number;
+            };
+        };
+        /** @description 공개 기기 상세의 사진과 확정 흠집 */
+        CatalogInspection: components["schemas"]["CatalogInspectionSummary"] & {
+            expiresAt: components["schemas"]["DateTime"];
+            /** @description 완료 때 올라간 부스 사진 보기 URL(건너뛴 면 제외). 만료는 expiresAt */
+            photos: {
+                face: components["schemas"]["CaptureFace"];
+                light: components["schemas"]["CaptureLight"];
+                camera: components["schemas"]["CaptureCamera"];
+                /** Format: uri */
+                url: string;
+            }[];
+            /** @description 사람이 확정한 흠집(원본 사진 px). 모든 항목의 face·light·camera와 같은 사진이 photos에 있다 */
+            photoDefects: components["schemas"]["CatalogPhotoDefect"][];
+        };
+        CatalogPhotoDefect: {
+            defectId: components["schemas"]["PublicId"];
+            face: components["schemas"]["CaptureFace"];
+            light: components["schemas"]["CaptureLight"];
+            camera: components["schemas"]["CaptureCamera"];
+            class: components["schemas"]["InspectionDefectClass"];
+            polygon: components["schemas"]["PhotoPolygon"];
+            /** @description 같은 흠집 묶음의 대표 defectId. 3D 핀은 묶음마다 하나를 찍는다 */
+            groupId: components["schemas"]["PublicId"];
         };
         CheckpointMedia: {
             checkpointId: components["schemas"]["PublicId"];
@@ -509,7 +721,7 @@ export interface components {
          * @description codes.yaml error_code
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "NOT_TEST_DATA" | "BOOTH_CODE_INVALID" | "BOOTH_CODE_EXPIRED" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "NOT_TEST_DATA" | "BOOTH_CODE_INVALID" | "BOOTH_CODE_EXPIRED" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "REVIEW_PENDING_REMAINS" | "REVIEW_NOT_READY" | "REVIEW_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
         FieldError: {
             /** @description camelCase 필드 경로 (예 photos[0].sha256) */
             field: string;
@@ -566,6 +778,16 @@ export interface components {
          * @enum {string}
          */
         InspectionMatchStatus: "NEW" | "EXISTING";
+        /**
+         * @description codes.yaml inspection.review_status
+         * @enum {string}
+         */
+        InspectionReviewStatus: "PENDING" | "CONFIRMED" | "DISMISSED";
+        /**
+         * @description codes.yaml inspection.dismiss_reason
+         * @enum {string}
+         */
+        InspectionDismissReason: "DUST" | "TAPE" | "REFLECTION" | "PART" | "OTHER";
     };
     responses: {
         /** @description 형식 오류 (VALIDATION_FAILED) */
@@ -633,6 +855,24 @@ export interface components {
                  *       "title": "찾을 수 없습니다",
                  *       "status": 404,
                  *       "code": "NOT_FOUND"
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description 요청 제한 초과 (IP당 분당 10회, RATE_LIMITED) */
+        TooManyRequests: {
+            headers: {
+                /** @description 다시 시도할 수 있을 때까지 초 */
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "title": "요청이 너무 많습니다",
+                 *       "status": 429,
+                 *       "code": "RATE_LIMITED"
                  *     }
                  */
                 "application/problem+json": components["schemas"]["Problem"];
@@ -1149,6 +1389,158 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    listDefectReviews: {
+        parameters: {
+            query?: {
+                /** @description PENDING(검수 대기, 기본) 또는 CONFIRMED(검수 완료). DISMISSED는 400 */
+                status?: components["schemas"]["InspectionReviewStatus"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 검수 대기(또는 완료) 시점 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "checkpointId": "h40b9AN9xMQhXRHrOyJWB",
+                     *           "rentalId": "3fJx0aV7mQ2LrTnB9cYdE",
+                     *           "captureSetId": "U4aNk9bKxZfIZRBgSN2Uj",
+                     *           "source": "BOOTH",
+                     *           "profile": "QUICK",
+                     *           "modelVersion": "yolo11m-aihub-aug-v002-20261108T074500Z-trt-fp16",
+                     *           "pending": 3,
+                     *           "confirmed": 1,
+                     *           "dismissed": 2,
+                     *           "completedAt": "2026-11-09T14:03:05+09:00",
+                     *           "reviewCompletedAt": null
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["DefectReviewQueue"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    saveDefectReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                checkpointId: components["parameters"]["CheckpointId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "items": [
+                 *         {
+                 *           "defectId": "wcMFSsKlYBJ0vrxTlC8t5",
+                 *           "decision": "CONFIRMED"
+                 *         },
+                 *         {
+                 *           "defectId": "Q2b8nT0xYk4LmA9cVd3Ef",
+                 *           "decision": "DISMISSED",
+                 *           "reason": "TAPE"
+                 *         }
+                 *       ]
+                 *     }
+                 */
+                "application/json": components["schemas"]["DefectReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description 갱신된 검사 결과 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inspection"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description 이미 검수 완료한 시점 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "검수가 이미 끝난 시점입니다",
+                     *       "status": 409,
+                     *       "code": "REVIEW_CLOSED"
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    completeDefectReview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 같은 키로 다시 보내면 처음 응답을 그대로 돌려준다. 같은 키에 다른 본문이면 422 IDEMPOTENCY_KEY_CONFLICT. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                checkpointId: components["parameters"]["CheckpointId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 등급이 매겨진 검사 결과 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inspection"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description 검수하지 않은 후보가 남음, 탐지·정합 결과가 아직 오지 않음, 또는 이미 검수 완료 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "검수하지 않은 후보가 남았습니다",
+                     *       "status": 409,
+                     *       "code": "REVIEW_PENDING_REMAINS",
+                     *       "pending": 2
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     getCheckpointMedia: {
         parameters: {
             query?: never;
@@ -1190,6 +1582,124 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listCatalogInspections: {
+        parameters: {
+            query: {
+                /** @description 쉼표로 이은 시점 ID(최대 100개) */
+                checkpointIds: components["schemas"]["PublicId"][];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 요약 목록(요청 순서와 상관없음) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "checkpointId": "Q2xxYv8oP0aLkM3nB7cDe",
+                     *           "grade": "B",
+                     *           "gradedAt": "2026-11-12T18:05:00+09:00",
+                     *           "defectCount": 2,
+                     *           "defectsByClass": {
+                     *             "scratch": 1,
+                     *             "dent": 1,
+                     *             "crack": 0,
+                     *             "stain": 0
+                     *           }
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CatalogInspectionList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getCatalogInspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                checkpointId: components["parameters"]["CheckpointId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 사진과 흠집 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "checkpointId": "Q2xxYv8oP0aLkM3nB7cDe",
+                     *       "grade": "B",
+                     *       "gradedAt": "2026-11-12T18:05:00+09:00",
+                     *       "defectCount": 1,
+                     *       "defectsByClass": {
+                     *         "scratch": 1,
+                     *         "dent": 0,
+                     *         "crack": 0,
+                     *         "stain": 0
+                     *       },
+                     *       "expiresAt": "2026-11-12T18:15:00+09:00",
+                     *       "photos": [
+                     *         {
+                     *           "face": "TOP",
+                     *           "light": "L3",
+                     *           "camera": "CAM1",
+                     *           "url": "https://storage.example/trace-captures/a.jpg?X-Amz-Signature=abc"
+                     *         }
+                     *       ],
+                     *       "photoDefects": [
+                     *         {
+                     *           "defectId": "Z1aB2cD3eF4gH5iJ6kL7m",
+                     *           "face": "TOP",
+                     *           "light": "L3",
+                     *           "camera": "CAM1",
+                     *           "class": "scratch",
+                     *           "polygon": [
+                     *             [
+                     *               812,
+                     *               420
+                     *             ],
+                     *             [
+                     *               860,
+                     *               424
+                     *             ],
+                     *             [
+                     *               858,
+                     *               431
+                     *             ],
+                     *             [
+                     *               810,
+                     *               428
+                     *             ]
+                     *           ],
+                     *           "groupId": "Z1aB2cD3eF4gH5iJ6kL7m"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CatalogInspection"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     listCaptureBenchmarks: {

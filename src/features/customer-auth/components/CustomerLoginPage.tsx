@@ -11,6 +11,7 @@ import { demoCustomerEmails } from "../../../shared/config/demoAccounts";
 import { isArchived } from "../../../shared/config/features";
 import { pendingSignup } from "../../signup/pendingSignup";
 import { safeNext } from "../safeNext";
+import { ReceiveQrNotice } from "../ReceiveQrNotice";
 import { customerHome } from "../../../shared/config/customerHome";
 
 /**
@@ -57,6 +58,7 @@ export function CustomerLoginPage({ demoEmails = demoCustomerEmails() }: { demoE
       }
     >
       <AuthHeading title="로그인">렌탈받을 때 쓴 이메일로 로그인하세요.</AuthHeading>
+      <ReceiveQrNotice next={next} />
       <div className="grid gap-2 empty:hidden">
         {params.get("verified") === "1" && <Notice>메일 인증이 끝났습니다. 로그인해 주세요.</Notice>}
         {notice && <Notice>{LOGIN_NOTICE[notice]}</Notice>}

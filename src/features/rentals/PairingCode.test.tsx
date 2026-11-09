@@ -15,8 +15,8 @@ async function openRental(out: Checkpoint["status"]) {
   const rentalId = nanoid();
   const checkpoints: Checkpoint[] = [{ checkpointId: nanoid(), type: "OUT", status: out, occurredAt: now }];
   db.rentals.push({ rentalId, deviceId: device?.deviceId ?? "", renterRef: "R-3101", status: "OPEN", startedAt: now, endedAt: null, createdAt: now, checkpoints });
-  renderAsAdmin(`/admin/rentals/${rentalId}`);
-  return { step: await screen.findByRole("listitem", { name: "출고" }), rentalId, checkpointId: checkpoints[0].checkpointId };
+  const { client } = renderAsAdmin(`/admin/rentals/${rentalId}`);
+  return { step: await screen.findByRole("listitem", { name: "출고" }), rentalId, checkpointId: checkpoints[0].checkpointId, client };
 }
 
 test("봉인 전 시점에서 진단 페어링 코드를 만들면 6자리 코드와 남은 시간이 보인다", async () => {
@@ -25,6 +25,33 @@ test("봉인 전 시점에서 진단 페어링 코드를 만들면 6자리 코�
   expect(await within(step).findByLabelText("페어링 코드")).toHaveTextContent(/^\d{6}$/);
   expect(within(step).getByText(/남은 시간 \d분 \d+초/)).toBeInTheDocument();
   expect(captureDb.pairings).toMatchObject([{ rentalId, checkpointId, deviceSerial: "C02AIR0002" }]);
+});
+
+test("진단이 아직 없어 5초마다 다시 읽어도 발급한 코드는 사라지지 않고 같은 자리에 그대로 있다", async () => {
+  const { step, client } = await openRental("OPEN");
+  await userEvent.setup().click(await within(step).findByRole("button", { name: "진단 페어링 코드 만들기" }));
+  const code = await within(step).findByLabelText("페어링 코드");
+  const issued = code.textContent;
+  const notice = within(step).getByText(/아직 올라온 진단이 없습니다/);
+  // 진단 폴링(5초)과 같은 다시 읽기를 두 번 돌린 뒤에도 코드·안내 문장이 다시 그려지지(새 노드) 않아야 한다(11/8 깜빡임·코드 사라짐)
+  // 다시 읽는 도중(응답 전) 화면을 본다: 예전에는 이때 status가 pending으로 돌아가 칸이 통째로 사라졌다
+  server.use(
+    http.get("*/api/v1/diagnostics/checkpoints/:checkpointId", async () => {
+      await new Promise((r) => setTimeout(r, 300));
+      return HttpResponse.json({ type: "about:blank", title: "진단이 없습니다", status: 404, code: "NOT_FOUND" }, { status: 404 });
+    }),
+  );
+  let refetching: Promise<void> = Promise.resolve();
+  await act(async () => {
+    refetching = client.refetchQueries({ queryKey: ["report", "diagnostics"] });
+    await new Promise((r) => setTimeout(r, 50));
+  });
+  expect(within(step).queryByLabelText("페어링 코드")).toBe(code);
+  expect(within(step).queryByText(/아직 올라온 진단이 없습니다/)).toBe(notice);
+  await act(() => refetching);
+  expect(within(step).getByLabelText("페어링 코드")).toBe(code);
+  expect(code).toHaveTextContent(issued ?? "");
+  expect(within(step).getByText(/아직 올라온 진단이 없습니다/)).toBe(notice);
 });
 
 test("5분이 지나면 코드를 가리고 새로 만들라고 알린다", async () => {

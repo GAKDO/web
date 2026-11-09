@@ -10,7 +10,8 @@ interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const WRAP = "mb-4 grid gap-2";
-const ERROR = "m-0 text-sm text-destructive";
+/** 오류 문장은 짧게 떠오르고, 칸은 오류가 생기는 순간 한 번 흔들린다(motion.css, 움직임 줄이기면 없음) */
+const ERROR = "m-field-error m-0 text-sm text-destructive";
 
 /** 레이블과 오류 문장이 붙은 입력 칸 */
 export function Field({ label, error, className, ...input }: FieldProps) {

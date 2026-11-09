@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { api, unwrap } from "../../../shared/api/client";
+import { api, ApiError, unwrap } from "../../../shared/api/client";
 
 // WE3 리포트 화면의 서버 상태. 모두 GET이고, 사진 보기 주소는 Query 캐시(메모리)에만 둔다(FR-023)
 export const REPORT = ["report"] as const;
@@ -57,11 +57,20 @@ export function useCheckpointMedia(checkpointId: string | undefined) {
   });
 }
 
-/** pollMs: 진단이 아직 없을 때(404 등) 이 간격으로 다시 읽는다. 렌탈 상세에서 에이전트가 올리는 순간 보이게 한다 */
+/**
+ * 이 시점의 진단. 아직 올라오지 않았으면(404) 오류가 아니라 null로 받는다.
+ * 404를 오류로 두면 데이터가 한 번도 없는 쿼리라 다시 읽을 때마다 TanStack Query가 status를 pending으로 되돌리고,
+ * 렌탈 상세의 페어링 코드 칸이 5초마다 사라졌다 다시 그려져 발급한 코드가 지워졌다(11/8 출고 페어링 코드 사라짐).
+ * pollMs: 진단이 아직 없을 때 이 간격으로 다시 읽는다. 렌탈 상세에서 에이전트가 올리는 순간 보이게 한다
+ */
 export function useDiagnostics(checkpointId: string | undefined, pollMs?: number) {
   return useQuery({
     queryKey: [...REPORT, "diagnostics", checkpointId],
-    queryFn: () => unwrap(api.GET("/api/v1/diagnostics/checkpoints/{checkpointId}", { params: { path: { checkpointId: checkpointId ?? "" } } })),
+    queryFn: () =>
+      unwrap(api.GET("/api/v1/diagnostics/checkpoints/{checkpointId}", { params: { path: { checkpointId: checkpointId ?? "" } } })).catch((e: unknown) => {
+        if (e instanceof ApiError && e.status === 404) return null;
+        throw e;
+      }),
     enabled: !!checkpointId,
     retry: false,
     refetchInterval: (query) => (pollMs && !query.state.data ? pollMs : false),

@@ -8,7 +8,7 @@ import { tokenStore } from "../../shared/auth/tokenStore";
 import { exchangeOnce } from "./api/exchange";
 import { captureTokenStore } from "../../shared/auth/captureTokenStore";
 import { captureDb, mockCaptureLink } from "../../shared/mocks/captureDb";
-import { db, MOCK_CUSTOMER } from "../../shared/mocks/db";
+import { db, MOCK_CUSTOMER, MOCK_EMAIL_CODE } from "../../shared/mocks/db";
 import { server } from "../../shared/mocks/node";
 import * as camera from "./camera";
 import { blurredGray, fakeShot, glareGray, sharpGray } from "./testing";
@@ -49,6 +49,55 @@ test("로그인하지 않은 고객이 QR 링크를 열면 로그인 화면이 �
   expect(screen.queryByText(/키보드/)).not.toBeInTheDocument();
   expect(router.state.location.search).toBe("");
   expect(captureTokenStore.get()?.checkpointId).toBe(link.checkpointId);
+});
+
+test("수령 QR로 들어와 로그인 화면이 뜨면 로그인하면 렌탈이 자동으로 연결된다고 알리고, 로그인 뒤 촬영 화면에 연결됐다고 보인다", async () => {
+  const link = mockCaptureLink();
+  renderApp(`/capture?t=${link.token}`);
+  expect(await screen.findByText(/로그인하면 이 렌탈이 내 계정에 자동으로 연결됩니다/)).toBeInTheDocument();
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText("이메일"), MOCK_CUSTOMER.email);
+  await user.type(screen.getByLabelText("비밀번호"), MOCK_CUSTOMER.password);
+  await user.click(screen.getByRole("button", { name: "로그인" }));
+  expect(await screen.findByText(/이 렌탈이 내 계정에 연결되었습니다/)).toBeInTheDocument();
+  expect(captureDb.rentalOwner.get(link.rentalId)).toBe(db.accounts.find((a) => a.email === MOCK_CUSTOMER.email)?.accountId);
+});
+
+test("수령 QR로 들어온 새 고객은 가입·메일 인증 화면에서도 가입을 마치면 렌탈이 새 계정에 연결된다고 안내받고, 인증을 마치면 렌탈이 연결된 채 촬영 화면이 열린다", async () => {
+  const link = mockCaptureLink();
+  renderApp(`/capture?t=${link.token}`);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("link", { name: "회원가입" }));
+  expect(await screen.findByText(/가입과 메일 인증을 마치면 이 렌탈이 새 계정에 자동으로 연결됩니다/)).toBeInTheDocument();
+  await user.type(screen.getByLabelText("이름"), "홍길동");
+  await user.type(screen.getByLabelText("이메일"), "qr-new@example.com");
+  await user.type(screen.getByLabelText("비밀번호"), "example-pass-5678");
+  await user.click(screen.getByRole("checkbox"));
+  await user.click(screen.getByRole("button", { name: "가입하고 인증 코드 받기" }));
+  expect(await screen.findByText(/가입과 메일 인증을 마치면 이 렌탈이 새 계정에 자동으로 연결됩니다/)).toBeInTheDocument();
+  await user.type(screen.getByLabelText("인증 코드"), MOCK_EMAIL_CODE);
+  await user.click(screen.getByRole("button", { name: "인증하기" }));
+  expect(await screen.findByText(/이 렌탈이 내 계정에 연결되었습니다/)).toBeInTheDocument();
+  expect(captureDb.rentalOwner.get(link.rentalId)).toBe(db.accounts.find((a) => a.email === "qr-new@example.com")?.accountId);
+});
+
+test("QR을 교환해 렌탈이 연결되면 로그인 세션을 다시 받아 내 렌탈이 새 렌탈을 담게 하고, 촬영 권한은 그대로 남는다", async () => {
+  const link = mockCaptureLink();
+  asCustomer();
+  let refreshes = 0;
+  const count = ({ request }: { request: Request }) => {
+    if (request.method === "POST" && new URL(request.url).pathname.endsWith("/api/v1/auth/refresh")) refreshes += 1;
+  };
+  server.events.on("request:start", count);
+  try {
+    renderApp(`/capture?t=${link.token}`);
+    expect(await screen.findByRole("heading", { name: "수령 사진 찍기" })).toBeInTheDocument();
+    // 처음 화면을 열 때 세션을 되살리는 1번 + 교환 뒤 1번
+    await vi.waitFor(() => expect(refreshes).toBe(2));
+    expect(captureTokenStore.get()?.checkpointId).toBe(link.checkpointId);
+  } finally {
+    server.events.removeListener("request:start", count);
+  }
 });
 
 test("만료됐거나 이미 쓴 QR을 열면 새 QR을 받으라는 문장이 보인다", async () => {

@@ -192,6 +192,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/catalog/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 공개 보유 기기 목록
+         * @description 로그인 없이 회사가 가진 기기를 본다(11/8 민서 요청, 고객이 흠집·진단·벤치마크를 비교해 고르기 위해). 폐기(RETIRED)는 빼고 최근 등록 순으로 최대 200대. 시리얼·자산번호·대여자·렌탈 ID는 싣지 않는다. 흠집·등급은 capture-server `GET /api/v1/captures/catalog`, 진단은 diagnostics-server `GET /api/v1/diagnostics/catalog`에 `checkpoints`의 checkpointId를 넘겨 읽는다(서비스끼리 REST를 부르지 않으므로 화면이 모은다).
+         */
+        get: operations["listCatalogDevices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/devices/{deviceId}": {
         parameters: {
             query?: never;
@@ -395,6 +415,35 @@ export interface components {
             items: components["schemas"]["Device"][];
             nextCursor: string | null;
         };
+        /** @description 공개 보유 기기 목록(listCatalogDevices). 쪽 나눔 없이 최대 200대 */
+        CatalogDeviceList: {
+            items: components["schemas"]["CatalogDevice"][];
+        };
+        /** @description 공개 기기 한 대. 시리얼·자산번호·대여자는 없다 */
+        CatalogDevice: {
+            deviceId: components["schemas"]["PublicId"];
+            modelCode: components["schemas"]["ModelCode"];
+            modelName: string;
+            manufacturer: string | null;
+            os: components["schemas"]["DeviceOs"];
+            color: string | null;
+            status: components["schemas"]["DeviceStatus"];
+            /** @description 지금 빌릴 수 있는지. 상태가 ACTIVE이고 진행 중(OPEN) 렌탈이 없으면 true */
+            available: boolean;
+            /** @description 이 기기의 렌탈 수(진행 중 포함) */
+            rentalCount: number;
+            /** @description 기종 기준 사양. 없으면 null */
+            spec: components["schemas"]["ModelSpec"] | null;
+            dimensions: components["schemas"]["ModelDimensions"];
+            /** @description 검사가 끝난 시점(GRADED·SEALED), 최근 것부터 최대 12개. 화면은 앞에서부터 흠집·진단이 있는 첫 시점을 그 기기의 최신 상태로 쓴다. 화면은 이 ID를 100개씩 나눠 capture·diagnostics 공개 목록에 묻는다(최악 200대×12개면 각 24회). 세 공개 목록 경로는 게이트웨이에서 같은 catalog 버킷으로 IP당 합산 분당 300회까지다 */
+            checkpoints: components["schemas"]["CatalogCheckpoint"][];
+        };
+        CatalogCheckpoint: {
+            checkpointId: components["schemas"]["PublicId"];
+            type: components["schemas"]["RentalCheckpointType"];
+            status: components["schemas"]["RentalCheckpointStatus"];
+            occurredAt: components["schemas"]["DateTime"] | null;
+        };
         DeviceModelSummary: {
             modelCode: components["schemas"]["ModelCode"];
             name: string;
@@ -487,7 +536,7 @@ export interface components {
          * @description codes.yaml error_code
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "NOT_TEST_DATA" | "BOOTH_CODE_INVALID" | "BOOTH_CODE_EXPIRED" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "NOT_TEST_DATA" | "BOOTH_CODE_INVALID" | "BOOTH_CODE_EXPIRED" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "REVIEW_PENDING_REMAINS" | "REVIEW_NOT_READY" | "REVIEW_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
         FieldError: {
             /** @description camelCase 필드 경로 (예 photos[0].sha256) */
             field: string;
@@ -601,6 +650,24 @@ export interface components {
                  *       "title": "찾을 수 없습니다",
                  *       "status": 404,
                  *       "code": "NOT_FOUND"
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description 요청 제한 초과 (IP당 분당 10회, RATE_LIMITED) */
+        TooManyRequests: {
+            headers: {
+                /** @description 다시 시도할 수 있을 때까지 초 */
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "title": "요청이 너무 많습니다",
+                 *       "status": 429,
+                 *       "code": "RATE_LIMITED"
                  *     }
                  */
                 "application/problem+json": components["schemas"]["Problem"];
@@ -1207,6 +1274,69 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+        };
+    };
+    listCatalogDevices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 목록 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "deviceId": "aAXQFO2Vz6ZTFbPctC2dq",
+                     *           "modelCode": "MBA13-M2",
+                     *           "modelName": "MacBook Air (M2, 2022)",
+                     *           "manufacturer": "Apple",
+                     *           "os": "MACOS",
+                     *           "color": "미드나이트",
+                     *           "status": "ACTIVE",
+                     *           "available": true,
+                     *           "rentalCount": 3,
+                     *           "spec": {
+                     *             "cpu": "Apple M2",
+                     *             "ramGb": 16,
+                     *             "ssdGb": 256
+                     *           },
+                     *           "dimensions": {
+                     *             "widthMm": 304.1,
+                     *             "depthMm": 215,
+                     *             "baseHMm": 6,
+                     *             "lidHMm": 5.3
+                     *           },
+                     *           "checkpoints": [
+                     *             {
+                     *               "checkpointId": "Q2xxYv8oP0aLkM3nB7cDe",
+                     *               "type": "RET",
+                     *               "status": "SEALED",
+                     *               "occurredAt": "2026-11-12T18:00:00+09:00"
+                     *             },
+                     *             {
+                     *               "checkpointId": "Kp9sT1uVw2Xy3Za4Bc5De",
+                     *               "type": "OUT",
+                     *               "status": "SEALED",
+                     *               "occurredAt": "2026-11-12T09:00:00+09:00"
+                     *             }
+                     *           ]
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CatalogDeviceList"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
         };
     };
     getDevice: {

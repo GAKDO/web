@@ -1,5 +1,8 @@
 import { useState, type FormEvent } from "react";
+import { ArrowLeft, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { ApiError } from "../../../shared/api/problem";
 import { messageFor } from "../../../shared/api/errorMessages";
 import { useAuth } from "../../../shared/auth/AuthProvider";
@@ -46,36 +49,49 @@ export function WithdrawPage() {
     }
   }
 
+  const back = customerHome() === "/my/rentals" ? "마이페이지로 돌아가기" : "내 정보로 돌아가기";
   return (
-    <main className="page narrow">
-      <h1>계정 탈퇴</h1>
-      <ul>
-        <li>이메일·이름·비밀번호가 지워지고 다시 로그인할 수 없습니다.</li>
-        <li>렌탈 기록(사진·검사·진단·봉인)은 지워지지 않고 남습니다.</li>
-      </ul>
-      <form onSubmit={ask} noValidate>
-        <Field
-          label="비밀번호 확인"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          error={error}
-          onChange={(e) => {
-            setPassword(e.target.value);
-            setError(null);
-          }}
-        />
-        <Button type="submit" className="danger" disabled={!password || asking}>
-          탈퇴하기
-        </Button>
-      </form>
+    <main className="mx-auto w-full max-w-xl px-4 py-8 md:px-8 md:py-10">
+      <Link
+        to={customerHome()}
+        className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground no-underline underline-offset-4 hover:text-foreground hover:underline"
+      >
+        <ArrowLeft aria-hidden="true" className="size-4" />
+        {back}
+      </Link>
+      <h1 className="m-0 mt-2 text-2xl font-bold tracking-tight">계정 탈퇴</h1>
+      <section className="mt-6 rounded-2xl border border-destructive/30 bg-card p-5 shadow-xs md:p-6">
+        <ul className="m-0 grid list-none gap-2 p-0 text-sm">
+          <li className="flex gap-2">
+            <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
+            이메일·이름·비밀번호가 지워지고 다시 로그인할 수 없습니다.
+          </li>
+          <li className="flex gap-2">
+            <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />
+            렌탈 기록(사진·검사·진단·봉인)은 지워지지 않고 남습니다.
+          </li>
+        </ul>
+        <form onSubmit={ask} noValidate className="mt-5">
+          <Field
+            label="비밀번호 확인"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            error={error}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setError(null);
+            }}
+          />
+          <Button type="submit" variant="destructive" className="mt-2" disabled={!password || asking}>
+            탈퇴하기
+          </Button>
+        </form>
+      </section>
       {asking && (
         <ConfirmDialog message="정말 탈퇴할까요? 되돌릴 수 없습니다." confirmLabel="탈퇴" busy={busy} onConfirm={() => void confirm()} onCancel={() => setAsking(false)} />
       )}
-      <p>
-        <Link to={customerHome()}>{customerHome() === "/my/rentals" ? "마이페이지로 돌아가기" : "내 정보로 돌아가기"}</Link>
-      </p>
     </main>
   );
 }
@@ -83,10 +99,14 @@ export function WithdrawPage() {
 /** 탈퇴 뒤 안내(로그인 없이 연다) */
 export function WithdrawnPage() {
   return (
-    <main className="page narrow">
-      <h1>탈퇴했습니다</h1>
-      <p role="status">계정 정보를 지웠습니다. 그동안 이용해 주셔서 감사합니다.</p>
-      <Link to="/">처음으로</Link>
+    <main className="mx-auto grid min-h-svh w-full max-w-md content-center justify-items-start gap-3 px-4 py-10">
+      <h1 className="m-0 text-2xl font-bold tracking-tight">탈퇴했습니다</h1>
+      <p role="status" className="m-0 text-sm text-muted-foreground">
+        계정 정보를 지웠습니다. 그동안 이용해 주셔서 감사합니다.
+      </p>
+      <Link to="/" className={cn(buttonVariants({ variant: "outline" }), "no-underline")}>
+        처음으로
+      </Link>
     </main>
   );
 }
