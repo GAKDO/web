@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { faceRatio } from "./faces";
 import { facePlanes, photoShapePoints, standardFaceSize, standardShapePoints } from "./shapes";
 
 const DIMS = { widthMm: 304.1, depthMm: 215, baseHMm: 7.5, lidHMm: 3.8 };
@@ -14,10 +15,12 @@ describe("3D 흠집 모양 좌표", () => {
     expect(standardFaceSize("SL", DIMS)).toEqual({ width: 215 * 4, height: (7.5 + 3.8) * 4 });
   });
 
-  it("부스 사진 px 폴리곤은 카메라 반쪽 규칙(faceRatio)으로 옮긴다", () => {
-    const [[u, v]] = photoShapePoints("TOP", "CAM1", [[960, 540]], { width: 1920, height: 1080 });
-    expect(u).toBeCloseTo(0.5);
-    expect(v).toBeCloseTo(0.75);
+  it("부스 사진 px 폴리곤은 카메라별 네 모서리 규칙(faceRatio)으로 옮긴다", () => {
+    const size = { width: 1920, height: 1080 };
+    const [[u, v]] = photoShapePoints("TOP", "CAM1", [[960, 540]], size);
+    expect([u, v]).toEqual(Object.values(faceRatio("TOP", "CAM1", [960, 540], size)));
+    expect(u).toBeGreaterThan(0.4);
+    expect(u).toBeLessThan(0.6);
   });
 
   it("옆면 판은 본체·덮개 둘로 나뉘고, 각 판은 그 부분 면에 붙어 있다(경계에서 반대쪽으로 새지 않음)", () => {
