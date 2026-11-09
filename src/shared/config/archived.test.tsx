@@ -33,13 +33,14 @@ async function openRentalWithOpenReceipt() {
   return screen.findByRole("listitem", { name: "수령" });
 }
 
-test("보관 설정이 없으면 렌탈 상세에 수령 QR·페어링 코드·리포트 보기가 그대로 보인다", async () => {
+test("보관 설정이 없으면 렌탈 상세에 수령 QR·페어링 코드·리포트 자리가 그대로 보인다", async () => {
   vi.stubEnv("VITE_ARCHIVED_FEATURES", "");
   const receipt = await openRentalWithOpenReceipt();
   expect(within(receipt).getByRole("button", { name: /QR/ })).toBeInTheDocument();
   // 페어링 버튼은 진단 조회가 끝난 뒤 나타나므로 기다린다(느린 CI에서 먼저 물으면 아직 없다)
   expect(await within(receipt).findByRole("button", { name: /페어링/ })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "리포트 보기" })).toBeInTheDocument();
+  // 이 렌탈은 리포트 목에 기록이 없어(404) 링크 대신 "기록 없음" 안내가 보인다(보관하면 둘 다 사라진다)
+  expect(await screen.findByText("리포트 기록이 아직 없습니다")).toBeInTheDocument();
 });
 
 test("폰 촬영·진단·리포트를 보관하면 렌탈 상세에서 수령 QR·페어링 코드·리포트 보기가 사라지고 시점 진행은 그대로다", async () => {

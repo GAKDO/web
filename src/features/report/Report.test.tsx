@@ -100,6 +100,24 @@ describe("리포트", () => {
     renderAsAdmin(`/admin/rentals/${firstRentalId()}`);
     await u.click(await screen.findByRole("link", { name: "리포트 보기" }));
     expect(await screen.findByRole("list", { name: "시점" })).toBeInTheDocument();
+    // 관리자는 마이페이지가 아니라 렌탈 상세로 돌아간다
+    expect(screen.getByRole("link", { name: "렌탈 상세" })).toHaveAttribute("href", `/admin/rentals/${firstRentalId()}`);
+  });
+
+  test("리포트 서버에 기록이 없는 렌탈이면 관리자 렌탈 상세에 리포트 보기 대신 '리포트 기록이 아직 없습니다'가 보인다", async () => {
+    const rentalId = firstRentalId();
+    db.report.timelines.delete(rentalId);
+    renderAsAdmin(`/admin/rentals/${rentalId}`);
+    expect(await screen.findByText("리포트 기록이 아직 없습니다")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "리포트 보기" })).not.toBeInTheDocument();
+  });
+
+  test("관리자가 기록 없는 리포트 주소를 직접 열면 '렌탈을 찾을 수 없습니다' 대신 기록이 아직 없다는 안내와 렌탈 상세 링크가 보인다", async () => {
+    const rentalId = firstRentalId();
+    db.report.timelines.delete(rentalId);
+    renderAsAdmin(`/my/rentals/${rentalId}`);
+    expect(await screen.findByRole("alert")).toHaveTextContent("리포트 기록이 아직 없습니다");
+    expect(screen.getByRole("link", { name: "렌탈 상세로" })).toHaveAttribute("href", `/admin/rentals/${rentalId}`);
   });
 
   test("로그인하지 않고 리포트 주소를 열면 고객 로그인으로 간다", async () => {
