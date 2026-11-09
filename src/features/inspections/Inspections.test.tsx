@@ -145,7 +145,7 @@ test("빠른 검사에서 CAM1·CAM2와 L1·L2 사진 네 곳에 잡힌 같은 �
   expect(first).toHaveTextContent("신뢰도 57%");
   expect(screen.queryByRole("listitem", { name: "흠집 2" })).not.toBeInTheDocument();
   const bot = await screen.findByRole("region", { name: "바닥 사진" });
-  expect(within(bot).getByRole("heading", { name: /바닥 · 흠집 1개/ })).toHaveTextContent("사진 4곳에서 잡힘");
+  expect(within(bot).getByRole("heading", { name: /바닥 · 흠집 1개/ })).toHaveTextContent("사진 속 표시 4곳");
 });
 
 /** 사진이 로드된 것처럼 natural 크기를 넣고 load 이벤트를 낸다(jsdom은 이미지를 읽지 않는다) */
