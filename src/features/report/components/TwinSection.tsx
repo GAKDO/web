@@ -8,7 +8,7 @@ import { PinDetail } from "./PinDetail";
 import { PinList } from "./PinList";
 import { TwinFallback } from "./TwinFallback";
 import { PhotoGrid } from "../../inspections/components/PhotoGrid";
-import { faceGrids, photoDefectsOf } from "../../inspections/model/photos";
+import { faceGrids, isQuickInspection, photoDefectsOf } from "../../inspections/model/photos";
 import { usePhotoSizes } from "../../../shared/laptop3d/usePhotoSizes";
 import { quickShapes, SHAPE_KNOWN, standardShapes } from "../model/twinShapes";
 
@@ -55,9 +55,12 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
   const pins = current?.pins ?? [];
   // 부스 빠른 검사(QUICK)는 면 사진(textures)이 없고 흠집이 원본 사진 px(photoDefects)다.
   // 9면 3D·면별 사진으로는 '사진 없음'만 보이므로 관리자 검사 결과와 같은 원본 사진 격자로 보여 준다
-  const photoDefects = photoDefectsOf(inspection.data);
+  // 전체 검사(11/9)도 photoDefects를 싣으므로 QUICK 여부는 profile로 가른다
   const photos = media.data?.photos ?? [];
-  const quick = photoDefects.length > 0 || (photos.length > 0 && (media.data?.textures ?? []).length === 0);
+  // 사진만 있고 면 사진이 없을 때 QUICK으로 보는 폴백은 profile이 없는 예전 서버에만 쓴다
+  const quick = isQuickInspection(inspection.data) || (!inspection.data?.profile && photos.length > 0 && (media.data?.textures ?? []).length === 0);
+  const allPhotoDefects = photoDefectsOf(inspection.data);
+  const photoDefects = useMemo(() => (quick ? allPhotoDefects : []), [quick, allPhotoDefects]);
 
   // 3D 위에 그릴 실제 흠집 모양: 정합 검사는 표준 좌표 폴리곤, 빠른 검사는 원본 사진 px 폴리곤(대표 하나씩)
   const textureSizes = usePhotoSizes(useMemo(() => (media.data?.textures ?? []).map((t) => ({ key: t.face, url: t.url })), [media.data]));

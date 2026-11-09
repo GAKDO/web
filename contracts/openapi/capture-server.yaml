@@ -697,7 +697,7 @@ paths:
         '400':
           $ref: './components/common.yaml#/components/responses/BadRequest'
         '429':
-          $ref: './components/common.yaml#/components/responses/TooManyRequests'
+          $ref: './components/common.yaml#/components/responses/CatalogTooManyRequests'
   /api/v1/captures/catalog/checkpoints/{checkpointId}:
     parameters:
       - $ref: '#/components/parameters/CheckpointId'
@@ -744,7 +744,7 @@ paths:
         '404':
           $ref: './components/common.yaml#/components/responses/NotFound'
         '429':
-          $ref: './components/common.yaml#/components/responses/TooManyRequests'
+          $ref: './components/common.yaml#/components/responses/CatalogTooManyRequests'
   /api/v1/captures/benchmarks:
     get:
       tags: [검사]
@@ -1268,9 +1268,12 @@ components:
         photoDefects:
           type: array
           description: >-
-            원본 사진 px 흠집(선택 필드, 11/3 추가). 정합 없이 판정한 부스 빠른 검사(QUICK) 세트에만 있고, 그때 `defects`는 빈 배열이다
-            (`defects[].polygon`은 늘 표준 좌표). 조명만 다른 사진의 같은 흠집도 사진마다 따로 있으며, 관리자 화면은 camera·light로
-            그 사진(`CheckpointMedia.photos`)을 찾아 겹쳐 그린다
+            원본 사진 px 흠집(선택 필드, 11/3 추가). 정합 없이 판정한 부스 빠른 검사(QUICK) 세트는 흠집이 여기에만 있고 `defects`는 빈 배열이다
+            (`defects[].polygon`은 늘 표준 좌표). 11/9부터 전체 검사(FULL) 세트도 원본 사진 px를 아는 흠집(부스 탐지 전부, 정합한 사진의
+            worker 탐지)을 여기에 함께 싣는다. 이때 `defects`에는 표준 좌표가 있는(정합에 성공한) 흠집만 있고, 같은 흠집은 두 목록에서
+            defectId가 같다(정합에 실패해 판정 불가인 면의 흠집은 `photoDefects`에만 있다. 등급에는 쓰지 않음). 흠집 수는 `profile`이
+            FULL이면 `defects`로, QUICK이면 `photoDefects`로 센다. 조명만 다른 사진의 같은 흠집도 사진마다 따로 있으며, 관리자 화면은
+            camera·light로 그 사진(`CheckpointMedia.photos`)을 찾아 겹쳐 그린다
           items:
             $ref: '#/components/schemas/PhotoDefect'
         review:
@@ -1278,6 +1281,25 @@ components:
             검수 요약(선택 필드, 11/8 추가. 서버는 항상 보낸다). 후보가 있으면 검수 완료 전까지 grade는 null이고,
             `defects`·`photoDefects`에는 기각(DISMISSED)도 들어 있다(화면은 review.status로 거른다)
           $ref: '#/components/schemas/InspectionReview'
+        profile:
+          description: >-
+            보여 주는 세트의 검사 범위(선택 필드, 11/9 추가. 서버는 항상 보낸다). 화면이 흠집을 `defects`와 `photoDefects` 중 어디서 셀지 정한다
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureProfile'
+        unjudgeableFaces:
+          type: array
+          description: >-
+            판정 불가 면과 사유(선택 필드, 11/9 추가. 서버는 항상 보낸다, 없으면 빈 배열). 등급 전에도 지금까지 받은 정합 결과로 계산해 싣는다.
+            건너뛴 면, 정합에 실패했거나 품질 미달인 카메라가 있는 면이다. 이 면의 흠집은 등급에 쓰지 않으므로 화면은 "일부 면 판정 불가"를
+            눈에 띄게 보인다. 사유는 사람이 읽는 문장(정합 실패면 worker가 보낸 실패 사유 포함)
+          items:
+            type: object
+            required: [face, reason]
+            properties:
+              face:
+                $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+              reason:
+                type: string
+                maxLength: 500
     PhotoDefect:
       type: object
       required: [defectId, face, light, camera, class, polygon, confidence, modelVersion]

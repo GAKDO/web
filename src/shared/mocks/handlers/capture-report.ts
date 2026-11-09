@@ -41,7 +41,7 @@ export const captureReportHandlers = [
         rentalId: rentalOfCheckpoint(inspection.checkpointId) ?? "",
         captureSetId: `set-${inspection.checkpointId}`.slice(0, 21),
         source: "BOOTH",
-        profile: (inspection.photoDefects ?? []).length > 0 ? "QUICK" : "FULL",
+        profile: inspection.profile ?? ((inspection.photoDefects ?? []).length > 0 ? "QUICK" : "FULL"),
         modelVersion: candidates(inspection)[0]?.modelVersion ?? null,
         pending: review.pending,
         confirmed: review.confirmed,

@@ -275,14 +275,15 @@ test("새로 고침을 누르면 목록을 다시 읽어 부스가 시작한 시
   expect(within(await card("LGGRAM0002")).getByRole("link", { name: "결과 보기" })).toBeInTheDocument();
 });
 
-test("정합 세트(FULL)의 사진 응답에 원본 사진이 함께 와도 면 사진 위의 표준 좌표 흠집을 보인다", async () => {
+test("정합 세트(FULL)는 원본 사진 격자(AI가 본 흠집)와 면 사진 위의 표준 좌표 흠집을 함께 보인다(11/9)", async () => {
   const rental = db.rentals.find((r) => db.devices.find((d) => d.deviceId === r.deviceId)?.serial === "LGGRAM0001");
   const out = rental?.checkpoints[0];
   const media = db.report.media.get(out?.checkpointId ?? "");
   if (media) media.photos = quickPhotos();
   renderAsAdmin(`/admin/inspections/${rental?.rentalId}/${out?.checkpointId}`);
   expect(within(await screen.findByRole("list", { name: "면 사진" })).getAllByRole("listitem")).toHaveLength(8);
-  expect(screen.queryByRole("region", { name: /사진$/ })).not.toBeInTheDocument();
+  expect(screen.getAllByRole("region", { name: /사진$/ }).length).toBeGreaterThan(0);
+  expect(screen.getByText("정합된 면 사진(등급 계산에 쓴 좌표)")).toBeInTheDocument();
 });
 
 test("사진 주소를 못 읽으면 그 칸에만 안내와 다시 시도가 보이고, 다시 시도하면 사진을 다시 읽는다", async () => {
@@ -438,4 +439,25 @@ test("모두 정해도 서버가 탐지 결과를 아직 기다리면(409 REVIEW
   await waitFor(() => expect(within(panel).getByRole("button", { name: "검수 완료하고 판정하기" })).toBeEnabled());
   await user.click(within(panel).getByRole("button", { name: "검수 완료하고 판정하기" }));
   expect(await within(panel).findByText("탐지 결과가 아직 다 오지 않았습니다. 잠시 뒤 다시 눌러 주세요.")).toBeInTheDocument();
+});
+
+test("A 등급이어도 정합 실패 면이 있으면 '문제 없음' 대신 일부 면 판정 불가를 경고하고 그 면의 AI 후보를 등급 미반영으로 적는다(11/9)", async () => {
+  const rental = db.rentals.find((r) => db.devices.find((d) => d.deviceId === r.deviceId)?.serial === "LGGRAM0001");
+  const out = rental?.checkpoints[0];
+  const checkpointId = out?.checkpointId ?? "";
+  const side = { ...quickDefect("SF", "L1", "CAM1", "scratch", 300, 40, 0.7), defectId: "side-only-1" };
+  db.report.inspections.set(checkpointId, {
+    checkpointId,
+    grade: "A",
+    ruleVersion: "grade-rules-v1",
+    reasons: ["흠집 없음 → A"],
+    defects: [],
+    photoDefects: [side],
+    profile: "FULL",
+    unjudgeableFaces: [{ face: "SF", reason: "정합 실패 또는 품질 미달(CAM1) - 면이 사진 밖으로 나감(두 변 이상 잘림)" }],
+  });
+  renderAsAdmin(`/admin/inspections/${rental?.rentalId}/${checkpointId}`);
+  expect(await screen.findByRole("alert")).toHaveTextContent("일부 면 판정 불가 · 1면");
+  expect(screen.getByRole("status", { name: "판정" })).toHaveTextContent("판정한 면은 문제 없음 · 일부 면 판정 불가");
+  expect(screen.getByRole("listitem", { name: "흠집 1" })).toHaveTextContent("판정 불가 면 · 등급 미반영");
 });

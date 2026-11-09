@@ -1,3 +1,4 @@
+import { isQuickInspection } from "./photos";
 import type { CaptureCamera, CaptureFace, CaptureLight, Defect, DefectClass, DismissReason, Inspection, PhotoDefect, ReviewStatus } from "../../../shared/api/types";
 
 // 사람 검수 화면 모델(11/8). AI는 넓게 잡고(오탐 허용) 사람이 흠집 맞음·아님을 정한다.
@@ -36,8 +37,8 @@ const statusOf = (d: Candidate): ReviewStatus => d.review?.status ?? "PENDING";
 /** 검수할 후보 묶음. 빠른 검사는 photoDefects를 groupId로, 정합 세트는 defects를 하나씩. 신뢰도 높은 묶음부터 */
 export function reviewGroups(inspection: Inspection | null | undefined): ReviewGroup[] {
   if (!inspection) return [];
-  const photo = inspection.photoDefects ?? [];
-  const list: Candidate[] = photo.length > 0 ? photo : inspection.defects.filter((d) => d.source === "AUTO");
+  // 전체 검사(11/9)도 photoDefects를 싣지만 검수 후보는 표준 좌표가 있는 defects다(서버 reviewCandidates와 같다)
+  const list: Candidate[] = isQuickInspection(inspection) ? (inspection.photoDefects ?? []) : inspection.defects.filter((d) => d.source === "AUTO");
   const byGroup = new Map<string, Candidate[]>();
   for (const d of list) {
     const key = ("groupId" in d && d.groupId) || d.defectId;

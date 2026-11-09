@@ -36,9 +36,65 @@ const FACE_ORDER: CaptureFace[] = ["TOP", "BOT", "KB", "SF", "SB", "SL", "SR", "
 const CAMERA_ORDER: CaptureCamera[] = ["CAM1", "CAM2", "PHONE"];
 const LIGHT_ORDER: CaptureLight[] = ["L1", "L2", "L3", "L4", "ROOM", "OFF"];
 
-/** 빠른 검사(QUICK) 흠집. 계약 1.1.0 이전 서버는 photoDefects를 보내지 않으므로 빈 배열 */
+/**
+ * 원본 사진 px 흠집. 빠른 검사(QUICK)는 흠집이 여기에만 있고, 11/9부터 전체 검사(FULL)도 AI가 사진에서 본 것을 모두 싣는다
+ * (정합 실패 면의 흠집 포함). 계약 1.1.0 이전 서버는 보내지 않으므로 빈 배열
+ */
 export function photoDefectsOf(inspection: Inspection | null | undefined): PhotoDefect[] {
   return inspection?.photoDefects ?? [];
+}
+
+/**
+ * 빠른 검사 세트인가. profile(11/9)이 있으면 그대로 따르고, 예전 서버는 photoDefects가 QUICK에만 왔으므로 그것으로 가린다.
+ * photoDefects가 있다고 QUICK이 아니다(전체 검사도 싣는다)
+ */
+export function isQuickInspection(inspection: Inspection | null | undefined): boolean {
+  if (!inspection) return false;
+  if (inspection.profile) return inspection.profile === "QUICK";
+  return photoDefectsOf(inspection).length > 0;
+}
+
+/** 흠집 수를 셀 목록: 빠른 검사는 photoDefects(사진마다), 전체 검사는 표준 좌표 흠집(defects) */
+export function countedDefects(inspection: Inspection | null | undefined): (PhotoDefect | Defect)[] {
+  if (!inspection) return [];
+  return isQuickInspection(inspection) ? photoDefectsOf(inspection) : inspection.defects;
+}
+
+export interface UnjudgeableFace {
+  face: CaptureFace;
+  reason: string;
+  /** 선택 면을 일부러 건너뛴 것(SCR1 등). 경고하지 않는다 */
+  skipped: boolean;
+}
+
+const UNJUDGEABLE_REASON = /^판정 불가 면 (TOP|BOT|SF|SB|SL|SR|KB|SCR0|SCR1): (.+)$/;
+const isSkipped = (reason: string) => reason.startsWith("건너뜀");
+
+/**
+ * 판정 불가 면. unjudgeableFaces(11/9)가 있으면 그것을, 예전 서버는 등급 근거 문장("판정 불가 면 SF: …")에서 읽는다.
+ * 정합 실패 면은 AI가 본 흠집이 있어도 등급에 들어가지 않으므로 화면이 눈에 띄게 알린다
+ */
+export function unjudgeableOf(inspection: Inspection | null | undefined): UnjudgeableFace[] {
+  if (!inspection) return [];
+  if (inspection.unjudgeableFaces) {
+    return inspection.unjudgeableFaces.map((u) => ({ face: u.face, reason: u.reason, skipped: isSkipped(u.reason) }));
+  }
+  return inspection.reasons.flatMap((line) => {
+    const m = UNJUDGEABLE_REASON.exec(line);
+    return m ? [{ face: m[1] as CaptureFace, reason: m[2], skipped: isSkipped(m[2]) }] : [];
+  });
+}
+
+/** 경고해야 하는 판정 불가 면(건너뛴 선택 면 제외) */
+export function failedFaces(inspection: Inspection | null | undefined): UnjudgeableFace[] {
+  return unjudgeableOf(inspection).filter((u) => !u.skipped);
+}
+
+/** 전체 검사에서 표준 좌표가 없어(정합 실패) 등급에 쓰지 않은 AI 흠집. 빠른 검사는 빈 배열 */
+export function photoOnlyDefects(inspection: Inspection | null | undefined): PhotoDefect[] {
+  if (!inspection || isQuickInspection(inspection)) return [];
+  const graded = new Set(inspection.defects.map((d) => d.defectId));
+  return photoDefectsOf(inspection).filter((d) => !graded.has(d.defectId));
 }
 
 /** 원본 사진 격자: 면마다 카메라(행) × 조명(열). 사진이나 흠집이 있는 면·카메라·조명만 넣고 순서는 codes.yaml 순 */

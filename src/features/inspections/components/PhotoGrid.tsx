@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "../../../shared/ui/useMediaQuery";
 import { CAPTURE_CAMERA_LABEL, CAPTURE_FACE_LABEL, CAPTURE_LIGHT_LABEL, DEFECT_CLASS_LABEL } from "../../../shared/codes/labels";
-import type { FaceGrid, GridDefect, TextureOverlay } from "../model/photos";
+import type { FaceGrid, GridDefect, TextureOverlay, UnjudgeableFace } from "../model/photos";
 import { formatConfidence } from "../model/verdict";
 import { PhotoLightbox, type LightboxPhoto } from "./PhotoLightbox";
 import { PHOTO_MISSING, PhotoWithDefects } from "./PhotoWithDefects";
@@ -26,7 +26,7 @@ const overlayOf = (defects: (GridDefect | Defect)[]) =>
  * 빠른 검사(QUICK): 면마다 카메라 2(행) × 조명 3(열) 원본 사진 격자(11/3 A 답변), 사진 위에 그 사진의 흠집.
  * 12장을 모두 보이고(접지 않음) 칸마다 촬영 부위 이름을 붙인다. 사진을 누르면 크게 보기 팝업에서 차례로 넘긴다
  */
-export function PhotoGrid({ grids }: { grids: FaceGrid[] }) {
+export function PhotoGrid({ grids, unjudgeable = [] }: { grids: FaceGrid[]; unjudgeable?: UnjudgeableFace[] }) {
   const [open, setOpen] = useState<number | null>(null);
   // 폰: 12장이 세로로 1000px 넘게 이어져 면(윗면·바닥) 탭으로 나눠 6장씩 본다. 768px 이상은 모두 펼친다
   const mobile = useIsMobile();
@@ -89,6 +89,10 @@ export function PhotoGrid({ grids }: { grids: FaceGrid[] }) {
         >
           <h3 className="mt-4 mb-2 text-base font-semibold">
             {CAPTURE_FACE_LABEL[grid.face]} · 흠집 {grid.defectCount}개
+            {/* 판정 불가 면(11/9): AI 표시는 보이되 등급에 들어가지 않았음을 면 제목에 붙인다 */}
+            {unjudgeable.some((u) => u.face === grid.face && !u.skipped) && (
+              <span className="ml-2 rounded-full bg-warning-soft px-2 py-0.5 text-xs font-bold text-warning">판정 불가 · 등급 미반영</span>
+            )}
           </h3>
           {/* 넓은 모니터(1880px 이상)에서는 카메라 두 줄을 한 줄로 이어 사진이 지나치게 커지지 않게 한다 */}
           <ul
