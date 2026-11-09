@@ -77,7 +77,7 @@ export function PhotoGrid({ grids, unjudgeable = [] }: { grids: FaceGrid[]; unju
               )}
             >
               {CAPTURE_FACE_LABEL[g.face]}
-              <span className={cn("rounded-full px-1.5 text-[0.6875rem] font-bold", g.defectCount > 0 ? "bg-destructive text-white" : "bg-muted text-muted-foreground")}>{g.defectCount}</span>
+              <span className={cn("rounded-full px-1.5 text-[0.6875rem] font-bold", g.groupCount > 0 ? "bg-destructive text-white" : "bg-muted text-muted-foreground")}>{g.groupCount}</span>
             </button>
           ))}
         </div>
@@ -91,7 +91,9 @@ export function PhotoGrid({ grids, unjudgeable = [] }: { grids: FaceGrid[]; unju
           className="animate-enter"
         >
           <h3 className="mt-4 mb-2 text-base font-semibold">
-            {CAPTURE_FACE_LABEL[grid.face]} · 흠집 {grid.defectCount}개
+            {CAPTURE_FACE_LABEL[grid.face]} · 흠집 {grid.groupCount}개
+            {/* 같은 흠집이 조명·카메라만 다른 사진 여러 장에 잡히면(11/9) 사진에서 잡힌 수를 따로 적는다 */}
+            {grid.defectCount > grid.groupCount && <span className="ml-2 text-sm font-normal text-muted-foreground">(사진 {grid.defectCount}곳에서 잡힘)</span>}
             {/* 판정 불가 면(11/9): AI 표시는 보이되 등급에 들어가지 않았음을 면 제목에 붙인다 */}
             {unjudgeable.some((u) => u.face === grid.face && !u.skipped) && (
               <span className="ml-2 rounded-full bg-warning-soft px-2 py-0.5 text-xs font-bold text-warning">판정 불가 · 등급 미반영</span>

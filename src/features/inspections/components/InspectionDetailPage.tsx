@@ -25,7 +25,7 @@ import { formatDateTime } from "../../../shared/ui/format";
 import { RENTAL_STATUS_LABEL } from "../../../shared/codes/labels";
 import { useRental } from "../../rentals/api/rentals";
 import { useCheckpointInspection, useCheckpointMedia } from "../api/inspections";
-import { failedFaces, faceGrids, isQuickInspection, photoDefectsOf, photoOnlyDefects, textureOverlays, unjudgeableOf } from "../model/photos";
+import { failedFaces, faceGrids, groupDefects, isQuickInspection, photoDefectsOf, photoOnlyDefects, textureOverlays, unjudgeableOf } from "../model/photos";
 import { UnjudgeableNotice } from "./UnjudgeableNotice";
 import { formatConfidence, formatMm, PARTIAL_OK_LABEL, repairOf, verdictOf, type Verdict } from "../model/verdict";
 import { PhotoGrid, TextureList } from "./PhotoGrid";
@@ -76,6 +76,8 @@ interface DefectRow {
   note?: string;
   /** 사람이 직접 표시(11/9): 신뢰도를 보이지 않는다 */
   human?: boolean;
+  /** 묶음이 잡힌 사진들(카메라 · 조명), 빠른 검사 묶음만 */
+  detail?: string;
 }
 
 const fromPhotoDefect = (d: PhotoDefect): DefectRow => ({
@@ -87,6 +89,28 @@ const fromPhotoDefect = (d: PhotoDefect): DefectRow => ({
   note: d.source === "HUMAN" ? DEFECT_SOURCE_LABEL.HUMAN : reviewNote(d.review),
   human: d.source === "HUMAN",
 });
+
+const SEVERITY: Record<PhotoDefect["class"], number> = { stain: 0, scratch: 1, dent: 2, crack: 3 };
+
+/**
+ * 빠른 검사 흠집 묶음 하나 → 카드 한 줄(11/9). 서버가 조명·CAM1·CAM2 사이 같은 흠집을 groupId로 묶어 등급에서 하나로 세므로
+ * 요약도 묶음마다 한 줄이다. 종류는 가장 심한 것, 신뢰도는 가장 높은 것, 위치는 잡힌 사진(카메라·조명)을 모두 적는다
+ */
+const fromPhotoGroup = (members: PhotoDefect[]): DefectRow => {
+  if (members.length === 1) return fromPhotoDefect(members[0]);
+  const head = members[0];
+  const worst = members.reduce((w, m) => (SEVERITY[m.class] > SEVERITY[w.class] ? m : w), head);
+  const shots = members.map((m) => `${CAPTURE_CAMERA_LABEL[m.camera]} · ${CAPTURE_LIGHT_LABEL[m.light]}`);
+  const cameras = new Set(members.map((m) => m.camera));
+  return {
+    ...fromPhotoDefect(head),
+    classLabel: DEFECT_CLASS_LABEL[worst.class],
+    where: [CAPTURE_FACE_LABEL[head.face], `${cameras.size > 1 ? "두 카메라" : CAPTURE_CAMERA_LABEL[head.camera]} 사진 ${members.length}장에서 같은 흠집`],
+    detail: shots.join(", "),
+    confidence: Math.max(...members.map((m) => m.confidence)),
+    human: members.every((m) => m.source === "HUMAN"),
+  };
+};
 
 const fromDefect = (d: Defect): DefectRow => ({
   id: d.defectId,
@@ -114,6 +138,7 @@ function DefectCard({ row, index }: { row: DefectRow; index: number }) {
         {row.areaMm2 !== undefined && <span>면적 {formatMm(row.areaMm2, "mm²")}</span>}
         {row.note && <span className="text-muted-foreground">{row.note}</span>}
       </div>
+      {row.detail && <p className="m-0 mt-1 text-xs text-muted-foreground">{row.detail}</p>}
     </li>
   );
 }
@@ -190,8 +215,9 @@ export function InspectionDetailPage() {
   const quick = isQuickInspection(data);
   // 전체 검사는 등급에 쓴 표준 좌표 흠집 + 정합 실패 면에서 AI가 본 후보(등급 미반영)를 함께 적는다(11/9)
   const ignored = photoOnlyDefects(data);
+  const quickShots = quick ? photoDefectsOf(data).length : 0;
   const rows = quick
-    ? photoDefectsOf(data).map(fromPhotoDefect)
+    ? groupDefects(photoDefectsOf(data)).map(fromPhotoGroup)
     : [...(data?.defects ?? []).map(fromDefect), ...ignored.map((d) => ({ ...fromPhotoDefect(d), note: [fromPhotoDefect(d).note, "판정 불가 면 · 등급 미반영"].filter(Boolean).join(" · ") }))];
   const partial = failedFaces(data).length > 0;
   const partialOk = partial && verdict.kind === "ok";
@@ -246,7 +272,12 @@ export function InspectionDetailPage() {
             <p className={cn("rounded-xl border px-4 py-3 font-semibold", verdict.kind === "ok" ? "border-success/40 bg-success-soft text-success" : "bg-muted text-muted-foreground")}>{verdict.kind === "ok" ? (partial ? "판정한 면에서는 흠집 없음 · 판정 불가 면은 위 경고를 봐 주세요" : "✔ 발견된 문제 없음") : "등록된 흠집 위치 없음 · 판정 근거는 아래 최종 판정을 봐 주세요"}</p>
           ) : (
             <>
-              {quick && <p className="text-sm text-muted-foreground">사진마다 따로 센 수입니다. 조명만 다른 사진에 겹친 같은 흠집은 등급을 매길 때 하나로 봅니다.</p>}
+              {quick && (
+                <p className="text-sm text-muted-foreground">
+                  조명이나 카메라(CAM1·CAM2)만 다른 사진에 함께 잡힌 같은 흠집은 하나로 묶어 셉니다
+                  {quickShots > rows.length && ` (사진 ${quickShots}곳에서 잡힌 것 → 흠집 ${rows.length}개)`}. 등급도 이 수로 매깁니다.
+                </p>
+              )}
               <ul className="m-0 grid list-none gap-2 p-0" aria-label="흠집">
                 {rows.map((row, i) => (
                   <DefectCard key={row.id} row={row} index={i} />

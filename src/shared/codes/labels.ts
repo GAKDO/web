@@ -67,8 +67,8 @@ export const CAPTURE_LIGHT_LABEL: Record<CaptureLight, string> = {
   OFF: "조명 끔",
 };
 
-/** 카메라(codes.yaml capture.camera): 부스 위 두 대가 앞 반·뒤 반을 나눠 찍는다 */
-export const CAPTURE_CAMERA_LABEL: Record<CaptureCamera, string> = { CAM1: "CAM1 앞 반", CAM2: "CAM2 뒤 반", PHONE: "폰" };
+/** 카메라(codes.yaml capture.camera): 부스 위 두 대가 각자 면 전체를 찍는다(11/9 보정, docs/pin-calibration.md) */
+export const CAPTURE_CAMERA_LABEL: Record<CaptureCamera, string> = { CAM1: "CAM1", CAM2: "CAM2", PHONE: "폰" };
 
 export const INSPECTION_GRADE_LABEL: Record<InspectionGrade, string> = { A: "A등급", B: "B등급", C: "C등급", D: "D등급" };
 
