@@ -69,6 +69,10 @@ function backFor(isAdmin: boolean, rentalId: string): Back {
 function AdminReportMissing({ rentalId }: { rentalId: string }) {
   const rental = useRental(rentalId);
   if (rental.isPending) return <p className="text-muted-foreground">리포트를 불러오는 중…</p>;
+  // 렌탈 API가 404일 때만 "렌탈 없음"이다. 그 밖의 실패는 다시 시도할 수 있게 한다
+  if (rental.isError && !(rental.error instanceof ApiError && rental.error.status === 404)) {
+    return <ErrorBanner message={rental.error instanceof ApiError ? messageFor(rental.error) : "렌탈을 확인하지 못했습니다."} onRetry={() => void rental.refetch()} />;
+  }
   const exists = !!rental.data;
   return (
     <div role="alert" className="notice">

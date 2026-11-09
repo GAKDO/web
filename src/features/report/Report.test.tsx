@@ -4,6 +4,8 @@ import { nanoid } from "nanoid";
 import { renderAsAdmin, renderAsCustomer } from "../../test/renderApp";
 import { db } from "../../shared/mocks/db";
 import { MY_RENTALS_PAGE_SIZE } from "./api/report";
+import { http, HttpResponse } from "msw";
+import { server } from "../../shared/mocks/node";
 
 /** 목의 고객 렌탈 ①(출고·수령 봉인, 반납 검사 중) */
 function firstRentalId(): string {
@@ -130,6 +132,15 @@ describe("리포트", () => {
     renderAsAdmin(`/my/rentals/${rentalId}`);
     expect(await screen.findByRole("alert")).toHaveTextContent("이 렌탈의 리포트 기록이 아직 없습니다");
     expect(screen.getByRole("link", { name: "렌탈 상세로" })).toHaveAttribute("href", `/admin/rentals/${rentalId}`);
+  });
+
+  test("관리자 리포트 404에서 렌탈 확인이 서버 오류로 실패하면 '렌탈 없음' 대신 다시 시도할 수 있는 오류가 보인다", async () => {
+    const rentalId = firstRentalId();
+    db.report.timelines.delete(rentalId);
+    server.use(http.get("*/api/v1/rentals/:rentalId", () => HttpResponse.json({ type: "about:blank", title: "서버 오류", status: 500, code: "INTERNAL_ERROR" }, { status: 500 })));
+    renderAsAdmin(`/my/rentals/${rentalId}`);
+    expect(await screen.findByRole("button", { name: /다시/ })).toBeInTheDocument();
+    expect(screen.queryByText("렌탈을 찾을 수 없습니다.")).not.toBeInTheDocument();
   });
 
   test("관리자가 없는 렌탈의 리포트 주소를 열면 '렌탈을 찾을 수 없습니다'와 렌탈 목록 링크가 보인다", async () => {
