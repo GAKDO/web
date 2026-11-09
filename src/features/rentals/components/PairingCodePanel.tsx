@@ -15,7 +15,7 @@ const AGENT_DEFAULT_API = "https://gakdo.site";
  * 노트북에 붙여 넣을 한 줄 설치·실행 명령(agent #8). 스크립트는 지금 연 화면의 origin에서 받는다
  * (/agent.sh·/agent.ps1은 web nginx, 개발은 vite 프록시가 GitHub 원본으로 넘긴다).
  * 스크립트는 진단을 기본 https://gakdo.site로 올리므로, 코드를 발급한 API 서버(apiBase)가 그 주소가 아니면
- * TRACE_API_URL로 그 서버를 알려 준다. 윈도우는 같은 PowerShell 창에 값이 남지 않게 실행 뒤 지운다.
+ * TRACE_API_URL로 그 서버를 알려 준다. 윈도우는 실패해도 같은 PowerShell 창에 값이 남지 않게 finally에서 지운다.
  * gakdo.site에서는 B가 정한 명령 그대로다
  */
 export function agentCommands(origin: string, code: string, apiBase: string = origin): { mac: string; windows: string } {
@@ -26,7 +26,7 @@ export function agentCommands(origin: string, code: string, apiBase: string = or
   if (apiBase === AGENT_DEFAULT_API) return run;
   return {
     mac: `curl -fsSL ${origin}/agent.sh | TRACE_API_URL=${apiBase} sh -s ${code}`,
-    windows: `$env:TRACE_API_URL='${apiBase}'; ${run.windows}; Remove-Item Env:TRACE_API_URL`,
+    windows: `try { $env:TRACE_API_URL='${apiBase}'; ${run.windows} } finally { Remove-Item Env:TRACE_API_URL -ErrorAction SilentlyContinue }`,
   };
 }
 

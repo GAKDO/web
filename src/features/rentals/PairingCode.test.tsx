@@ -149,7 +149,8 @@ test("gakdo.site에서는 B가 정한 명령 그대로, 다른 주소에서는 �
   });
   expect(agentCommands("http://localhost:5173", "123456")).toEqual({
     mac: "curl -fsSL http://localhost:5173/agent.sh | TRACE_API_URL=http://localhost:5173 sh -s 123456",
-    windows: "$env:TRACE_API_URL='http://localhost:5173'; & ([scriptblock]::Create((irm http://localhost:5173/agent.ps1))) 123456; Remove-Item Env:TRACE_API_URL",
+    windows:
+      "try { $env:TRACE_API_URL='http://localhost:5173'; & ([scriptblock]::Create((irm http://localhost:5173/agent.ps1))) 123456 } finally { Remove-Item Env:TRACE_API_URL -ErrorAction SilentlyContinue }",
   });
   // API를 다른 서버로 둔 빌드(VITE_API_BASE)면 스크립트는 화면에서, 진단은 API 서버로
   expect(agentCommands("https://gakdo.site", "123456", "http://10.0.0.5:8080").mac).toBe(
