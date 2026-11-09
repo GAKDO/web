@@ -117,7 +117,7 @@ export function PhotoGrid({ grids, unjudgeable = [] }: { grids: FaceGrid[]; unju
                   <p className="mt-1 mb-0 grid text-[0.8125rem] leading-snug">
                     {!(mobile && grids.length > 1) && <strong>{CAPTURE_FACE_LABEL[cell.face]}</strong>}
                     <span className="text-muted-foreground">
-                      {CAPTURE_CAMERA_LABEL[cell.camera]} · {CAPTURE_LIGHT_LABEL[cell.light]} · 흠집 {cell.defects.length}개
+                      {CAPTURE_CAMERA_LABEL[cell.camera]} · {CAPTURE_LIGHT_LABEL[cell.light]} · 표시 {cell.defects.length}개
                     </span>
                   </p>
                 </li>
@@ -143,7 +143,7 @@ export function TextureList({ overlays }: { overlays: TextureOverlay[] }) {
             defects={overlayOf(o.defects)}
           />
           <p className="mt-1 mb-0 text-[0.8125rem] text-muted-foreground">
-            {CAPTURE_FACE_LABEL[o.face]} · 흠집 {o.defects.length}개
+            {CAPTURE_FACE_LABEL[o.face]} · 표시 {o.defects.length}개
           </p>
         </li>
       ))}
