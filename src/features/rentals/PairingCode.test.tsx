@@ -127,3 +127,16 @@ test("주소로 바로 연 렌탈도 렌탈 목록을 읽지 않고 상세의 �
   expect(captureDb.pairings.at(-1)).toMatchObject({ rentalId, deviceSerial: "C02AIR0002" });
   expect(listCalls).toBe(0);
 });
+
+test("페어링 코드를 만들면 맥·윈도우 설치 명령을 지금 주소와 코드로 복사하고 안내 한 줄이 보인다", async () => {
+  const { step } = await openRental("OPEN");
+  const u = userEvent.setup();
+  await u.click(await within(step).findByRole("button", { name: "진단 페어링 코드 만들기" }));
+  const code = (await within(step).findByLabelText("페어링 코드")).textContent ?? "";
+  const write = vi.spyOn(navigator.clipboard, "writeText");
+  await u.click(within(step).getByRole("button", { name: "맥 명령 복사" }));
+  expect(write).toHaveBeenLastCalledWith(`curl -fsSL ${window.location.origin}/agent.sh | sh -s ${code}`);
+  await u.click(within(step).getByRole("button", { name: "윈도우 PowerShell 명령 복사" }));
+  expect(write).toHaveBeenLastCalledWith(`& ([scriptblock]::Create((irm ${window.location.origin}/agent.ps1))) ${code}`);
+  expect(within(step).getByText("노트북 터미널(윈도우는 관리자 PowerShell)에 붙여 넣으세요. 결과를 보여 준 뒤 y를 눌러야 올라가요.")).toBeInTheDocument();
+});
