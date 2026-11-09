@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { Check, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
-import { api, unwrap } from "../../../shared/api/client";
+import { api, BASE, unwrap } from "../../../shared/api/client";
 import { messageFor } from "../../../shared/api/errorMessages";
 import { ApiError } from "../../../shared/api/problem";
 import type { PairingCodeResponse } from "../../../shared/api/types";
@@ -12,20 +12,21 @@ import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 const AGENT_DEFAULT_API = "https://gakdo.site";
 
 /**
- * 노트북에 붙여 넣을 한 줄 설치·실행 명령(agent #8). 주소는 지금 연 화면의 origin을 쓴다.
- * /agent.sh·/agent.ps1은 web nginx(개발은 vite 프록시)가 GitHub 원본으로 넘긴다.
- * 스크립트는 진단을 기본 https://gakdo.site로 올리므로, 다른 주소(로컬·시험 서버)에서 연 화면이면
- * 코드를 발급한 그 서버로 올리게 TRACE_API_URL을 같이 넣는다. gakdo.site에서는 B가 정한 명령 그대로다
+ * 노트북에 붙여 넣을 한 줄 설치·실행 명령(agent #8). 스크립트는 지금 연 화면의 origin에서 받는다
+ * (/agent.sh·/agent.ps1은 web nginx, 개발은 vite 프록시가 GitHub 원본으로 넘긴다).
+ * 스크립트는 진단을 기본 https://gakdo.site로 올리므로, 코드를 발급한 API 서버(apiBase)가 그 주소가 아니면
+ * TRACE_API_URL로 그 서버를 알려 준다. 윈도우는 같은 PowerShell 창에 값이 남지 않게 실행 뒤 지운다.
+ * gakdo.site에서는 B가 정한 명령 그대로다
  */
-export function agentCommands(origin: string, code: string): { mac: string; windows: string } {
-  const sameAsDefault = origin === AGENT_DEFAULT_API;
+export function agentCommands(origin: string, code: string, apiBase: string = origin): { mac: string; windows: string } {
+  const run = {
+    mac: `curl -fsSL ${origin}/agent.sh | sh -s ${code}`,
+    windows: `& ([scriptblock]::Create((irm ${origin}/agent.ps1))) ${code}`,
+  };
+  if (apiBase === AGENT_DEFAULT_API) return run;
   return {
-    mac: sameAsDefault
-      ? `curl -fsSL ${origin}/agent.sh | sh -s ${code}`
-      : `curl -fsSL ${origin}/agent.sh | TRACE_API_URL=${origin} sh -s ${code}`,
-    windows: sameAsDefault
-      ? `& ([scriptblock]::Create((irm ${origin}/agent.ps1))) ${code}`
-      : `$env:TRACE_API_URL='${origin}'; & ([scriptblock]::Create((irm ${origin}/agent.ps1))) ${code}`,
+    mac: `curl -fsSL ${origin}/agent.sh | TRACE_API_URL=${apiBase} sh -s ${code}`,
+    windows: `$env:TRACE_API_URL='${apiBase}'; ${run.windows}; Remove-Item Env:TRACE_API_URL`,
   };
 }
 
@@ -84,7 +85,7 @@ export function PairingCodePanel({ rentalId, checkpointId, deviceSerial }: { ren
   }, [issued]);
 
   const left = Math.max(0, Math.ceil((expiresAt - now) / 1000));
-  const commands = issued ? agentCommands(window.location.origin, issued.code) : undefined;
+  const commands = issued ? agentCommands(window.location.origin, issued.code, BASE) : undefined;
   return (
     <div className="qr-panel">
       {create.isError && (
