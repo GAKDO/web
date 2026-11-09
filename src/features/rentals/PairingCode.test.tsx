@@ -139,7 +139,7 @@ test("페어링 코드를 만들면 맥·윈도우 설치 명령을 지금 주�
   expect(write).toHaveBeenLastCalledWith(agentCommands(window.location.origin, code).mac);
   await u.click(within(step).getByRole("button", { name: "윈도우 PowerShell 명령 복사" }));
   expect(write).toHaveBeenLastCalledWith(agentCommands(window.location.origin, code).windows);
-  expect(within(step).getByText("노트북 터미널(윈도우는 관리자 PowerShell)에 붙여 넣으세요. 결과를 보여 준 뒤 y를 눌러야 올라가요.")).toBeInTheDocument();
+  expect(within(step).getByText("노트북 터미널(윈도우는 PowerShell)에 붙여 넣으세요. 관리자 PowerShell이면 SSD 수명까지 읽어요(아니어도 진행돼요). 결과를 보여 준 뒤 y를 눌러야 올라가요.")).toBeInTheDocument();
 });
 
 test("gakdo.site에서는 B가 정한 명령 그대로, 다른 주소에서는 그 서버로 올리게 TRACE_API_URL을 같이 넣는다", () => {
