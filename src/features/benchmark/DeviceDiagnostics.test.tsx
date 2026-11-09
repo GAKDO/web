@@ -23,6 +23,11 @@ describe("성능 화면(기기별 진단 렌탈 전·후 비교)", () => {
     expect(within(write).getByText(/떨어짐/)).toBeInTheDocument();
     const cpu = screen.getByRole("region", { name: "CPU 단일 코어" });
     expect(within(cpu).queryByText(/떨어짐/)).not.toBeInTheDocument();
+    // 한눈에 보기: 지표마다 차이와 판단(디스크 쓰기 떨어짐, 배터리 용량 차이는 %p)
+    const summary = screen.getByRole("region", { name: "한눈에 보기" });
+    const writeRow = within(summary).getByText("디스크 쓰기").closest("tr")!;
+    expect(within(writeRow).getByText(/떨어짐/)).toBeInTheDocument();
+    expect(within(summary).getByText("−7.2%p")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "이 기기의 진단 기록" })).toBeInTheDocument();
   });
 

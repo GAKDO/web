@@ -67,3 +67,43 @@ export function formatValue(v: number | null): string {
 
 /** 성능이 이만큼 넘게 떨어지면 화면에 '떨어짐'으로 표시한다(서버 BENCH_DROP 플래그와 따로, 눈으로 보기 위한 기준) */
 export const DROP_WARN_PCT = -10;
+
+/** 이 범위 안의 변화는 측정할 때마다 생기는 흔들림으로 보고 "비슷함"이라 쓴다(11/9 C 노트북 전·후 실측: CPU ±0.4%) */
+export const NOISE_PCT = 3;
+
+/** 변화 판단: 좋아짐·비슷함·조금 나빠짐(3~10%)·나빠짐(10% 넘게). 값이 없으면 null */
+export type ChangeLevel = "better" | "same" | "slight" | "worse";
+
+export function changeLevel(pct: number | null, higherIsBetter = true): ChangeLevel | null {
+  if (pct === null) return null;
+  const gain = higherIsBetter ? pct : -pct;
+  if (Math.abs(pct) < NOISE_PCT) return "same";
+  if (gain > 0) return "better";
+  return gain <= DROP_WARN_PCT ? "worse" : "slight";
+}
+
+export const CHANGE_LEVEL_LABEL: Record<ChangeLevel, string> = {
+  better: "좋아짐",
+  same: "비슷함",
+  slight: "조금 낮아짐",
+  worse: "떨어짐",
+};
+
+/** 차이(후 − 전)를 단위와 함께: "+74 MB/s"·"−3,225 MB/s"·"±0회" */
+export function formatDelta(before: number | null | undefined, after: number | null | undefined, unit = ""): string {
+  if (before == null || after == null) return "—";
+  const d = after - before;
+  const abs = Math.abs(d);
+  const text = abs >= 100 ? Math.round(abs).toLocaleString("ko-KR") : Number.isInteger(abs) ? String(abs) : abs.toFixed(1);
+  const sign = d > 0 ? "+" : d < 0 ? "−" : "±";
+  return `${sign}${text}${unit ? (/^[%회건]|^시간/.test(unit) ? unit : ` ${unit}`) : ""}`;
+}
+
+/** 지표 단위(에이전트가 재는 단위, 계약 예시와 같음) */
+export const METRIC_UNIT: Record<BenchmarkMetric, string> = {
+  CPU_SINGLE: "ops/s",
+  CPU_MULTI: "ops/s",
+  MEM_COPY: "MB/s",
+  DISK_READ: "MB/s",
+  DISK_WRITE: "MB/s",
+};
