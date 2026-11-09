@@ -1,4 +1,4 @@
-import { ArrowRight, RefreshCw, TriangleAlert, TrendingDown } from "lucide-react";
+import { ArrowRight, Equal, RefreshCw, TriangleAlert, TrendingDown, TrendingUp } from "lucide-react";
 import type { ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -12,13 +12,18 @@ import { maskSerial } from "../../../shared/ui/maskSerial";
 import { useDevice, useDeviceModels, useDevices } from "../../devices/api/devices";
 import { useDeviceDiagnostics } from "../api/deviceDiagnostics";
 import {
+  type BenchmarkMetric,
+  CHANGE_LEVEL_LABEL,
+  changeLevel,
+  type ChangeLevel,
   changePct,
   type DiagnosedCheckpoint,
-  DROP_WARN_PCT,
+  formatDelta,
   formatPct,
   formatValue,
   METRIC_LABEL,
   METRICS,
+  METRIC_UNIT,
   metricValue,
   pairOf,
 } from "../model/diagnostics";
@@ -28,12 +33,15 @@ import { ColumnChart } from "./ColumnChart";
 const BEFORE = "#2a78d6";
 const AFTER = "#eb6834";
 
-function Card({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
+function Card({ title, note, badge, children }: { title: string; note?: string; badge?: ReactNode; children: ReactNode }) {
   return (
     <section aria-label={title} className="grid content-start gap-3 rounded-xl border bg-card p-4 shadow-xs">
-      <div className="grid gap-0.5">
-        <h3 className="m-0 text-base font-semibold tracking-tight">{title}</h3>
-        {note && <p className="m-0 text-xs text-muted-foreground">{note}</p>}
+      <div className="flex items-start justify-between gap-2">
+        <div className="grid gap-0.5">
+          <h3 className="m-0 text-base font-semibold tracking-tight">{title}</h3>
+          {note && <p className="m-0 text-xs text-muted-foreground">{note}</p>}
+        </div>
+        {badge}
       </div>
       {children}
     </section>
@@ -44,15 +52,56 @@ function Empty({ children }: { children: ReactNode }) {
   return <p className="m-0 rounded-lg bg-muted px-3 py-6 text-center text-sm text-muted-foreground">{children}</p>;
 }
 
-/** 변화 표시. 클수록 좋은 값이 기준보다 많이 떨어지면 빨간 아이콘 + '떨어짐' */
-function Change({ pct, higherIsBetter = true }: { pct: number | null; higherIsBetter?: boolean }) {
-  const bad = pct !== null && (higherIsBetter ? pct <= DROP_WARN_PCT : pct >= -DROP_WARN_PCT);
+// 변화 판단마다 색·아이콘·글자(색만으로 구분하지 않게 글자를 함께)
+const LEVEL_STYLE: Record<ChangeLevel, string> = {
+  better: "bg-success-soft text-success",
+  same: "bg-muted text-muted-foreground",
+  slight: "bg-warning-soft text-warning",
+  worse: "bg-destructive-soft text-destructive",
+};
+
+function LevelIcon({ level }: { level: ChangeLevel }) {
+  const cls = "size-3.5";
+  if (level === "same") return <Equal aria-hidden="true" className={cls} />;
+  return level === "better" ? <TrendingUp aria-hidden="true" className={cls} /> : <TrendingDown aria-hidden="true" className={cls} />;
+}
+
+/** 변화 배지: "−8.3% 조금 낮아짐". 3% 안은 비슷함, 10% 넘게 나빠지면 떨어짐(빨강) */
+function Change({ pct, higherIsBetter = true, large = false }: { pct: number | null; higherIsBetter?: boolean; large?: boolean }) {
+  const level = changeLevel(pct, higherIsBetter);
+  if (level === null) return <span className="text-muted-foreground">—</span>;
   return (
-    <span className={bad ? "inline-flex items-center gap-1 font-semibold text-destructive" : "text-muted-foreground"}>
-      {bad && <TrendingDown aria-hidden="true" className="size-3.5" />}
-      {formatPct(pct)}
-      {bad && " 떨어짐"}
+    <span
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full font-semibold tabular-nums ${LEVEL_STYLE[level]} ${large ? "px-2.5 py-1 text-sm" : "px-2 py-0.5 text-xs"}`}
+    >
+      <LevelIcon level={level} />
+      {formatPct(pct)} {CHANGE_LEVEL_LABEL[level]}
     </span>
+  );
+}
+
+/** 변화율 막대: 가운데 0에서 왼쪽(나빠짐)·오른쪽(좋아짐)으로 ±20%까지. 막대 길이 차이가 작아도 변화가 보이게 */
+function DeltaBar({ pct, higherIsBetter = true }: { pct: number | null; higherIsBetter?: boolean }) {
+  const level = changeLevel(pct, higherIsBetter);
+  if (pct === null || level === null) return null;
+  const gain = higherIsBetter ? pct : -pct;
+  const width = Math.min(50, (Math.abs(gain) / 20) * 50);
+  const color = { better: "var(--success)", same: "var(--muted-foreground)", slight: "var(--warning)", worse: "var(--destructive)" }[level];
+  return (
+    <div className="grid gap-0.5" aria-hidden="true">
+      <div className="relative h-2 rounded-full bg-muted">
+        <span className="absolute inset-y-[-3px] left-1/2 w-px bg-foreground/40" />
+        <span
+          className="absolute inset-y-0 rounded-full"
+          style={{ background: color, width: `${Math.max(width, 1)}%`, left: gain >= 0 ? "50%" : `${50 - Math.max(width, 1)}%` }}
+        />
+      </div>
+      <div className="flex justify-between text-[10px] text-muted-foreground">
+        <span>나빠짐 −20%</span>
+        <span>0</span>
+        <span>좋아짐 +20%</span>
+      </div>
+    </div>
   );
 }
 
@@ -76,6 +125,63 @@ function PairBars({ before, after, max, unit = "" }: { before: number | null; af
       {row("렌탈 전", before, BEFORE)}
       {row("렌탈 후", after, AFTER)}
     </div>
+  );
+}
+
+/** 한눈에 보기: 지표마다 전·후·차이·판단을 한 표로(11/9 민서 요청: 비교 차이를 명확하게) */
+function Summary({ b, a, metrics }: { b: RunSummary; a: RunSummary; metrics: BenchmarkMetric[] }) {
+  const rows: { label: string; before: number | null; after: number | null; unit: string; deltaUnit: string; higherIsBetter: boolean }[] = [
+    ...metrics.map((m) => ({
+      label: METRIC_LABEL[m], before: metricValue(b, m), after: metricValue(a, m), unit: METRIC_UNIT[m],
+      deltaUnit: METRIC_UNIT[m], higherIsBetter: true,
+    })),
+    {
+      label: "배터리 최대 용량", before: b.battery?.maxCapacityPct ?? null, after: a.battery?.maxCapacityPct ?? null, unit: "%",
+      deltaUnit: "%p", higherIsBetter: true,
+    },
+  ];
+  const levels = rows.map((r) => changeLevel(changePct(r.before, r.after), r.higherIsBetter));
+  const worse = levels.filter((l) => l === "worse" || l === "slight").length;
+  return (
+    <section aria-label="한눈에 보기" className="grid gap-2 rounded-xl border bg-card p-4 shadow-xs">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="m-0 text-base font-semibold tracking-tight">한눈에 보기</h3>
+        <p className="m-0 text-sm">
+          {worse === 0 ? (
+            <span className="font-semibold text-success">렌탈 전과 비교해 낮아진 항목이 없습니다</span>
+          ) : (
+            <span className="font-semibold text-warning">낮아진 항목 {worse}개</span>
+          )}
+          <span className="text-muted-foreground"> · ±3% 안은 측정할 때마다 생기는 흔들림이라 비슷함으로 봅니다</span>
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[34rem] text-left text-sm tabular-nums">
+          <thead>
+            <tr className="text-xs text-muted-foreground">
+              <th className="py-1.5 font-medium">항목</th>
+              <th className="py-1.5 text-right font-medium">렌탈 전</th>
+              <th className="py-1.5 text-right font-medium">렌탈 후</th>
+              <th className="py-1.5 text-right font-medium">차이</th>
+              <th className="py-1.5 pl-3 font-medium">판단</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.label} className="border-t">
+                <td className="py-1.5">{r.label}</td>
+                <td className="py-1.5 text-right">{formatValue(r.before)}{r.before !== null && r.unit === "%" ? "%" : ""}</td>
+                <td className="py-1.5 text-right">{formatValue(r.after)}{r.after !== null && r.unit === "%" ? "%" : ""}</td>
+                <td className="py-1.5 text-right font-semibold">{formatDelta(r.before, r.after, r.deltaUnit)}</td>
+                <td className="py-1.5 pl-3">
+                  <Change pct={changePct(r.before, r.after)} higherIsBetter={r.higherIsBetter} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -117,13 +223,20 @@ function Compare({ before, after }: { before: DiagnosedCheckpoint | null; after:
           ))}
         </ul>
       )}
+      {b && a && <Summary b={b} a={a} metrics={metrics} />}
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {metrics.length ? (
           metrics.map((m) => (
-            <Card key={m} title={METRIC_LABEL[m]} note="에이전트 벤치마크 중앙값, 클수록 빠릅니다">
+            <Card
+              key={m}
+              title={METRIC_LABEL[m]}
+              note="에이전트 벤치마크 중앙값, 클수록 빠릅니다"
+              badge={<Change large pct={changePct(metricValue(b, m), metricValue(a, m))} />}
+            >
               <PairBars before={metricValue(b, m)} after={metricValue(a, m)} />
-              <p className="m-0 text-xs">
-                변화 <Change pct={changePct(metricValue(b, m), metricValue(a, m))} />
+              <DeltaBar pct={changePct(metricValue(b, m), metricValue(a, m))} />
+              <p className="m-0 text-xs text-muted-foreground">
+                차이 <strong className="font-semibold text-foreground tabular-nums">{formatDelta(metricValue(b, m), metricValue(a, m), METRIC_UNIT[m])}</strong>
               </p>
             </Card>
           ))
@@ -132,16 +245,23 @@ function Compare({ before, after }: { before: DiagnosedCheckpoint | null; after:
             <Empty>이 렌탈의 진단에 벤치마크 결과가 없습니다(전원 미연결 등으로 건너뜀).</Empty>
           </Card>
         )}
-        <Card title="배터리" note="최대 용량 = 지금 완충 용량 ÷ 설계 용량">
+        <Card
+          title="배터리"
+          note="최대 용량 = 지금 완충 용량 ÷ 설계 용량"
+          badge={<Change large pct={changePct(b?.battery?.maxCapacityPct, a?.battery?.maxCapacityPct)} />}
+        >
           {b?.battery || a?.battery ? (
             <>
               <PairBars before={b?.battery?.maxCapacityPct ?? null} after={a?.battery?.maxCapacityPct ?? null} max={100} unit="%" />
               <p className="m-0 flex flex-wrap gap-x-4 text-xs text-muted-foreground">
                 <span>
-                  용량 변화 <Change pct={changePct(b?.battery?.maxCapacityPct, a?.battery?.maxCapacityPct)} />
+                  용량 차이{" "}
+                  <strong className="font-semibold text-foreground tabular-nums">
+                    {formatDelta(b?.battery?.maxCapacityPct, a?.battery?.maxCapacityPct, "%p")}
+                  </strong>
                 </span>
                 <span className="tabular-nums">
-                  충전 횟수 {b?.battery?.cycleCount ?? "—"} → {a?.battery?.cycleCount ?? "—"}
+                  충전 횟수 {b?.battery?.cycleCount ?? "—"} → {a?.battery?.cycleCount ?? "—"} ({formatDelta(b?.battery?.cycleCount, a?.battery?.cycleCount, "회")})
                 </span>
               </p>
             </>
@@ -157,6 +277,7 @@ function Compare({ before, after }: { before: DiagnosedCheckpoint | null; after:
                   <th className="py-1 font-medium">항목</th>
                   <th className="py-1 font-medium">렌탈 전</th>
                   <th className="py-1 font-medium">렌탈 후</th>
+                  <th className="py-1 font-medium">차이</th>
                 </tr>
               </thead>
               <tbody>
@@ -165,6 +286,7 @@ function Compare({ before, after }: { before: DiagnosedCheckpoint | null; after:
                     <td className="py-1">{r.label}</td>
                     <td className="py-1">{b?.ssd?.[r.key] ?? "—"}</td>
                     <td className="py-1">{a?.ssd?.[r.key] ?? "—"}</td>
+                    <td className="py-1 font-medium">{formatDelta(b?.ssd?.[r.key], a?.ssd?.[r.key], r.unit)}</td>
                   </tr>
                 ))}
               </tbody>
