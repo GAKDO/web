@@ -145,7 +145,7 @@ test("빠른 검사에서 CAM1·CAM2와 L1·L2 사진 네 곳에 잡힌 같은 �
   expect(first).toHaveTextContent("신뢰도 57%");
   expect(screen.queryByRole("listitem", { name: "흠집 2" })).not.toBeInTheDocument();
   const bot = await screen.findByRole("region", { name: "바닥 사진" });
-  expect(within(bot).getByRole("heading", { name: /바닥 · 흠집 1개/ })).toHaveTextContent("사진 4곳에서 잡힘");
+  expect(within(bot).getByRole("heading", { name: /바닥 · 흠집 1개/ })).toHaveTextContent("사진 속 표시 4곳");
 });
 
 /** 사진이 로드된 것처럼 natural 크기를 넣고 load 이벤트를 낸다(jsdom은 이미지를 읽지 않는다) */
@@ -178,7 +178,7 @@ test("빠른 검사(QUICK) 시점의 상세는 면마다 카메라 2 × 조명 3
   expect(within(top).getByRole("heading", { name: "윗면(덮개) · 흠집 2개" })).toBeInTheDocument();
   expect(within(top).getAllByRole("listitem")).toHaveLength(6);
   const cell = within(top).getByRole("listitem", { name: "윗면(덮개) CAM1 L1" });
-  expect(cell).toHaveTextContent("CAM1 · L1 확산 · 흠집 1개");
+  expect(cell).toHaveTextContent("CAM1 · L1 확산 · 표시 1개");
   expect(within(cell).queryByRole("img", { name: "흠집 1개 표시" })).not.toBeInTheDocument();
   loadImage(within(cell).getByRole("img", { name: "윗면(덮개) CAM1 L1 사진" }));
   const overlay = within(cell).getByRole("img", { name: "흠집 1개 표시" });
@@ -190,7 +190,7 @@ test("빠른 검사(QUICK) 시점의 상세는 면마다 카메라 2 × 조명 3
   const clean = within(top).getByRole("listitem", { name: "윗면(덮개) CAM2 L1" });
   loadImage(within(clean).getByRole("img", { name: "윗면(덮개) CAM2 L1 사진" }));
   expect(within(clean).queryByRole("img", { name: /표시/ })).not.toBeInTheDocument();
-  expect(clean).toHaveTextContent("흠집 0개");
+  expect(clean).toHaveTextContent("표시 0개");
   expect(screen.getByRole("region", { name: "바닥 사진" })).toHaveTextContent("바닥 · 흠집 1개");
 });
 

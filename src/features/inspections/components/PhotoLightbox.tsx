@@ -79,7 +79,7 @@ export function PhotoLightbox({ photos, index, onIndex, onClose }: Props) {
       <div className="grid max-h-[calc(100svh-2rem)] w-[min(960px,100%)] gap-3 overflow-auto rounded-xl bg-card p-4 shadow-2xl">
         <div className="flex flex-wrap items-center gap-2">
           <p className="m-0 flex-1 text-sm">
-            <strong>{photo.name}</strong> · 흠집 {photo.defects.length}개
+            <strong>{photo.name}</strong> · 표시 {photo.defects.length}개
           </p>
           <span className="text-sm text-muted-foreground tabular-nums">
             {index + 1} / {photos.length}

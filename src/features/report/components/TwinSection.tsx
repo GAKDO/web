@@ -8,7 +8,7 @@ import { PinDetail } from "./PinDetail";
 import { PinList } from "./PinList";
 import { TwinFallback } from "./TwinFallback";
 import { PhotoGrid } from "../../inspections/components/PhotoGrid";
-import { faceGrids, isQuickInspection, photoDefectsOf } from "../../inspections/model/photos";
+import { faceGrids, groupDefects, isQuickInspection, photoDefectsOf } from "../../inspections/model/photos";
 import { usePhotoSizes } from "../../../shared/laptop3d/usePhotoSizes";
 import { quickShapes, SHAPE_KNOWN, standardShapes } from "../model/twinShapes";
 
@@ -61,6 +61,8 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
   const quick = isQuickInspection(inspection.data) || (!inspection.data?.profile && photos.length > 0 && (media.data?.textures ?? []).length === 0);
   const allPhotoDefects = photoDefectsOf(inspection.data);
   const photoDefects = useMemo(() => (quick ? allPhotoDefects : []), [quick, allPhotoDefects]);
+  // 3D 모양(quickShapes)과 같이 흠집 아님(DISMISSED)은 빼고 센다. 사진 속 표시 수에는 그대로 둔다
+  const groupCount = useMemo(() => groupDefects(photoDefects.filter((d) => d.review?.status !== "DISMISSED")).length, [photoDefects]);
 
   // 3D 위에 그릴 실제 흠집 모양: 정합 검사는 표준 좌표 폴리곤, 빠른 검사는 원본 사진 px 폴리곤(대표 하나씩)
   const textureSizes = usePhotoSizes(useMemo(() => (media.data?.textures ?? []).map((t) => ({ key: t.face, url: t.url })), [media.data]));
@@ -112,7 +114,7 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
             </Suspense>
           </TwinBoundary>
           <div key={current.checkpointId} className="twin-side animate-fade text-sm">
-            <p className="m-0 font-semibold">흠집 {shapes.length}곳 <span className="font-normal text-muted-foreground">(조명만 다른 사진의 같은 흠집은 한 곳으로 셈)</span></p>
+            <p className="m-0 font-semibold">흠집 {shapes.length}곳 <span className="font-normal text-muted-foreground">(조명이나 카메라(CAM1·CAM2)만 다른 사진에서 같은 흠집으로 묶인 것은 한 곳으로 세고, 흠집 아님으로 정한 것은 뺌)</span></p>
             <p className="muted m-0">부스 사진에서 찾은 실제 흠집 모양을 노트북 모형 위에 옮겨 그렸습니다. 위치는 사진에서 옮긴 대략 위치이고, 정확한 모습은 아래 사진에서 볼 수 있습니다.</p>
             <p className="m-0 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
               <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: SHAPE_KNOWN }} />
@@ -128,6 +130,8 @@ export function TwinSection({ modelCode, checkpoints }: Props) {
           <p className="muted">
             부스에서 찍은 사진 {photos.length}장
             {photoDefects.length > 0 ? ` · 사진 속 표시 ${photoDefects.length}개` : " · 표시된 흠집 없음"}
+            {/* 같은 흠집이 여러 사진에 잡히면 묶은 수(11/9)를 함께 적어 사진 속 표시 수를 흠집 수로 읽지 않게 한다 */}
+            {groupCount < photoDefects.length && ` (같은 흠집끼리 묶고 흠집 아님을 빼면 ${groupCount}개)`}
           </p>
           <PhotoGrid grids={faceGrids(photos, photoDefects)} />
         </div>

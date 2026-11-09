@@ -15,6 +15,14 @@ test("원본 사진 격자는 면마다 카메라 행 × 조명 열이고 사진
   expect(grids.map((g) => g.defectCount)).toEqual([1, 1]);
 });
 
+test("면 흠집 수(groupCount)는 흠집 아님으로 정한 표시를 빼고, 사진 속 표시 수(defectCount)는 그대로 센다", () => {
+  const kept = quickDefect("BOT", "L1", "CAM1", "scratch", 600, 400, 0.9);
+  const dismissed = { ...quickDefect("BOT", "L2", "CAM2", "dent", 900, 700, 0.4), review: { status: "DISMISSED" as const, reason: null, reviewedBy: "admin0000000000000001", reviewedAt: new Date().toISOString() } };
+  const bot = faceGrids(quickPhotos(), [kept, dismissed]).find((g) => g.face === "BOT")!;
+  expect(bot.groupCount).toBe(1);
+  expect(bot.defectCount).toBe(2);
+});
+
 test("사진이 아직 없어도 흠집이 있는 면·카메라·조명 칸은 사진 없음(null)으로 만든다", () => {
   const grids = faceGrids([], [quickDefect("BOT", "L2", "CAM2", "dent", 1, 1, 0.5)]);
   expect(grids).toHaveLength(1);

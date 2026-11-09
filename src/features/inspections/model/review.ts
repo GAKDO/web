@@ -2,7 +2,7 @@ import { isQuickInspection } from "./photos";
 import type { CaptureCamera, CaptureFace, CaptureLight, Defect, DefectClass, DismissReason, Inspection, PhotoDefect, ReviewStatus } from "../../../shared/api/types";
 
 // 사람 검수 화면 모델(11/8). AI는 넓게 잡고(오탐 허용) 사람이 흠집 맞음·아님을 정한다.
-// 같은 흠집이 조명만 다른 사진마다 따로 잡히므로 groupId(같은 면·카메라에서 겹치는 묶음)로 묶어 한 번에 정한다.
+// 같은 흠집이 조명만 다른 사진마다 따로 잡히므로 groupId(같은 면에서 겹치는 묶음, 11/9부터 CAM1·CAM2 사이도)로 묶어 한 번에 정한다.
 
 /** 신뢰도 이 값 이상은 "흠집 의심", 그 아래(부스 문턱 0.25까지)는 "확인 필요" */
 export const SUSPECT_CONFIDENCE = 0.4;
