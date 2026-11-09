@@ -3,6 +3,8 @@ import { changeLevel, formatDelta } from "./diagnostics";
 describe("렌탈 전·후 차이 판단", () => {
   it("3% 안의 변화는 측정 흔들림으로 보고 비슷함, 10% 넘게 떨어지면 떨어짐", () => {
     expect(changeLevel(-0.4)).toBe("same");
+    expect(changeLevel(3)).toBe("same");
+    expect(changeLevel(-3)).toBe("same");
     expect(changeLevel(6.9)).toBe("better");
     expect(changeLevel(-8.3)).toBe("slight");
     expect(changeLevel(-14)).toBe("worse");

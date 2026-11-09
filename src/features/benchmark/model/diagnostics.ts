@@ -77,7 +77,7 @@ export type ChangeLevel = "better" | "same" | "slight" | "worse";
 export function changeLevel(pct: number | null, higherIsBetter = true): ChangeLevel | null {
   if (pct === null) return null;
   const gain = higherIsBetter ? pct : -pct;
-  if (Math.abs(pct) < NOISE_PCT) return "same";
+  if (Math.abs(pct) <= NOISE_PCT) return "same";
   if (gain > 0) return "better";
   return gain <= DROP_WARN_PCT ? "worse" : "slight";
 }
