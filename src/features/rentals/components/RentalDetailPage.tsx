@@ -25,6 +25,7 @@ import { DiagnosticsTrendToggle } from "../../benchmark/components/DiagnosticsTr
 import { formatDate, RENTAL_STATUS_VARIANT } from "./RentalListPage";
 import { InspectionHistory } from "../../inspections/components/InspectionHistory";
 import { formatDateTime } from "../../../shared/ui/format";
+import { useTimeline } from "../../report/api/report";
 
 const STEPS: CheckpointType[] = ["OUT", "RCV", "RET"];
 const BEFORE: Record<CheckpointType, string> = { OUT: "출고를", RCV: "수령을", RET: "반납을" };
@@ -36,6 +37,35 @@ function reason(type: CheckpointType, action: ReturnType<typeof nextAction>): st
   return `${BEFORE[prev]} 먼저 시작하세요`;
 }
 const toMessage = (e: unknown) => (e instanceof ApiError ? messageFor(e) : "요청을 처리하지 못했습니다.");
+
+/**
+ * 리포트 보기. 리포트는 report-server가 이벤트를 받아야 생긴다. 아직 없으면(404) 링크 대신 이유를 보인다
+ * (11/9 실서버: 관리자가 눌렀을 때 "렌탈을 찾을 수 없습니다"만 뜸). 같은 쿼리 키라 리포트 화면이 결과를 다시 쓴다
+ */
+function ReportLink({ rentalId }: { rentalId: string }) {
+  const timeline = useTimeline(rentalId);
+  // 데이터 없이 다시 조회하면 TanStack Query가 오류를 지우고 pending으로 돌아간다. 예전에 오류가 있었으면 안내를 그대로 둔다
+  const missing = timeline.error instanceof ApiError && timeline.error.status === 404;
+  const rechecking = timeline.isPending && timeline.errorUpdateCount > 0;
+  if (timeline.isPending && !rechecking) return null;
+  if (missing || rechecking) {
+    // 화면을 연 사이에 기록이 생길 수 있어 다시 확인 버튼을 둔다(리포트 쿼리는 렌탈 폴링과 따로다)
+    return (
+      <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+        리포트 기록이 아직 없습니다
+        <Button type="button" variant="ghost" size="sm" busy={timeline.isFetching} onClick={() => void timeline.refetch()}>
+          다시 확인
+        </Button>
+      </span>
+    );
+  }
+  return (
+    <Link className={buttonVariants({ variant: "outline" })} to={`/my/rentals/${rentalId}`}>
+      <FileText aria-hidden="true" />
+      리포트 보기
+    </Link>
+  );
+}
 
 /** 출고 → 수령 → 반납 단계. 다음 단계 버튼만 켜고, 꺼진 버튼에는 이유를 붙인다(FR-022) */
 function CheckpointSteps({ rental, serial, onError }: { rental: Rental; serial?: string; onError: (message: string | null) => void }) {
@@ -140,12 +170,7 @@ export function RentalDetailPage() {
         }
         actions={
           // 3D 리포트(WE3)는 MVP 배포에서 보관(숨김)
-          data.checkpoints.length > 0 && !isArchived("report") ? (
-            <Link className={buttonVariants({ variant: "outline" })} to={`/my/rentals/${data.rentalId}`}>
-              <FileText aria-hidden="true" />
-              리포트 보기
-            </Link>
-          ) : undefined
+          data.checkpoints.length > 0 && !isArchived("report") ? <ReportLink rentalId={data.rentalId} /> : undefined
         }
       />
       {rental.isError && <ErrorBanner message={toMessage(rental.error)} onRetry={() => void rental.refetch()} />}

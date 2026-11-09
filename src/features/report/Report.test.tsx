@@ -4,6 +4,8 @@ import { nanoid } from "nanoid";
 import { renderAsAdmin, renderAsCustomer } from "../../test/renderApp";
 import { db } from "../../shared/mocks/db";
 import { MY_RENTALS_PAGE_SIZE } from "./api/report";
+import { http, HttpResponse } from "msw";
+import { server } from "../../shared/mocks/node";
 
 /** 목의 고객 렌탈 ①(출고·수령 봉인, 반납 검사 중) */
 function firstRentalId(): string {
@@ -100,6 +102,51 @@ describe("리포트", () => {
     renderAsAdmin(`/admin/rentals/${firstRentalId()}`);
     await u.click(await screen.findByRole("link", { name: "리포트 보기" }));
     expect(await screen.findByRole("list", { name: "시점" })).toBeInTheDocument();
+    // 관리자는 마이페이지가 아니라 렌탈 상세로 돌아간다
+    expect(screen.getByRole("link", { name: "렌탈 상세" })).toHaveAttribute("href", `/admin/rentals/${firstRentalId()}`);
+  });
+
+  test("리포트 서버에 기록이 없는 렌탈이면 관리자 렌탈 상세에 리포트 보기 대신 '리포트 기록이 아직 없습니다'가 보인다", async () => {
+    const rentalId = firstRentalId();
+    db.report.timelines.delete(rentalId);
+    renderAsAdmin(`/admin/rentals/${rentalId}`);
+    expect(await screen.findByText("리포트 기록이 아직 없습니다")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "리포트 보기" })).not.toBeInTheDocument();
+  });
+
+  test("기록 없음 안내에서 다시 확인을 누르면 그사이 생긴 리포트로 링크가 나타난다", async () => {
+    const u = userEvent.setup();
+    const rentalId = firstRentalId();
+    const saved = db.report.timelines.get(rentalId);
+    db.report.timelines.delete(rentalId);
+    renderAsAdmin(`/admin/rentals/${rentalId}`);
+    await screen.findByText("리포트 기록이 아직 없습니다");
+    if (saved) db.report.timelines.set(rentalId, saved);
+    await u.click(screen.getByRole("button", { name: "다시 확인" }));
+    expect(await screen.findByRole("link", { name: "리포트 보기" })).toBeInTheDocument();
+  });
+
+  test("관리자가 기록 없는 리포트 주소를 직접 열면 '렌탈을 찾을 수 없습니다' 대신 기록이 아직 없다는 안내와 렌탈 상세 링크가 보인다", async () => {
+    const rentalId = firstRentalId();
+    db.report.timelines.delete(rentalId);
+    renderAsAdmin(`/my/rentals/${rentalId}`);
+    expect(await screen.findByRole("alert")).toHaveTextContent("이 렌탈의 리포트 기록이 아직 없습니다");
+    expect(screen.getByRole("link", { name: "렌탈 상세로" })).toHaveAttribute("href", `/admin/rentals/${rentalId}`);
+  });
+
+  test("관리자 리포트 404에서 렌탈 확인이 서버 오류로 실패하면 '렌탈 없음' 대신 다시 시도할 수 있는 오류가 보인다", async () => {
+    const rentalId = firstRentalId();
+    db.report.timelines.delete(rentalId);
+    server.use(http.get("*/api/v1/rentals/:rentalId", () => HttpResponse.json({ type: "about:blank", title: "서버 오류", status: 500, code: "INTERNAL_ERROR" }, { status: 500 })));
+    renderAsAdmin(`/my/rentals/${rentalId}`);
+    expect(await screen.findByRole("button", { name: /다시/ })).toBeInTheDocument();
+    expect(screen.queryByText("렌탈을 찾을 수 없습니다.")).not.toBeInTheDocument();
+  });
+
+  test("관리자가 없는 렌탈의 리포트 주소를 열면 '렌탈을 찾을 수 없습니다'와 렌탈 목록 링크가 보인다", async () => {
+    renderAsAdmin(`/my/rentals/${nanoid()}`);
+    expect(await screen.findByRole("alert")).toHaveTextContent("렌탈을 찾을 수 없습니다");
+    expect(screen.getByRole("link", { name: "렌탈 목록으로" })).toHaveAttribute("href", "/admin/rentals");
   });
 
   test("로그인하지 않고 리포트 주소를 열면 고객 로그인으로 간다", async () => {
