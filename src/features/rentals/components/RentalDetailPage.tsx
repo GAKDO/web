@@ -44,7 +44,11 @@ const toMessage = (e: unknown) => (e instanceof ApiError ? messageFor(e) : "요�
  */
 function ReportLink({ rentalId }: { rentalId: string }) {
   const timeline = useTimeline(rentalId);
-  if (timeline.error instanceof ApiError && timeline.error.status === 404) {
+  // 데이터 없이 다시 조회하면 TanStack Query가 오류를 지우고 pending으로 돌아간다. 예전에 오류가 있었으면 안내를 그대로 둔다
+  const missing = timeline.error instanceof ApiError && timeline.error.status === 404;
+  const rechecking = timeline.isPending && timeline.errorUpdateCount > 0;
+  if (timeline.isPending && !rechecking) return null;
+  if (missing || rechecking) {
     // 화면을 연 사이에 기록이 생길 수 있어 다시 확인 버튼을 둔다(리포트 쿼리는 렌탈 폴링과 따로다)
     return (
       <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">

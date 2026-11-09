@@ -9,6 +9,7 @@ import type { TimelineCheckpoint } from "../../../shared/api/types";
 import { CHAIN_STATUS_LABEL, CHECKPOINT_TYPE_LABEL } from "../../../shared/codes/labels";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { useAuth } from "../../../shared/auth/AuthProvider";
+import { useRental } from "../../rentals/api/rentals";
 import { useDeviceModel, useTimeline } from "../api/report";
 import { useProgress, type ProgressState } from "../api/progress";
 import { CHECKPOINT_ORDER, hasPendingCheckpoint } from "../model/timeline";
@@ -61,9 +62,26 @@ function backFor(isAdmin: boolean, rentalId: string): Back {
   return isAdmin ? { to: `/admin/rentals/${rentalId}`, label: "렌탈 상세" } : { to: "/my/rentals", label: "마이페이지" };
 }
 
+/**
+ * 관리자 리포트 404. report-server 404는 렌탈이 없을 때와, 렌탈은 있지만 기록(시점 이벤트)이 아직 없을 때 둘 다다.
+ * 관리자 렌탈 API로 렌탈이 있는지 보고 문장과 돌아갈 곳(상세·목록)을 고른다
+ */
+function AdminReportMissing({ rentalId }: { rentalId: string }) {
+  const rental = useRental(rentalId);
+  if (rental.isPending) return <p className="text-muted-foreground">리포트를 불러오는 중…</p>;
+  const exists = !!rental.data;
+  return (
+    <div role="alert" className="notice">
+      <p>{exists ? "이 렌탈의 리포트 기록이 아직 없습니다. 시점을 시작하거나 부스 검사 결과가 들어오면 생깁니다." : "렌탈을 찾을 수 없습니다."}</p>
+      <Link className="button-link" to={exists ? `/admin/rentals/${rentalId}` : "/admin/rentals"}>
+        {exists ? "렌탈 상세로" : "렌탈 목록으로"}
+      </Link>
+    </div>
+  );
+}
+
 /** 리포트를 열지 못했을 때. 403·404는 리포트 문맥 문장으로 바꾼다(FR-004) */
-function ReportError({ error, onRetry, isAdmin, back }: { error: unknown; onRetry: () => void; isAdmin: boolean; back: Back }) {
-  // 오류 화면에서는 렌탈이 있는지 모르므로 관리자도 상세가 아니라 목록으로 보낸다
+function ReportError({ error, onRetry, isAdmin, back, rentalId }: { error: unknown; onRetry: () => void; isAdmin: boolean; back: Back; rentalId: string }) {
   const backLink = (
     <Link className="button-link" to={isAdmin ? "/admin/rentals" : back.to}>
       {isAdmin ? "렌탈 목록으로" : "내 렌탈 목록으로"}
@@ -78,10 +96,10 @@ function ReportError({ error, onRetry, isAdmin, back }: { error: unknown; onRetr
     );
   }
   if (error instanceof ApiError && error.status === 404) {
+    if (isAdmin) return <AdminReportMissing rentalId={rentalId} />;
     return (
       <div role="alert" className="notice">
-        {/* report-server 404는 렌탈이 없을 때와 렌탈은 있지만 기록(시점 이벤트)이 아직 없을 때 둘 다다. 관리자에게는 둘 다 맞는 문장 */}
-        <p>{isAdmin ? "이 렌탈의 리포트 기록이 없습니다. 렌탈 주소가 맞다면 시점을 시작하거나 부스 검사 결과가 들어온 뒤에 생깁니다." : "렌탈을 찾을 수 없습니다."}</p>
+        <p>렌탈을 찾을 수 없습니다.</p>
         {backLink}
       </div>
     );
@@ -103,7 +121,7 @@ export function ReportPage() {
     return (
       <main className={cn(MAIN, "max-w-xl")}>
         <h1 className="m-0 mb-4 text-2xl font-bold tracking-tight">렌탈 리포트</h1>
-        <ReportError error={timeline.error} onRetry={() => void timeline.refetch()} isAdmin={isAdmin} back={back} />
+        <ReportError error={timeline.error} onRetry={() => void timeline.refetch()} isAdmin={isAdmin} back={back} rentalId={rentalId} />
       </main>
     );
   }

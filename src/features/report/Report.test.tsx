@@ -124,11 +124,17 @@ describe("리포트", () => {
     expect(await screen.findByRole("link", { name: "리포트 보기" })).toBeInTheDocument();
   });
 
-  test("관리자가 기록 없는 리포트 주소를 직접 열면 '렌탈을 찾을 수 없습니다' 대신 기록이 없다는 안내와 렌탈 목록 링크가 보인다", async () => {
+  test("관리자가 기록 없는 리포트 주소를 직접 열면 '렌탈을 찾을 수 없습니다' 대신 기록이 아직 없다는 안내와 렌탈 상세 링크가 보인다", async () => {
     const rentalId = firstRentalId();
     db.report.timelines.delete(rentalId);
     renderAsAdmin(`/my/rentals/${rentalId}`);
-    expect(await screen.findByRole("alert")).toHaveTextContent("이 렌탈의 리포트 기록이 없습니다");
+    expect(await screen.findByRole("alert")).toHaveTextContent("이 렌탈의 리포트 기록이 아직 없습니다");
+    expect(screen.getByRole("link", { name: "렌탈 상세로" })).toHaveAttribute("href", `/admin/rentals/${rentalId}`);
+  });
+
+  test("관리자가 없는 렌탈의 리포트 주소를 열면 '렌탈을 찾을 수 없습니다'와 렌탈 목록 링크가 보인다", async () => {
+    renderAsAdmin(`/my/rentals/${nanoid()}`);
+    expect(await screen.findByRole("alert")).toHaveTextContent("렌탈을 찾을 수 없습니다");
     expect(screen.getByRole("link", { name: "렌탈 목록으로" })).toHaveAttribute("href", "/admin/rentals");
   });
 
