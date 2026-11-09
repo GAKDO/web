@@ -45,7 +45,15 @@ const toMessage = (e: unknown) => (e instanceof ApiError ? messageFor(e) : "요�
 function ReportLink({ rentalId }: { rentalId: string }) {
   const timeline = useTimeline(rentalId);
   if (timeline.error instanceof ApiError && timeline.error.status === 404) {
-    return <span className="text-sm text-muted-foreground">리포트 기록이 아직 없습니다</span>;
+    // 화면을 연 사이에 기록이 생길 수 있어 다시 확인 버튼을 둔다(리포트 쿼리는 렌탈 폴링과 따로다)
+    return (
+      <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+        리포트 기록이 아직 없습니다
+        <Button type="button" variant="ghost" size="sm" busy={timeline.isFetching} onClick={() => void timeline.refetch()}>
+          다시 확인
+        </Button>
+      </span>
+    );
   }
   return (
     <Link className={buttonVariants({ variant: "outline" })} to={`/my/rentals/${rentalId}`}>

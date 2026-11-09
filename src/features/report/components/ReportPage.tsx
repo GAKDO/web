@@ -63,9 +63,10 @@ function backFor(isAdmin: boolean, rentalId: string): Back {
 
 /** 리포트를 열지 못했을 때. 403·404는 리포트 문맥 문장으로 바꾼다(FR-004) */
 function ReportError({ error, onRetry, isAdmin, back }: { error: unknown; onRetry: () => void; isAdmin: boolean; back: Back }) {
+  // 오류 화면에서는 렌탈이 있는지 모르므로 관리자도 상세가 아니라 목록으로 보낸다
   const backLink = (
-    <Link className="button-link" to={back.to}>
-      {isAdmin ? "렌탈 상세로" : "내 렌탈 목록으로"}
+    <Link className="button-link" to={isAdmin ? "/admin/rentals" : back.to}>
+      {isAdmin ? "렌탈 목록으로" : "내 렌탈 목록으로"}
     </Link>
   );
   if (error instanceof ApiError && error.status === 403) {
@@ -79,8 +80,8 @@ function ReportError({ error, onRetry, isAdmin, back }: { error: unknown; onRetr
   if (error instanceof ApiError && error.status === 404) {
     return (
       <div role="alert" className="notice">
-        {/* 관리자에게 404는 렌탈이 없어서가 아니라 리포트 서버에 이 렌탈 기록(시점 이벤트)이 아직 없다는 뜻이다 */}
-        <p>{isAdmin ? "이 렌탈의 리포트 기록이 아직 없습니다. 시점을 시작하거나 부스 검사 결과가 들어오면 생깁니다." : "렌탈을 찾을 수 없습니다."}</p>
+        {/* report-server 404는 렌탈이 없을 때와 렌탈은 있지만 기록(시점 이벤트)이 아직 없을 때 둘 다다. 관리자에게는 둘 다 맞는 문장 */}
+        <p>{isAdmin ? "이 렌탈의 리포트 기록이 없습니다. 렌탈 주소가 맞다면 시점을 시작하거나 부스 검사 결과가 들어온 뒤에 생깁니다." : "렌탈을 찾을 수 없습니다."}</p>
         {backLink}
       </div>
     );
