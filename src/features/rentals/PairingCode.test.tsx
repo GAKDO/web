@@ -7,6 +7,7 @@ import { renderAsAdmin } from "../../test/renderApp";
 import type { Checkpoint } from "../../shared/api/types";
 import { captureDb } from "../../shared/mocks/captureDb";
 import { db } from "../../shared/mocks/db";
+import { agentCommands } from "./components/PairingCodePanel";
 
 const now = new Date().toISOString();
 
@@ -135,8 +136,19 @@ test("페어링 코드를 만들면 맥·윈도우 설치 명령을 지금 주�
   const code = (await within(step).findByLabelText("페어링 코드")).textContent ?? "";
   const write = vi.spyOn(navigator.clipboard, "writeText");
   await u.click(within(step).getByRole("button", { name: "맥 명령 복사" }));
-  expect(write).toHaveBeenLastCalledWith(`curl -fsSL ${window.location.origin}/agent.sh | sh -s ${code}`);
+  expect(write).toHaveBeenLastCalledWith(agentCommands(window.location.origin, code).mac);
   await u.click(within(step).getByRole("button", { name: "윈도우 PowerShell 명령 복사" }));
-  expect(write).toHaveBeenLastCalledWith(`& ([scriptblock]::Create((irm ${window.location.origin}/agent.ps1))) ${code}`);
+  expect(write).toHaveBeenLastCalledWith(agentCommands(window.location.origin, code).windows);
   expect(within(step).getByText("노트북 터미널(윈도우는 관리자 PowerShell)에 붙여 넣으세요. 결과를 보여 준 뒤 y를 눌러야 올라가요.")).toBeInTheDocument();
+});
+
+test("gakdo.site에서는 B가 정한 명령 그대로, 다른 주소에서는 그 서버로 올리게 TRACE_API_URL을 같이 넣는다", () => {
+  expect(agentCommands("https://gakdo.site", "123456")).toEqual({
+    mac: "curl -fsSL https://gakdo.site/agent.sh | sh -s 123456",
+    windows: "& ([scriptblock]::Create((irm https://gakdo.site/agent.ps1))) 123456",
+  });
+  expect(agentCommands("http://localhost:5173", "123456")).toEqual({
+    mac: "curl -fsSL http://localhost:5173/agent.sh | TRACE_API_URL=http://localhost:5173 sh -s 123456",
+    windows: "$env:TRACE_API_URL='http://localhost:5173'; & ([scriptblock]::Create((irm http://localhost:5173/agent.ps1))) 123456",
+  });
 });

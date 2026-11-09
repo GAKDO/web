@@ -12,7 +12,12 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   server: {
-    proxy: { "/api": process.env.VITE_DEV_API ?? "http://localhost:8080" },
+    proxy: {
+      "/api": process.env.VITE_DEV_API ?? "http://localhost:8080",
+      // 진단 에이전트 설치 스크립트(nginx.conf의 /agent.sh·/agent.ps1과 같은 GitHub 원본)
+      "/agent.sh": { target: "https://raw.githubusercontent.com", changeOrigin: true, rewrite: () => "/GAKDO/agent/develop/install/agent.sh" },
+      "/agent.ps1": { target: "https://raw.githubusercontent.com", changeOrigin: true, rewrite: () => "/GAKDO/agent/develop/install/agent.ps1" },
+    },
   },
   test: {
     environment: "jsdom",

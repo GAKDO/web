@@ -8,14 +8,24 @@ import type { PairingCodeResponse } from "../../../shared/api/types";
 import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 
+/** 설치 스크립트가 TRACE_API_URL이 없을 때 쓰는 기본 API 주소(agent install/agent.sh·agent.ps1) */
+const AGENT_DEFAULT_API = "https://gakdo.site";
+
 /**
- * 노트북에 붙여 넣을 한 줄 설치·실행 명령(agent #8). 주소는 지금 연 화면의 origin을 써서 로컬에서도 맞는다.
- * /agent.sh·/agent.ps1은 web nginx가 GitHub 원본으로 넘긴다(nginx.conf)
+ * 노트북에 붙여 넣을 한 줄 설치·실행 명령(agent #8). 주소는 지금 연 화면의 origin을 쓴다.
+ * /agent.sh·/agent.ps1은 web nginx(개발은 vite 프록시)가 GitHub 원본으로 넘긴다.
+ * 스크립트는 진단을 기본 https://gakdo.site로 올리므로, 다른 주소(로컬·시험 서버)에서 연 화면이면
+ * 코드를 발급한 그 서버로 올리게 TRACE_API_URL을 같이 넣는다. gakdo.site에서는 B가 정한 명령 그대로다
  */
 export function agentCommands(origin: string, code: string): { mac: string; windows: string } {
+  const sameAsDefault = origin === AGENT_DEFAULT_API;
   return {
-    mac: `curl -fsSL ${origin}/agent.sh | sh -s ${code}`,
-    windows: `& ([scriptblock]::Create((irm ${origin}/agent.ps1))) ${code}`,
+    mac: sameAsDefault
+      ? `curl -fsSL ${origin}/agent.sh | sh -s ${code}`
+      : `curl -fsSL ${origin}/agent.sh | TRACE_API_URL=${origin} sh -s ${code}`,
+    windows: sameAsDefault
+      ? `& ([scriptblock]::Create((irm ${origin}/agent.ps1))) ${code}`
+      : `$env:TRACE_API_URL='${origin}'; & ([scriptblock]::Create((irm ${origin}/agent.ps1))) ${code}`,
   };
 }
 
@@ -91,8 +101,8 @@ export function PairingCodePanel({ rentalId, checkpointId, deviceSerial }: { ren
             진단 에이전트에 이 6자리를 입력하세요. 남은 시간 {Math.floor(left / 60)}분 {left % 60}초.
           </p>
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label="진단 에이전트 설치 명령">
-            <CommandCopyButton name="맥" command={commands?.mac ?? ""} />
-            <CommandCopyButton name="윈도우 PowerShell" command={commands?.windows ?? ""} />
+            <CommandCopyButton key={`mac:${issued.code}`} name="맥" command={commands?.mac ?? ""} />
+            <CommandCopyButton key={`win:${issued.code}`} name="윈도우 PowerShell" command={commands?.windows ?? ""} />
           </div>
           <p className="text-sm text-muted-foreground">노트북 터미널(윈도우는 관리자 PowerShell)에 붙여 넣으세요. 결과를 보여 준 뒤 y를 눌러야 올라가요.</p>
         </>
