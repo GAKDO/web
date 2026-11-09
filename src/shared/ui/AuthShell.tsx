@@ -40,9 +40,6 @@ export function AuthShell({ topRight, steps, children }: AuthShellProps) {
       </main>
       <footer className="mx-auto flex w-full max-w-6xl shrink-0 flex-wrap items-center justify-between gap-2 border-t border-white/5 px-4 py-3 text-xs text-zinc-500 md:px-8">
         <span>TRACE Rental Management System</span>
-        <Link to="/admin/login" className="text-zinc-500 underline-offset-4 hover:text-zinc-300 hover:underline">
-          관리자 로그인
-        </Link>
       </footer>
     </div>
   );
