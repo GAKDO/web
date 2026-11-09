@@ -31,6 +31,43 @@ export function shortDate(iso: string): string {
   return `${month}/${day}`;
 }
 
+/** "14:02"(서울 시각, 24시간) */
+export function shortTime(iso: string): string {
+  return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso));
+}
+
+/** 서울 날짜 "2026-11-09"(연도까지 비교용) */
+function seoulDay(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+}
+
+/** 점이 많으면 처음·끝·몇 칸마다만 이름을 단다(겹치지 않게) */
+export function labelShown(i: number, count: number): boolean {
+  return i === 0 || i === count - 1 || i % Math.ceil(count / 6) === 0;
+}
+
+/**
+ * 가로축 이름(이름을 달지 않는 점은 ""). 앞에서 이름을 단 점과 서울 날짜(연도 포함)가 같으면 "14:02",
+ * 다르면 "11/9"로 써서 시연처럼 하루에 출고·반납을 다 하면 축이 "11/9 11/9 11/9"로 똑같아지지 않게 한다
+ */
+export function axisLabels(points: Pick<TrendPoint, "collectedAt" | "label">[]): string[] {
+  let prevDay: string | null = null;
+  return points.map((p, i) => {
+    if (!labelShown(i, points.length)) return "";
+    const day = seoulDay(p.collectedAt);
+    const text = day === prevDay ? shortTime(p.collectedAt) : p.label;
+    prevDay = day;
+    return text;
+  });
+}
+
+/** 툴팁을 점의 어느 쪽에 붙일지: 가장자리 점은 안쪽으로 펼쳐 375px에서 잘리거나 가로 스크롤이 생기지 않게 한다 */
+export function tooltipAlign(xPct: number): "start" | "center" | "end" {
+  if (xPct < 25) return "start";
+  if (xPct > 75) return "end";
+  return "center";
+}
+
 interface Def {
   key: string;
   label: string;

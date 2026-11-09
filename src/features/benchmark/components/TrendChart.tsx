@@ -1,6 +1,8 @@
 import { formatDateTime } from "../../../shared/ui/format";
 import { formatValue } from "../model/diagnostics";
-import { type TrendSeries, trendDomain } from "../model/trend";
+import { axisLabels, type TrendSeries, tooltipAlign, trendDomain } from "../model/trend";
+
+const TOOLTIP_ALIGN = { start: "left-0", center: "left-1/2 -translate-x-1/2", end: "right-0" } as const;
 
 // 단일 계열이라 범례 없이 제목이 계열 이름이다. 색은 성능 화면의 '렌탈 전' 파랑(검증한 기본 팔레트 1번)
 const LINE = "#2a78d6";
@@ -27,6 +29,7 @@ export function TrendChart({ series, height = 120 }: { series: TrendSeries; heig
     }
   });
   const last = [...points].reverse().find((p) => p.value !== null);
+  const axis = axisLabels(points);
 
   return (
     <figure className="m-0 grid gap-2" aria-label={`${series.label} 추이`}>
@@ -68,7 +71,7 @@ export function TrendChart({ series, height = 120 }: { series: TrendSeries; heig
                   style={{ left: `${x(i)}%`, bottom: `${y(p.value)}%` }}
                 >
                   <span aria-hidden="true" className="block size-2.5 rounded-full border-2 border-card group-focus-visible:ring-2 group-focus-visible:ring-ring" style={{ background: LINE }} />
-                  <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 rounded-md border bg-card px-2 py-1 text-xs whitespace-nowrap text-foreground shadow-md group-hover:block group-focus-visible:block">
+                  <span role="tooltip" className={`pointer-events-none absolute bottom-full z-10 mb-1 hidden ${TOOLTIP_ALIGN[tooltipAlign(x(i))]} rounded-md border bg-card px-2 py-1 text-xs whitespace-nowrap text-foreground shadow-md group-hover:block group-focus-visible:block`}>
                     <strong className="block">{valueText(p.value, unit)}</strong>
                     <span className="block text-muted-foreground">{formatDateTime(p.collectedAt)}</span>
                     <span className="block text-muted-foreground">{p.where}</span>
@@ -83,8 +86,7 @@ export function TrendChart({ series, height = 120 }: { series: TrendSeries; heig
         <div className="relative h-full">
           {points.map((p, i) => (
             <span key={`${p.collectedAt}-${i}`} className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${x(i)}%` }}>
-              {/* 점이 많으면 처음·끝·몇 칸마다만 이름을 단다(겹치지 않게) */}
-              {i === 0 || i === points.length - 1 || i % Math.ceil(points.length / 6) === 0 ? p.label : ""}
+              {axis[i]}
             </span>
           ))}
         </div>
