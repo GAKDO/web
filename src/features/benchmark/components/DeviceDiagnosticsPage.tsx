@@ -82,9 +82,9 @@ function Change({ pct, higherIsBetter = true, large = false }: { pct: number | n
 
 /** 변화율 막대: 가운데 0에서 왼쪽(나빠짐)·오른쪽(좋아짐)으로 ±20%까지. 막대 길이 차이가 작아도 변화가 보이게 */
 function DeltaBar({ pct, higherIsBetter = true }: { pct: number | null; higherIsBetter?: boolean }) {
-  if (pct === null) return null;
+  const level = changeLevel(pct, higherIsBetter);
+  if (pct === null || level === null) return null;
   const gain = higherIsBetter ? pct : -pct;
-  const level = changeLevel(pct, higherIsBetter)!;
   const width = Math.min(50, (Math.abs(gain) / 20) * 50);
   const color = { better: "var(--success)", same: "var(--muted-foreground)", slight: "var(--warning)", worse: "var(--destructive)" }[level];
   return (
