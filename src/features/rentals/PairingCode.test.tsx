@@ -7,6 +7,7 @@ import { renderAsAdmin } from "../../test/renderApp";
 import type { Checkpoint } from "../../shared/api/types";
 import { captureDb } from "../../shared/mocks/captureDb";
 import { db } from "../../shared/mocks/db";
+import { agentCommands } from "./components/PairingCodePanel";
 
 const now = new Date().toISOString();
 
@@ -126,4 +127,33 @@ test("주소로 바로 연 렌탈도 렌탈 목록을 읽지 않고 상세의 �
   await within(step).findByLabelText("페어링 코드");
   expect(captureDb.pairings.at(-1)).toMatchObject({ rentalId, deviceSerial: "C02AIR0002" });
   expect(listCalls).toBe(0);
+});
+
+test("페어링 코드를 만들면 맥·윈도우 설치 명령을 지금 주소와 코드로 복사하고 안내 한 줄이 보인다", async () => {
+  const { step } = await openRental("OPEN");
+  const u = userEvent.setup();
+  await u.click(await within(step).findByRole("button", { name: "진단 페어링 코드 만들기" }));
+  const code = (await within(step).findByLabelText("페어링 코드")).textContent ?? "";
+  const write = vi.spyOn(navigator.clipboard, "writeText");
+  await u.click(within(step).getByRole("button", { name: "맥 명령 복사" }));
+  expect(write).toHaveBeenLastCalledWith(agentCommands(window.location.origin, code).mac);
+  await u.click(within(step).getByRole("button", { name: "윈도우 PowerShell 명령 복사" }));
+  expect(write).toHaveBeenLastCalledWith(agentCommands(window.location.origin, code).windows);
+  expect(within(step).getByText("노트북 터미널(윈도우는 관리자 PowerShell)에 붙여 넣으세요. 결과를 보여 준 뒤 y를 눌러야 올라가요.")).toBeInTheDocument();
+});
+
+test("gakdo.site에서는 B가 정한 명령 그대로, 다른 주소에서는 그 서버로 올리게 TRACE_API_URL을 같이 넣는다", () => {
+  expect(agentCommands("https://gakdo.site", "123456")).toEqual({
+    mac: "curl -fsSL https://gakdo.site/agent.sh | sh -s 123456",
+    windows: "& ([scriptblock]::Create((irm https://gakdo.site/agent.ps1))) 123456",
+  });
+  expect(agentCommands("http://localhost:5173", "123456")).toEqual({
+    mac: "curl -fsSL http://localhost:5173/agent.sh | TRACE_API_URL=http://localhost:5173 sh -s 123456",
+    windows:
+      "try { $env:TRACE_API_URL='http://localhost:5173'; & ([scriptblock]::Create((irm http://localhost:5173/agent.ps1))) 123456 } finally { Remove-Item Env:TRACE_API_URL -ErrorAction SilentlyContinue }",
+  });
+  // API를 다른 서버로 둔 빌드(VITE_API_BASE)면 스크립트는 화면에서, 진단은 API 서버로
+  expect(agentCommands("https://gakdo.site", "123456", "http://10.0.0.5:8080").mac).toBe(
+    "curl -fsSL https://gakdo.site/agent.sh | TRACE_API_URL=http://10.0.0.5:8080 sh -s 123456",
+  );
 });
