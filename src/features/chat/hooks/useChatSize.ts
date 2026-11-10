@@ -1,26 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/** 도우미 버튼 크기. 사용자가 창 머리에서 고른다 */
-export type ButtonSize = "sm" | "md" | "lg";
-export const BUTTON_SIZES: readonly { value: ButtonSize; label: string }[] = [
-  { value: "sm", label: "작게" },
-  { value: "md", label: "보통" },
-  { value: "lg", label: "크게" },
-];
-
 export const DEFAULT_PANEL = { width: 384, height: 576 } as const;
 export const MIN_PANEL = { width: 320, height: 360 } as const;
 /** 화면 가장자리에서 띄울 여백(왼쪽·위 16px씩 + 오른쪽·아래 16px씩) */
 const EDGE = 32;
 
 export interface ChatSize {
-  button: ButtonSize;
   width: number;
   height: number;
 }
 
 const KEY = "trace.chat.size";
-const DEFAULT: ChatSize = { button: "md", ...DEFAULT_PANEL };
+const DEFAULT: ChatSize = { ...DEFAULT_PANEL };
 
 function viewport() {
   // 테스트(jsdom)처럼 창 크기를 모르면 넉넉하게 본다
@@ -42,12 +33,11 @@ function read(): ChatSize {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return DEFAULT;
     const v = JSON.parse(raw) as Partial<ChatSize>;
-    const button = BUTTON_SIZES.some((b) => b.value === v.button) ? (v.button as ButtonSize) : DEFAULT.button;
     // 손으로 고쳤거나 깨진 값은 기본값으로, 최소보다 작은 값은 최소로. 큰 값은 CSS가 화면에 맞게 줄인다
     const valid = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
     const width = valid(v.width) ? Math.max(MIN_PANEL.width, v.width) : DEFAULT.width;
     const height = valid(v.height) ? Math.max(MIN_PANEL.height, v.height) : DEFAULT.height;
-    return { button, width, height };
+    return { width, height };
   } catch {
     return DEFAULT;
   }
@@ -62,7 +52,7 @@ function write(size: ChatSize) {
 }
 
 /**
- * 도우미 버튼 크기와 창 크기. 사용자가 바꿀 때만 이 브라우저에 기억해 다음에 열어도 그대로다
+ * 도우미 창 크기. 사용자가 바꿀 때만 이 브라우저에 기억해 다음에 열어도 그대로다
  * (바꾸지 않은 사람의 저장소에는 아무것도 쓰지 않는다)
  */
 export function useChatSize() {
@@ -77,9 +67,8 @@ export function useChatSize() {
     changed.current = true;
     setSize((s) => ({ ...s, ...patch }));
   }, []);
-  const setButton = useCallback((button: ButtonSize) => update({ button }), [update]);
   const setPanel = useCallback((width: number, height: number) => update(clampPanel(width, height)), [update]);
   const resetPanel = useCallback(() => update({ ...DEFAULT_PANEL }), [update]);
 
-  return { size, setButton, setPanel, resetPanel };
+  return { size, setPanel, resetPanel };
 }
