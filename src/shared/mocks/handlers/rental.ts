@@ -1,6 +1,6 @@
 import { http, HttpResponse } from "msw";
 import { nanoid } from "nanoid";
-import type { CheckpointType, Rental, RentalCreateRequest, RentalPage } from "../../api/types";
+import type { CheckpointType, Rental, RentalCreateRequest, RentalPage, RentalUpdateRequest } from "../../api/types";
 import { accountFromRequest, advanceCheckpoint, db } from "../db";
 import { problem } from "./problem";
 
@@ -43,13 +43,22 @@ export const rentalHandlers = [
     const url = new URL(request.url);
     const status = url.searchParams.get("status");
     const deviceId = url.searchParams.get("deviceId");
+    // 문제 있는 검사만(contracts #23): 지금 시점 등급이 B·C·D
+    const problem = url.searchParams.get("problem") === "true";
+    const admin = accountFromRequest(request)?.role === "ADMIN";
     const limit = Number(url.searchParams.get("limit") ?? 20);
     const start = Number(url.searchParams.get("cursor") ?? 0);
     const matched = [...db.rentals]
       .reverse()
       .filter((r) => !status || r.status === status)
       .filter((r) => !deviceId || r.deviceId === deviceId)
-      .filter((r) => !owner || db.report.owners.get(r.rentalId) === owner);
+      .filter((r) => !owner || db.report.owners.get(r.rentalId) === owner)
+      .filter((r) => {
+        if (!problem) return true;
+        const current = r.checkpoints.at(-1);
+        const grade = current ? db.report.inspections.get(current.checkpointId)?.grade : null;
+        return grade === "B" || grade === "C" || grade === "D";
+      });
     const items = matched.slice(start, start + limit).map((r) => {
       const device = db.devices.find((d) => d.deviceId === r.deviceId);
       // 지금 시점 = 시작된 시점 중 가장 뒤(OUT→RCV→RET 순으로 쌓이므로 마지막), 없으면 null
@@ -65,9 +74,11 @@ export const rentalHandlers = [
         endedAt: r.endedAt,
         createdAt: r.createdAt,
         currentCheckpoint,
+        customerName: admin ? (r.customerName ?? null) : null,
+        dueAt: r.dueAt ?? null,
       };
     });
-    const body: RentalPage = { items, nextCursor: start + limit < matched.length ? String(start + limit) : null };
+    const body: RentalPage = { items, nextCursor: start + limit < matched.length ? String(start + limit) : null, totalCount: matched.length };
     return HttpResponse.json(body);
   }),
 
@@ -82,7 +93,19 @@ export const rentalHandlers = [
       return problem(409, "RENTAL_OPEN_EXISTS", "진행 중인 렌탈이 있습니다");
     }
     const now = new Date().toISOString();
-    const rental: Rental = { rentalId: nanoid(), deviceId: device.deviceId, renterRef: body.renterRef, status: "OPEN", startedAt: null, endedAt: null, createdAt: now, checkpoints: [] };
+    const rental: Rental = {
+      rentalId: nanoid(),
+      deviceId: device.deviceId,
+      renterRef: body.renterRef,
+      status: "OPEN",
+      startedAt: null,
+      endedAt: null,
+      createdAt: now,
+      customerName: body.customerName?.trim() || null,
+      dueAt: body.dueAt ?? null,
+      note: body.note?.trim() || null,
+      checkpoints: [],
+    };
     db.rentals.push(rental);
     return HttpResponse.json(withSerial(rental), { status: 201 });
   }),
@@ -93,7 +116,23 @@ export const rentalHandlers = [
     if (no) return no;
     const rental = db.rentals.find((r) => r.rentalId === params.rentalId);
     if (rental && owner && db.report.owners.get(rental.rentalId) !== owner) return problem(403, "OUT_OF_SCOPE", "이 렌탈을 볼 권한이 없습니다");
-    return rental ? HttpResponse.json(withSerial(rental)) : problem(404, "NOT_FOUND", "렌탈이 없습니다");
+    if (!rental) return problem(404, "NOT_FOUND", "렌탈이 없습니다");
+    // 관리자 메모는 고객에게 보내지 않는다(contracts #23)
+    return HttpResponse.json(owner ? { ...withSerial(rental), note: null } : withSerial(rental));
+  }),
+
+  // 고객 이름·반납 예정일·메모 고치기(contracts updateRental). 보낸 칸만, null은 비우기
+  http.patch("*/api/v1/rentals/:rentalId", async ({ request, params }) => {
+    const no = denied(request);
+    if (no) return no;
+    const rental = db.rentals.find((r) => r.rentalId === params.rentalId);
+    if (!rental) return problem(404, "NOT_FOUND", "렌탈이 없습니다");
+    const body = (await request.json()) as RentalUpdateRequest;
+    if (!body || Object.keys(body).length === 0) return problem(400, "VALIDATION_FAILED", "바꿀 값을 하나 이상 보내야 합니다");
+    if ("customerName" in body) rental.customerName = body.customerName?.trim() || null;
+    if ("dueAt" in body) rental.dueAt = body.dueAt ?? null;
+    if ("note" in body) rental.note = body.note?.trim() || null;
+    return HttpResponse.json(withSerial(rental));
   }),
 
   http.post("*/api/v1/rentals/:rentalId/checkpoints", async ({ request, params }) => {

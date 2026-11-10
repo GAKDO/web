@@ -9,9 +9,10 @@ import { messageFor } from "../../../shared/api/errorMessages";
 import { DEVICE_STATUS_LABEL } from "../../../shared/codes/labels";
 import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
-import { Field, SelectField } from "../../../shared/ui/Field";
+import { Field, SelectField, TextAreaField } from "../../../shared/ui/Field";
 import { useDevice, useDevices } from "../../devices/api/devices";
 import { useCreateRental } from "../api/rentals";
+import { CUSTOMER_NAME_MAX, NOTE_MAX } from "./RentalDetailsPanel";
 
 /** 기기와 대여자 참조 번호로 렌탈을 만든다. 기본은 사용 가능 기기만(FR-020) */
 export function RentalCreatePage() {
@@ -29,6 +30,10 @@ export function RentalCreatePage() {
   const list: Device[] =
     prefilled.data && !loaded.some((d) => d.deviceId === prefilled.data.deviceId) ? [prefilled.data, ...loaded] : loaded;
   const [renterRef, setRenterRef] = useState("");
+  // 고객 이름·반납 예정일·메모(contracts #23, 11/10). 모두 선택이라 비우면 보내지 않는다
+  const [customerName, setCustomerName] = useState("");
+  const [dueAt, setDueAt] = useState("");
+  const [note, setNote] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
   const picked = list.find((d) => d.deviceId === deviceId);
 
@@ -38,7 +43,13 @@ export function RentalCreatePage() {
     if (!picked) return;
     setError(null);
     create.mutate(
-      { deviceId: picked.deviceId, renterRef: renterRef.trim() },
+      {
+        deviceId: picked.deviceId,
+        renterRef: renterRef.trim(),
+        ...(customerName.trim() ? { customerName: customerName.trim() } : {}),
+        ...(dueAt ? { dueAt } : {}),
+        ...(note.trim() ? { note: note.trim() } : {}),
+      },
       {
         onSuccess: (rental) => navigate(`/admin/rentals/${rental.rentalId}`, { state: { serial: picked?.serial, notice: "렌탈을 만들었습니다." } }),
         onError: (e) => setError(e instanceof ApiError ? e : networkError()),
@@ -48,7 +59,7 @@ export function RentalCreatePage() {
 
   return (
     <section className="max-w-xl">
-      <PageHeader back={{ to: "/admin/rentals", label: "렌탈 목록" }} title="렌탈 만들기" description="기기와 대여자 참조 번호로 렌탈을 만듭니다. 기본은 사용 가능 기기만 보입니다." />
+      <PageHeader back={{ to: "/admin/rentals", label: "렌탈 목록" }} title="렌탈 만들기" description="기기와 대여자 참조 번호로 렌탈을 만듭니다. 고객 이름·반납 예정일·메모는 나중에 렌탈 상세에서도 적을 수 있습니다." />
       {error && (
         <ErrorBanner message={messageFor(error, { deviceStatus: picked?.status })}>
           {error.code === "RENTAL_OPEN_EXISTS" && <Link to="/admin/rentals?status=OPEN">진행 중인 렌탈 보기</Link>}
@@ -85,7 +96,17 @@ export function RentalCreatePage() {
             기기 더 불러오기
           </Button>
         )}
-        <Field label="대여자 참조 번호" required maxLength={128} placeholder="이름 대신 쓰는 번호" value={renterRef} onChange={(e) => setRenterRef(e.target.value)} />
+        <Field label="대여자 참조 번호" required maxLength={128} placeholder="예: R-2026-0012" value={renterRef} onChange={(e) => setRenterRef(e.target.value)} />
+        <Field label="고객 이름 (선택)" maxLength={CUSTOMER_NAME_MAX} placeholder="예: 김민서" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+        <Field label="반납 예정일 (선택)" type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
+        <TextAreaField
+          label="메모 (선택)"
+          maxLength={NOTE_MAX}
+          placeholder="예: 충전기 함께 대여"
+          hint="관리자에게만 보입니다."
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
         <FormActions>
           <Link className={buttonVariants({ variant: "outline" })} to="/admin/rentals">
             취소

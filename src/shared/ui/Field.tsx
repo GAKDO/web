@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes, type SelectHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -48,6 +48,38 @@ export function SelectField({ label, error, children, className, ...select }: Se
       {error && (
         <p id={errorId} className={ERROR} role="alert">
           {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+interface TextAreaFieldProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+  label: string;
+  /** 칸 아래 작은 안내(예: "관리자에게만 보입니다") */
+  hint?: string;
+}
+
+/** 레이블이 붙은 여러 줄 입력 칸. 생김새는 Input과 같다 */
+export function TextAreaField({ label, hint, className, ...area }: TextAreaFieldProps) {
+  const id = useId();
+  const hintId = `${id}-hint`;
+  return (
+    <div className={cn(WRAP, className)}>
+      <Label htmlFor={id}>{label}</Label>
+      <textarea
+        id={id}
+        rows={3}
+        aria-describedby={hint ? hintId : undefined}
+        className={cn(
+          "min-h-20 w-full min-w-0 resize-y rounded-md border border-input bg-card px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none",
+          "placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/25",
+        )}
+        {...area}
+      />
+      {hint && (
+        <p id={hintId} className="m-0 text-xs text-muted-foreground">
+          {hint}
         </p>
       )}
     </div>

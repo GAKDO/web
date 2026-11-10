@@ -17,6 +17,8 @@ import { PageHeader } from "../../../shared/ui/PageHeader";
 import { FilterPanel } from "../../../shared/ui/FilterPanel";
 import { Pager, usePaged } from "../../../shared/ui/Pager";
 import { formatDate } from "../../../shared/ui/format";
+import { TotalCount } from "../../../shared/ui/TotalCount";
+import { dueState } from "../dueDate";
 
 export { formatDate };
 
@@ -28,6 +30,18 @@ function currentStep(r: RentalSummary): string | null {
   if (r.currentCheckpoint === undefined) return null;
   if (r.currentCheckpoint === null) return "지금 시점: 시작 전";
   return `지금 시점: ${CHECKPOINT_TYPE_LABEL[r.currentCheckpoint.type]} · ${CHECKPOINT_STATUS_LABEL[r.currentCheckpoint.status]}`;
+}
+
+/** 반납 예정일. 진행 중인데 지났으면 경고색으로 "지남"을 붙이고, 없으면 만든 날을 흐리게 보인다 */
+function DueDate({ rental }: { rental: RentalSummary }) {
+  const due = dueState(rental);
+  if (!due) return <span className="text-muted-foreground tabular-nums">만든 날 {formatDate(rental.createdAt)}</span>;
+  return (
+    <span className={due.overdue ? "font-medium text-destructive tabular-nums" : "tabular-nums"}>
+      반납 예정 {due.label}
+      {due.overdue ? " · 지남" : ""}
+    </span>
+  );
 }
 
 /** 렌탈 목록: 계약 RentalSummary의 시리얼·기종·상태·지금 시점·만든 날(FR-021). ?status=OPEN으로 거른다 */
@@ -71,7 +85,8 @@ export function RentalListPage() {
       )}
       {rentals.isPending && <p className="text-muted-foreground">불러오는 중…</p>}
       {rentals.isSuccess && items.length === 0 && <p className="text-muted-foreground">렌탈이 없습니다.</p>}
-      <DataTable cols="minmax(110px, 1fr) 1.5fr 0.7fr 1.6fr 1fr" labels={["시리얼", "기종", "상태", "지금 시점", "만든 날"]} label="렌탈">
+      {rentals.isSuccess && items.length > 0 && <TotalCount query={rentals} />}
+      <DataTable cols="minmax(110px, 1fr) 1.3fr 1fr 0.7fr 1.5fr 1fr" labels={["시리얼", "기종", "고객", "상태", "지금 시점", "반납 예정·만든 날"]} label="렌탈">
         {items.map((r) => (
           <DataRow key={r.rentalId} label={r.serial} className="grid-cols-1">
             <DataCells>
@@ -79,9 +94,10 @@ export function RentalListPage() {
                 <strong>{maskSerial(r.serial)}</strong>
               </Link>
               <span>{modelName(r.modelCode)}</span>
+              <span className={r.customerName ? undefined : "text-muted-foreground"}>{r.customerName || "—"}</span>
               <Badge variant={RENTAL_STATUS_VARIANT[r.status]}>{RENTAL_STATUS_LABEL[r.status]}</Badge>
               <span>{currentStep(r)}</span>
-              <span className="text-muted-foreground tabular-nums">만든 날 {formatDate(r.createdAt)}</span>
+              <DueDate rental={r} />
             </DataCells>
           </DataRow>
         ))}
