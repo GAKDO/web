@@ -109,6 +109,12 @@ export function ChatWidget() {
     setOpen(false);
   }
 
+  // 방침 화면으로 갈 때는 창만 접고, 초점을 여는 버튼으로 되돌리지 않는다(새 화면 본문을 읽게)
+  function leaveToPrivacy() {
+    wasOpen.current = false;
+    setOpen(false);
+  }
+
   if (!open) {
     return (
       <button
@@ -135,7 +141,7 @@ export function ChatWidget() {
           <h2 className="text-sm font-semibold">TRACE 도우미</h2>
           <p className="text-xs text-muted-foreground">
             AI(Google Gemini)가 답해요. 정확하지 않을 수 있어요.{" "}
-            <Link to="/privacy" onClick={close} className="underline underline-offset-2 hover:text-foreground">
+            <Link to="/privacy" onClick={leaveToPrivacy} className="underline underline-offset-2 hover:text-foreground">
               개인정보처리방침
             </Link>
           </p>
