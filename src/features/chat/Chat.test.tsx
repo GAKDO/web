@@ -2,7 +2,9 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { renderApp, renderAsAdmin, renderAsCustomer } from "../../test/renderApp";
+import { http, HttpResponse } from "msw";
 import { MOCK_ADMIN } from "../../shared/mocks/db";
+import { server } from "../../shared/mocks/node";
 
 async function openChat() {
   await userEvent.click(await screen.findByRole("button", { name: "TRACE 도우미 열기" }));
@@ -94,4 +96,30 @@ test("로그아웃 없이 다른 계정으로 로그인해도 앞 계정의 대�
   const reopened = await openChat();
   expect(within(reopened).queryByText(/\[로그인\]/)).not.toBeInTheDocument();
   vi.unstubAllEnvs();
+});
+
+test("세션이 바뀌기 전에 보낸 질문의 답이 바뀐 뒤에 와도 새 대화에 붙이지 않는다", async () => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  let answered = false;
+  server.use(
+    http.post("*/api/v1/chat", async () => {
+      await gate;
+      answered = true;
+      return HttpResponse.json({ reply: "앞 계정에게 보낼 늦은 답", provider: "gemini" });
+    }),
+  );
+  const { router } = renderAsCustomer("/my/account");
+  const dialog = await openChat();
+  await userEvent.type(within(dialog).getByLabelText("질문"), "늦은 질문{Enter}");
+  await userEvent.click(screen.getByRole("button", { name: "도우미 닫기" }));
+  await userEvent.click(screen.getByRole("button", { name: "로그아웃" }));
+  await vi.waitFor(() => expect(router.state.location.pathname).not.toBe("/my/account"));
+  release();
+  await vi.waitFor(() => expect(answered).toBe(true));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const reopened = await openChat();
+  expect(within(reopened).queryByText("앞 계정에게 보낼 늦은 답")).not.toBeInTheDocument();
+  expect(within(reopened).queryByText("늦은 질문")).not.toBeInTheDocument();
+  expect(within(reopened).getByLabelText("질문")).toHaveValue("");
 });
