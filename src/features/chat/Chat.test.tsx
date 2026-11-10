@@ -138,21 +138,13 @@ test("세션이 바뀌기 전에 보낸 질문의 답이 바뀐 뒤에 와도 �
   expect(within(reopened).getByLabelText("질문")).toHaveValue("");
 });
 
-test("크기 설정에서 도우미 버튼을 크게 고르면 닫은 뒤 버튼이 커지고, 새로 열어도 기억한다", async () => {
-  const first = renderApp("/guide");
-  expect(await screen.findByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-14");
-  expect(localStorage.length).toBe(0);
-  const dialog = await openChat();
-  await userEvent.click(within(dialog).getByRole("button", { name: "크기 설정" }));
-  const group = within(dialog).getByRole("group", { name: "버튼 크기" });
-  await userEvent.click(within(group).getByRole("button", { name: "크게" }));
-  expect(within(group).getByRole("button", { name: "크게" })).toHaveAttribute("aria-pressed", "true");
-  await userEvent.click(within(dialog).getByRole("button", { name: "도우미 닫기" }));
-  expect(screen.getByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-20");
-  first.unmount();
-
+test("도우미 버튼은 크기 설정 없이 늘 크게 보이고, 크기 설정에는 버튼 크기 고르기가 없다", async () => {
   renderApp("/guide");
   expect(await screen.findByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-20");
+  const dialog = await openChat();
+  await userEvent.click(within(dialog).getByRole("button", { name: "크기 설정" }));
+  expect(within(dialog).queryByRole("group", { name: "버튼 크기" })).not.toBeInTheDocument();
+  expect(within(dialog).getByText("창 크기는 왼쪽 위 모서리를 끌어서 바꿔요.")).toBeInTheDocument();
 });
 
 test("왼쪽 위 손잡이를 끌거나 화살표로 움직이면 창 크기가 바뀌고, 되돌리기로 처음 크기가 된다", async () => {
@@ -185,8 +177,7 @@ test("왼쪽 위 손잡이를 끌거나 화살표로 움직이면 창 크기가 
 test("저장된 창 크기가 깨졌거나 최소보다 작으면 기본값이나 최소 크기로 연다", async () => {
   localStorage.setItem("trace.chat.size", JSON.stringify({ button: "huge", width: "wide", height: 100 }));
   renderApp("/guide");
-  const opener = await screen.findByRole("button", { name: "TRACE 도우미 열기" });
-  expect(opener).toHaveClass("size-14");
+  expect(await screen.findByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-20");
   const dialog = await openChat();
   expect(dialog.style.getPropertyValue("--chat-w")).toBe("384px");
   expect(dialog.style.getPropertyValue("--chat-h")).toBe("360px");

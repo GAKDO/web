@@ -7,7 +7,7 @@ import { ApiError } from "../../../shared/api/client";
 import { useAuth } from "../../../shared/auth/AuthProvider";
 import type { ChatMessage } from "../../../shared/api/types";
 import { askChat, MAX_CONTENT } from "../api/askChat";
-import { BUTTON_SIZES, DEFAULT_PANEL, useChatSize, type ButtonSize } from "../hooks/useChatSize";
+import { DEFAULT_PANEL, useChatSize } from "../hooks/useChatSize";
 
 /** 관리자·부스 태블릿·폰 촬영 화면에는 띄우지 않는다(작업 화면을 가리지 않게) */
 const HIDDEN_PREFIXES = ["/admin", "/booth", "/capture"];
@@ -15,11 +15,6 @@ const HIDDEN_PREFIXES = ["/admin", "/booth", "/capture"];
 const GREETING = "안녕하세요, TRACE 도우미예요. 이용 순서, 등급 기준, 내 렌탈 검사 결과 같은 걸 물어보세요.";
 const SUGGESTIONS = ["노트북은 어떻게 빌려요?", "등급 기준이 뭐예요?", "내 렌탈 검사 결과 알려 줘"];
 
-const BUTTON_CLASS: Record<ButtonSize, { button: string; icon: string }> = {
-  sm: { button: "size-12", icon: "size-5" },
-  md: { button: "size-14", icon: "size-6" },
-  lg: { button: "size-20", icon: "size-9" },
-};
 /** 크기 조절 손잡이를 키보드 화살표로 움직일 때 한 번에 바뀌는 픽셀 */
 const RESIZE_STEP = 32;
 
@@ -48,7 +43,7 @@ export function ChatWidget() {
   const list = useRef<HTMLOListElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const opener = useRef<HTMLButtonElement>(null);
-  const { size, setButton, setPanel, resetPanel } = useChatSize();
+  const { size, setPanel, resetPanel } = useChatSize();
   const [showSettings, setShowSettings] = useState(false);
   const drag = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
 
@@ -166,9 +161,9 @@ export function ChatWidget() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="TRACE 도우미 열기"
-        className={`fixed right-4 bottom-4 z-40 inline-flex ${BUTTON_CLASS[size.button].button} items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none`}
+        className="fixed right-4 bottom-4 z-40 inline-flex size-20 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
       >
-        <MessageCircle aria-hidden="true" className={BUTTON_CLASS[size.button].icon} />
+        <MessageCircle aria-hidden="true" className="size-9" />
       </button>
     );
   }
@@ -224,20 +219,6 @@ export function ChatWidget() {
 
       {showSettings && (
         <div id="chat-size-settings" className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-2 text-xs">
-          <div role="group" aria-label="버튼 크기" className="flex items-center gap-1">
-            <span className="mr-1 text-muted-foreground">버튼 크기</span>
-            {BUTTON_SIZES.map((b) => (
-              <button
-                key={b.value}
-                type="button"
-                aria-pressed={size.button === b.value}
-                onClick={() => setButton(b.value)}
-                className="rounded-full border px-2.5 py-0.5 hover:bg-muted aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-              >
-                {b.label}
-              </button>
-            ))}
-          </div>
           <p className="text-muted-foreground">창 크기는 왼쪽 위 모서리를 끌어서 바꿔요.</p>
           {resized && (
             <button type="button" onClick={resetPanel} className="underline underline-offset-2 hover:text-foreground">
