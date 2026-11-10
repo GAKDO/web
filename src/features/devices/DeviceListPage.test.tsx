@@ -77,7 +77,7 @@ test("폐기 기기의 상태 메뉴는 수리 중으로 되돌리기만 고를 
       .getAllByRole("button")
       .filter((b) => !b.getAttribute("aria-label")?.startsWith("시리얼"))
       .map((b) => b.textContent),
-  ).toEqual(["닫기", "수리 중으로 되돌리기", "고치기"]);
+  ).toEqual(["닫기", "수리 중으로 되돌리기", "고치기", "기기 지우기"]);
   await user.click(within(retired).getByRole("button", { name: "수리 중으로 되돌리기" }));
   await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "수리 중으로 되돌리기" }));
   await waitFor(() => expect(within(card("C02PRO0002")).getByText("수리 중")).toBeInTheDocument());

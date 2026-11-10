@@ -234,7 +234,11 @@ export interface paths {
         get: operations["getDevice"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 기기 지우기
+         * @description 잘못 등록했거나 시험용으로 만든 기기를 지운다(11/10 민서 요청). 렌탈·파일럿 참가 이력이 없는 기기만 지운다. 시리얼이 `TEST-`로 시작하는 시험 기기는 그 기기의 렌탈도 시험 렌탈 지우기(deleteTestRental)와 같은 방식으로 함께 지운다(시점마다 trace.checkpoint.purged). 실제 기기에 렌탈 이력이 있으면 검사 기록·봉인 증거가 그 렌탈에 묶여 있으므로 지우지 않고 409 DEVICE_IN_USE를 돌려준다(폐기로 바꿔 두면 된다).
+         */
+        delete: operations["deleteDevice"];
         options?: never;
         head?: never;
         /**
@@ -287,7 +291,11 @@ export interface paths {
          */
         put: operations["upsertDeviceModel"];
         post?: never;
-        delete?: never;
+        /**
+         * 기종 지우기
+         * @description 잘못 등록했거나 시험용으로 만든 기종을 지운다(11/10 민서 요청). 이 기종으로 등록된 기기가 하나라도 있으면 409 DEVICE_MODEL_IN_USE(기기를 먼저 지우거나 다른 기종으로 옮긴다). (FR-RNT-03)
+         */
+        delete: operations["deleteDeviceModel"];
         options?: never;
         head?: never;
         patch?: never;
@@ -583,7 +591,7 @@ export interface components {
          * @description codes.yaml error_code
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "NOT_TEST_DATA" | "BOOTH_CODE_INVALID" | "BOOTH_CODE_EXPIRED" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "REVIEW_PENDING_REMAINS" | "REVIEW_NOT_READY" | "REVIEW_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "NOT_TEST_DATA" | "DEVICE_IN_USE" | "DEVICE_MODEL_IN_USE" | "BOOTH_CODE_INVALID" | "BOOTH_CODE_EXPIRED" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "REVIEW_PENDING_REMAINS" | "REVIEW_NOT_READY" | "REVIEW_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
         FieldError: {
             /** @description camelCase 필드 경로 (예 photos[0].sha256) */
             field: string;
@@ -1474,6 +1482,46 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    deleteDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deviceId: components["schemas"]["PublicId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 지움 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description 렌탈·파일럿 참가 이력이 있는 기기 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "이력이 있는 기기는 지울 수 없습니다",
+                     *       "status": 409,
+                     *       "code": "DEVICE_IN_USE",
+                     *       "detail": "렌탈 이력이 있는 기기는 지울 수 없습니다. 폐기로 바꿔 주세요."
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     updateDevice: {
         parameters: {
             query?: never;
@@ -1696,6 +1744,46 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    deleteDeviceModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                modelCode: components["schemas"]["ModelCode"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 지움 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description 이 기종으로 등록된 기기가 있음 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "기기가 등록된 기종은 지울 수 없습니다",
+                     *       "status": 409,
+                     *       "code": "DEVICE_MODEL_IN_USE",
+                     *       "detail": "이 기종으로 등록된 기기 1대를 먼저 지워 주세요."
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     createPilotParticipant: {

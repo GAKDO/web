@@ -81,3 +81,16 @@ export function useCloseRental(rentalId: string) {
     onSettled: () => client.invalidateQueries({ queryKey: RENTALS }),
   });
 }
+
+/** 시험 렌탈 지우기(11/4 서버, 11/10 화면). 기기 시리얼 TEST-만, 아니면 409 NOT_TEST_DATA */
+export function useDeleteTestRental(rentalId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => unwrap(api.DELETE("/api/v1/rentals/{rentalId}", { params: { path: { rentalId } } })),
+    onSuccess: () => {
+      client.removeQueries({ queryKey: rentalKey(rentalId) });
+      void client.invalidateQueries({ queryKey: RENTALS });
+      void client.invalidateQueries({ queryKey: ["devices"] });
+    },
+  });
+}
