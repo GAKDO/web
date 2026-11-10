@@ -26,7 +26,11 @@ const RESIZE_STEP = 32;
 function errorText(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 0) return "서버에 닿지 못했어요. 인터넷 연결을 확인하고 다시 보내 주세요.";
-    if (error.code === "RATE_LIMITED") return "질문이 너무 잦아요. 1분 뒤 다시 보내 주세요.";
+    if (error.code === "RATE_LIMITED") {
+      // 하루 상한(IP당·서비스 전체)은 서버가 "내일 다시" 안내 문구를 detail로 준다. 일반 글로만 보인다
+      if (error.detail?.includes("내일")) return error.detail;
+      return "질문이 너무 잦아요. 1분 뒤 다시 보내 주세요.";
+    }
     if (error.code === "VALIDATION_FAILED") return `질문은 ${MAX_CONTENT}자까지 보낼 수 있어요.`;
   }
   return "지금은 답할 수 없어요. 잠시 뒤 다시 보내 주세요.";
@@ -280,7 +284,10 @@ export function ChatWidget() {
         </ul>
       )}
 
-      <form onSubmit={onSubmit} className="flex items-end gap-2 border-t p-3">
+      <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2 border-t p-3">
+        <p id="chat-privacy" className="w-full text-xs text-muted-foreground">
+          개인정보(이름·전화번호·주소·계좌 등)는 입력하지 마세요.
+        </p>
         <label htmlFor="chat-input" className="sr-only">
           질문
         </label>
@@ -293,6 +300,7 @@ export function ChatWidget() {
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="궁금한 걸 적어 주세요"
+          aria-describedby="chat-privacy"
           className="max-h-32 min-h-10 flex-1 resize-none rounded-md border bg-background px-3 py-2 text-base sm:text-sm"
         />
         <Button type="submit" size="icon" aria-label="보내기" disabled={!draft.trim() || ask.isPending}>

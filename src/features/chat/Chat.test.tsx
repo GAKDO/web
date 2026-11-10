@@ -191,3 +191,12 @@ test("저장된 창 크기가 깨졌거나 최소보다 작으면 기본값이�
   expect(dialog.style.getPropertyValue("--chat-w")).toBe("384px");
   expect(dialog.style.getPropertyValue("--chat-h")).toBe("360px");
 });
+
+test("하루 상한에 닿으면 서버가 준 '내일 다시' 안내를 보이고, 입력 칸 위에 개인정보를 적지 말라고 알린다", async () => {
+  renderApp("/guide");
+  const dialog = await openChat();
+  const input = within(dialog).getByRole("textbox", { name: "질문" });
+  expect(input).toHaveAccessibleDescription(/개인정보.*입력하지 마세요/);
+  await userEvent.type(input, "하루 한도{Enter}");
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent("오늘 질문할 수 있는 횟수를 다 썼어요. 내일 다시 물어봐 주세요.");
+});
