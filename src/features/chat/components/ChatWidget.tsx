@@ -135,7 +135,7 @@ export function ChatWidget() {
           <h2 className="text-sm font-semibold">TRACE 도우미</h2>
           <p className="text-xs text-muted-foreground">
             AI(Google Gemini)가 답해요. 정확하지 않을 수 있어요.{" "}
-            <Link to="/privacy" className="underline underline-offset-2 hover:text-foreground">
+            <Link to="/privacy" onClick={close} className="underline underline-offset-2 hover:text-foreground">
               개인정보처리방침
             </Link>
           </p>

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { ApiError } from "../../../shared/api/problem";
 import { messageFor } from "../../../shared/api/errorMessages";
@@ -27,7 +27,18 @@ function resetMessage(error: unknown): string {
 
 /** 비밀번호 재설정 `/password/reset`(FR-USR-06). 이메일 → 받은 6자리 코드와 새 비밀번호 → 완료 */
 export function PasswordResetPage() {
-  const { clearSession } = useAuth();
+  const { status, sessionId, clearSession } = useAuth();
+  // 지금 세션을 늘 최신으로 둔다. 재설정이 늦게 끝났을 때 그사이 새로 연 세션은 지우지 않으려고 쓴다
+  const currentSession = useRef(sessionId);
+  currentSession.current = sessionId;
+  // 화면을 떠난 뒤(로그인 화면으로 가서 새로 로그인 등) 끝난 요청은 세션을 건드리지 않는다
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -66,9 +77,12 @@ export function PasswordResetPage() {
     setBusy(true);
     setError(null);
     try {
+      const startedSession = sessionId;
+      const wasAuthenticated = status === "authenticated";
       await resetPassword(email.trim(), code, password);
-      // 로그인한 채(예: 소셜 가입자가 탈퇴 전에) 바꿨으면 이 화면 세션도 끝내, "새 비밀번호로 로그인"이 로그인 폼을 열게 한다
-      clearSession();
+      // 로그인한 채(예: 소셜 가입자가 탈퇴 전에) 바꿨으면 이 화면 세션도 끝내, "새 비밀번호로 로그인"이 로그인 폼을 열게 한다.
+      // 요청 중에 세션이 바뀌었으면(다른 계정으로 로그인 등) 새 세션은 건드리지 않는다
+      if (wasAuthenticated && mounted.current && currentSession.current === startedSession) clearSession();
       setStep("done");
     } catch (e) {
       setError(resetMessage(e));
