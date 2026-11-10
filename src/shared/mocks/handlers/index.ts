@@ -1,5 +1,6 @@
 import { authHandlers } from "./auth";
 import { catalogHandlers } from "./catalog";
+import { chatHandlers } from "./chat";
 import { captureHandlers } from "./capture";
 import { captureReportHandlers } from "./capture-report";
 import { deviceHandlers } from "./device";
@@ -18,4 +19,5 @@ export const handlers = [
   ...reportHandlers,
   ...captureReportHandlers,
   ...diagnosticsHandlers,
+  ...chatHandlers,
 ];

@@ -5,13 +5,15 @@ import type { components as RentalComponents, paths as RentalPaths } from "./gen
 import type { components as ReportComponents, paths as ReportPaths } from "./generated/report";
 import type { components as CaptureComponents, paths as CapturePaths } from "./generated/capture";
 import type { components as DiagnosticsComponents, paths as DiagnosticsPaths } from "./generated/diagnostics";
+import type { components as ChatComponents, paths as ChatPaths } from "./generated/chat";
 
 type AuthSchemas = AuthComponents["schemas"];
 type RentalSchemas = RentalComponents["schemas"];
 type ReportSchemas = ReportComponents["schemas"];
 
 // 로그인 JWT로 부르는 경로. capture-server의 리포트용 GET(검사·사진)도 로그인 JWT로 부른다(WE3)
-export type ApiPaths = AuthPaths & RentalPaths & ReportPaths & CapturePaths & DiagnosticsPaths;
+// 사이트 도우미 챗봇(11/10)은 공개 경로지만, 로그인해 있으면 토큰을 붙여 내 렌탈도 답하게 같은 클라이언트로 부른다
+export type ApiPaths = AuthPaths & RentalPaths & ReportPaths & CapturePaths & DiagnosticsPaths & ChatPaths;
 
 export type LoginRequest = AuthSchemas["LoginRequest"];
 export type PairingCodeResponse = AuthSchemas["PairingCodeResponse"];
@@ -116,3 +118,8 @@ export type CatalogInspection = CaptureSchemas["CatalogInspection"];
 export type CatalogPhotoDefect = CaptureSchemas["CatalogPhotoDefect"];
 export type CatalogDiagnostics = DiagnosticsSchemas["CatalogDiagnostics"];
 export type BenchmarkMetric = DiagnosticsSchemas["DiagnosticsBenchmarkMetric"];
+
+// 사이트 도우미 챗봇(contracts chat-server.yaml, 11/10)
+type ChatSchemas = ChatComponents["schemas"];
+export type ChatMessage = ChatSchemas["ChatMessage"];
+export type ChatResponse = ChatSchemas["ChatResponse"];
