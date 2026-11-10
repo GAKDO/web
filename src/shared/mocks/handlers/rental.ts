@@ -62,7 +62,9 @@ export const rentalHandlers = [
     const items = matched.slice(start, start + limit).map((r) => {
       const device = db.devices.find((d) => d.deviceId === r.deviceId);
       // 지금 시점 = 시작된 시점 중 가장 뒤(OUT→RCV→RET 순으로 쌓이므로 마지막), 없으면 null
-      const currentCheckpoint = r.checkpoints.at(-1) ?? null;
+      const last = r.checkpoints.at(-1);
+      // 등급은 서버처럼 그 시점 검사의 마지막 등급(contracts #42)
+      const currentCheckpoint = last ? { ...last, grade: db.report.inspections.get(last.checkpointId)?.grade ?? null } : null;
       return {
         rentalId: r.rentalId,
         deviceId: r.deviceId,

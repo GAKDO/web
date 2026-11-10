@@ -1132,6 +1132,13 @@ components:
           oneOf:
             - $ref: './components/common.yaml#/components/schemas/DateTime'
             - type: 'null'
+        grade:
+          description: |
+            이 시점 검사의 등급(trace.checkpoint.graded의 마지막 값). 아직 등급이 없으면 null.
+            선택 필드(11/10, contracts #23 후속: 렌탈 목록에서 왜 문제인지 보이게), rental-server는 항상 보낸다.
+          oneOf:
+            - $ref: './components/codes.gen.yaml#/components/schemas/InspectionGrade'
+            - type: 'null'
     CheckpointCreateRequest:
       type: object
       additionalProperties: false

@@ -6,7 +6,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import type { RentalStatus, RentalSummary } from "../../../shared/api/types";
 import { ApiError } from "../../../shared/api/problem";
 import { messageFor } from "../../../shared/api/errorMessages";
-import { CHECKPOINT_STATUS_LABEL, CHECKPOINT_TYPE_LABEL, RENTAL_STATUS_LABEL } from "../../../shared/codes/labels";
+import { CHECKPOINT_STATUS_LABEL, CHECKPOINT_TYPE_LABEL, INSPECTION_GRADE_LABEL, RENTAL_STATUS_LABEL } from "../../../shared/codes/labels";
 import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { SelectField } from "../../../shared/ui/Field";
@@ -30,6 +30,25 @@ function currentStep(r: RentalSummary): string | null {
   if (r.currentCheckpoint === undefined) return null;
   if (r.currentCheckpoint === null) return "지금 시점: 시작 전";
   return `지금 시점: ${CHECKPOINT_TYPE_LABEL[r.currentCheckpoint.type]} · ${CHECKPOINT_STATUS_LABEL[r.currentCheckpoint.status]}`;
+}
+
+/**
+ * 지금 시점 검사 등급(11/10, contracts #42). "문제 있는 것만"으로 걸렀을 때 왜 걸렸는지 목록에서 바로 보이게 한다.
+ * 등급은 서버 값 그대로(A 문제 없음, B~D 문제 있음). 누르면 그 시점 검사 결과로 간다
+ */
+function GradeCell({ rental }: { rental: RentalSummary }) {
+  const cp = rental.currentCheckpoint;
+  if (!cp) return <span className="text-muted-foreground">—</span>;
+  const grade = cp.grade ?? null;
+  if (grade === null) return <span className="text-muted-foreground">등급 전</span>;
+  const bad = grade !== "A";
+  return (
+    <Link to={`/admin/inspections/${rental.rentalId}/${cp.checkpointId}`} state={{ serial: rental.serial }} aria-label={`${rental.serial} 검사 결과 보기`} className="justify-self-start">
+      <Badge variant={bad ? "destructive" : "success"}>
+        {bad ? "문제 있음" : "문제 없음"} · {INSPECTION_GRADE_LABEL[grade]}
+      </Badge>
+    </Link>
+  );
 }
 
 /** 반납 예정일. 진행 중인데 지났으면 경고색으로 "지남"을 붙이고, 없으면 만든 날을 흐리게 보인다 */
@@ -104,7 +123,7 @@ export function RentalListPage() {
         <p className="text-muted-foreground">{problemOnly ? "지금 문제 있는 렌탈이 없습니다. 지금 시점 등급이 B·C·D인 렌탈만 여기에 보입니다." : "렌탈이 없습니다."}</p>
       )}
       {rentals.isSuccess && items.length > 0 && <TotalCount query={rentals} label={problemOnly ? "문제 있는 렌탈 총" : "총"} />}
-      <DataTable cols="minmax(110px, 1fr) 1.3fr 1fr 0.7fr 1.5fr 1fr" labels={["시리얼", "기종", "고객", "상태", "지금 시점", "반납 예정·만든 날"]} label="렌탈">
+      <DataTable cols="minmax(110px, 1fr) 1.2fr 0.8fr 0.7fr 1.4fr 1.1fr 1fr" labels={["시리얼", "기종", "고객", "상태", "지금 시점", "검사 결과", "반납 예정·만든 날"]} label="렌탈">
         {items.map((r) => (
           <DataRow key={r.rentalId} label={r.serial} className="grid-cols-1">
             <DataCells>
@@ -115,6 +134,7 @@ export function RentalListPage() {
               <span className={r.customerName ? undefined : "text-muted-foreground"}>{r.customerName || "—"}</span>
               <Badge variant={RENTAL_STATUS_VARIANT[r.status]}>{RENTAL_STATUS_LABEL[r.status]}</Badge>
               <span>{currentStep(r)}</span>
+              <GradeCell rental={r} />
               <DueDate rental={r} />
             </DataCells>
           </DataRow>
