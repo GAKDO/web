@@ -43,7 +43,7 @@ function GradeCell({ rental }: { rental: RentalSummary }) {
   if (grade === null) return <span className="text-muted-foreground">등급 전</span>;
   const bad = grade !== "A";
   return (
-    <Link to={`/admin/inspections/${rental.rentalId}/${cp.checkpointId}`} state={{ serial: rental.serial }} aria-label={`${rental.serial} 검사 결과 보기`} className="justify-self-start">
+    <Link to={`/admin/inspections/${rental.rentalId}/${cp.checkpointId}`} state={{ serial: rental.serial }} aria-label={`${rental.serial} 검사 결과 보기: ${bad ? "문제 있음" : "문제 없음"} · ${INSPECTION_GRADE_LABEL[grade]}`} className="justify-self-start">
       <Badge variant={bad ? "destructive" : "success"}>
         {bad ? "문제 있음" : "문제 없음"} · {INSPECTION_GRADE_LABEL[grade]}
       </Badge>
