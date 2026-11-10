@@ -186,6 +186,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/captures/checkpoints/{checkpointId}/settlement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                checkpointId: components["parameters"]["CheckpointId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 반납 정산서(신규 흠집 차감액)
+         * @description 반납(RET) 시점의 신규(NEW) 흠집을 공개 규칙표(ruleVersion)에 넣어 흠집별 차감액과 합계를 계산한다(11/10 민서 결정, 반납 정산 자동화).
+         *     기각(DISMISSED) 흠집과 이전 시점에 있던(EXISTING) 흠집은 넣지 않는다. 수령(RCV) 때 새로 생긴 흠집은 배송 중 손상이라 고객 책임이 아니므로
+         *     반납 시점 비교의 기존 흠집으로 빠진다. 같은 검사 결과와 ruleVersion이면 누구나 같은 금액이 나온다(저장하지 않고 읽을 때 계산).
+         *     검수·등급 전이면 status PENDING(lines 빈 배열), 반납이 아니면 NOT_APPLICABLE.
+         */
+        get: operations["getCheckpointSettlement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/captures/reviews": {
         parameters: {
             query?: never;
@@ -588,6 +613,36 @@ export interface components {
             /** @description 사람 검수 상태(선택 필드, 11/8 추가. 서버는 항상 보낸다) */
             review?: components["schemas"]["DefectReview"];
         };
+        /** @description 반납 정산서(11/10 추가). 금액은 원(KRW) 정수 */
+        Settlement: {
+            checkpointId: components["schemas"]["PublicId"];
+            checkpointType: components["schemas"]["RentalCheckpointType"];
+            status: components["schemas"]["InspectionSettlementStatus"];
+            /** @description 정산 규칙표 버전(금액이 바뀌면 버전도 바뀐다) */
+            ruleVersion: string;
+            /** @enum {string} */
+            currency: "KRW";
+            grade: components["schemas"]["InspectionGrade"] | null;
+            lines: components["schemas"]["SettlementLine"][];
+            /** @description lines 금액 합 */
+            subtotal: number;
+            /** @description 한 번 반납에 차감하는 상한(보증금) */
+            cap: number;
+            /** @description min(subtotal, cap) */
+            total: number;
+            /** @description 사람이 읽는 참고 문장(뺀 흠집, 상한 적용 등) */
+            notes: string[];
+        };
+        SettlementLine: {
+            defectId: components["schemas"]["PublicId"];
+            face: components["schemas"]["CaptureFace"];
+            class: components["schemas"]["InspectionDefectClass"];
+            lengthMm: number | null;
+            areaMm2: number | null;
+            amount: number;
+            /** @description 적용한 규칙 한 줄(예 "찍힘 5mm 이상") */
+            rule: string;
+        };
         Inspection: {
             checkpointId: components["schemas"]["PublicId"];
             grade: components["schemas"]["InspectionGrade"] | null;
@@ -865,6 +920,16 @@ export interface components {
          * @enum {string}
          */
         InspectionDismissReason: "DUST" | "TAPE" | "REFLECTION" | "PART" | "OTHER";
+        /**
+         * @description codes.yaml rental.checkpoint_type
+         * @enum {string}
+         */
+        RentalCheckpointType: "OUT" | "RCV" | "RET";
+        /**
+         * @description codes.yaml inspection.settlement_status
+         * @enum {string}
+         */
+        InspectionSettlementStatus: "READY" | "PENDING" | "NOT_APPLICABLE";
     };
     responses: {
         /** @description 형식 오류 (VALIDATION_FAILED) */
@@ -1459,6 +1524,67 @@ export interface operations {
                      *     }
                      */
                     "application/json": components["schemas"]["Inspection"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getCheckpointSettlement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                checkpointId: components["parameters"]["CheckpointId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 정산서 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "checkpointId": "h40b9AN9xMQhXRHrOyJWB",
+                     *       "checkpointType": "RET",
+                     *       "status": "READY",
+                     *       "ruleVersion": "settlement-rules-v1",
+                     *       "currency": "KRW",
+                     *       "grade": "C",
+                     *       "lines": [
+                     *         {
+                     *           "defectId": "wcMFSsKlYBJ0vrxTlC8t5",
+                     *           "face": "TOP",
+                     *           "class": "dent",
+                     *           "lengthMm": 6.2,
+                     *           "areaMm2": 18,
+                     *           "amount": 80000,
+                     *           "rule": "찍힘 5mm 이상"
+                     *         },
+                     *         {
+                     *           "defectId": "Q1nJ0c4xQx3a9lH2pPq7r",
+                     *           "face": "BOT",
+                     *           "class": "scratch",
+                     *           "lengthMm": 7.5,
+                     *           "areaMm2": 1.1,
+                     *           "amount": 0,
+                     *           "rule": "긁힘 10mm 미만(생활 마모)"
+                     *         }
+                     *       ],
+                     *       "subtotal": 80000,
+                     *       "cap": 300000,
+                     *       "total": 80000,
+                     *       "notes": [
+                     *         "이전 시점에 있던 흠집 2개는 빼고 계산"
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Settlement"];
                 };
             };
             401: components["responses"]["Unauthorized"];

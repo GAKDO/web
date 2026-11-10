@@ -45,6 +45,8 @@ inspection:
   dismiss_reason: [DUST, TAPE, REFLECTION, PART, OTHER]   # 기각 사유: 먼지·스티커(자산번호 테이프)·반사·부품(고무발·나사·로고)·기타
   match_status: [NEW, EXISTING]
   grade: [A, B, C, D]
+  # 반납 정산(11/10 민서 결정): 반납 시점 신규 흠집 → 공개 규칙표로 차감액. READY 계산 끝, PENDING 검수·등급 전, NOT_APPLICABLE 반납(RET) 아님
+  settlement_status: [READY, PENDING, NOT_APPLICABLE]
 diagnostics:
   component_kind: [CPU, RAM, SSD, BATTERY, DISPLAY, OTHER]
   capacity_unit: [mAh, mWh]

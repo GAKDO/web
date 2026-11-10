@@ -15,6 +15,7 @@ import { useProgress, type ProgressState } from "../api/progress";
 import { CHECKPOINT_ORDER, hasPendingCheckpoint } from "../model/timeline";
 import { ProgressBadge } from "./ProgressBadge";
 import { CompareTable } from "./CompareTable";
+import { SettlementCard } from "./SettlementCard";
 import { TwinSection } from "./TwinSection";
 import { VerifyQr } from "./VerifyQr";
 
@@ -164,6 +165,10 @@ export function ReportPage() {
       </ol>
       <TwinSection modelCode={data.modelCode} checkpoints={data.checkpoints} />
       <CompareTable checkpoints={data.checkpoints} />
+      {(() => {
+        const ret = data.checkpoints.find((c) => c.type === "RET");
+        return ret ? <SettlementCard checkpointId={ret.checkpointId} graded={!!ret.grade} /> : null;
+      })()}
     </main>
   );
 }

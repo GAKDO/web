@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent, type PointerEvent } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { MessageCircle, MoveDiagonal, SendHorizontal, Settings2, X } from "lucide-react";
+import { MessageCircle, MoveDiagonal, SendHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "../../../shared/api/client";
 import { useAuth } from "../../../shared/auth/AuthProvider";
 import type { ChatMessage } from "../../../shared/api/types";
 import { askChat, MAX_CONTENT } from "../api/askChat";
-import { BUTTON_SIZES, DEFAULT_PANEL, useChatSize, type ButtonSize } from "../hooks/useChatSize";
+import { useChatSize } from "../hooks/useChatSize";
 
 /** 관리자·부스 태블릿·폰 촬영 화면에는 띄우지 않는다(작업 화면을 가리지 않게) */
 const HIDDEN_PREFIXES = ["/admin", "/booth", "/capture"];
@@ -15,18 +15,17 @@ const HIDDEN_PREFIXES = ["/admin", "/booth", "/capture"];
 const GREETING = "안녕하세요, TRACE 도우미예요. 이용 순서, 등급 기준, 내 렌탈 검사 결과 같은 걸 물어보세요.";
 const SUGGESTIONS = ["노트북은 어떻게 빌려요?", "등급 기준이 뭐예요?", "내 렌탈 검사 결과 알려 줘"];
 
-const BUTTON_CLASS: Record<ButtonSize, { button: string; icon: string }> = {
-  sm: { button: "size-12", icon: "size-5" },
-  md: { button: "size-14", icon: "size-6" },
-  lg: { button: "size-20", icon: "size-9" },
-};
 /** 크기 조절 손잡이를 키보드 화살표로 움직일 때 한 번에 바뀌는 픽셀 */
 const RESIZE_STEP = 32;
 
 function errorText(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 0) return "서버에 닿지 못했어요. 인터넷 연결을 확인하고 다시 보내 주세요.";
-    if (error.code === "RATE_LIMITED") return "질문이 너무 잦아요. 1분 뒤 다시 보내 주세요.";
+    if (error.code === "RATE_LIMITED") {
+      // 하루 상한(IP당·서비스 전체)은 서버가 "내일 다시" 안내 문구를 detail로 준다. 일반 글로만 보인다
+      if (error.detail?.includes("내일")) return error.detail;
+      return "질문이 너무 잦아요. 1분 뒤 다시 보내 주세요.";
+    }
     if (error.code === "VALIDATION_FAILED") return `질문은 ${MAX_CONTENT}자까지 보낼 수 있어요.`;
   }
   return "지금은 답할 수 없어요. 잠시 뒤 다시 보내 주세요.";
@@ -44,8 +43,7 @@ export function ChatWidget() {
   const list = useRef<HTMLOListElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const opener = useRef<HTMLButtonElement>(null);
-  const { size, setButton, setPanel, resetPanel } = useChatSize();
-  const [showSettings, setShowSettings] = useState(false);
+  const { size, setPanel, resetPanel } = useChatSize();
   const drag = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
 
   // 로그인·로그아웃으로 세션이 바뀌면(로그아웃 없이 다른 계정으로 로그인해도) 대화를 비운다. 앞 계정의 내 렌탈 답이
@@ -142,6 +140,12 @@ export function ChatWidget() {
     drag.current = null;
   }
   function onResizeKey(e: KeyboardEvent<HTMLButtonElement>) {
+    // Home은 처음 크기로(방향키와 겹치지 않는 키. 손잡이를 두 번 누르는 것과 같다)
+    if (e.key === "Home") {
+      e.preventDefault();
+      resetPanel();
+      return;
+    }
     const delta: Record<string, [number, number]> = {
       ArrowLeft: [RESIZE_STEP, 0],
       ArrowRight: [-RESIZE_STEP, 0],
@@ -153,7 +157,6 @@ export function ChatWidget() {
     e.preventDefault();
     setPanel(size.width + d[0], size.height + d[1]);
   }
-  const resized = size.width !== DEFAULT_PANEL.width || size.height !== DEFAULT_PANEL.height;
 
   if (!open) {
     return (
@@ -162,9 +165,9 @@ export function ChatWidget() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="TRACE 도우미 열기"
-        className={`fixed right-4 bottom-4 z-40 inline-flex ${BUTTON_CLASS[size.button].button} items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none`}
+        className="fixed right-4 bottom-4 z-40 inline-flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
       >
-        <MessageCircle aria-hidden="true" className={BUTTON_CLASS[size.button].icon} />
+        <MessageCircle aria-hidden="true" className="size-6" />
       </button>
     );
   }
@@ -180,7 +183,7 @@ export function ChatWidget() {
       <button
         type="button"
         aria-label="창 크기 조절"
-        title="끌어서 창 크기를 바꿔요. 두 번 누르면 처음 크기로 돌아가요"
+        title="끌어서(또는 방향키로) 창 크기를 바꿔요. 두 번 누르거나 Home 키를 누르면 처음 크기로 돌아가요"
         onPointerDown={onResizeStart}
         onPointerMove={onResizeMove}
         onPointerUp={onResizeEnd}
@@ -202,46 +205,11 @@ export function ChatWidget() {
           </p>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setShowSettings((v) => !v)}
-            aria-label="크기 설정"
-            aria-expanded={showSettings}
-            aria-controls="chat-size-settings"
-            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <Settings2 aria-hidden="true" className="size-5" />
-          </button>
           <button type="button" onClick={close} aria-label="도우미 닫기" className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
             <X aria-hidden="true" className="size-5" />
           </button>
         </div>
       </header>
-
-      {showSettings && (
-        <div id="chat-size-settings" className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-2 text-xs">
-          <div role="group" aria-label="버튼 크기" className="flex items-center gap-1">
-            <span className="mr-1 text-muted-foreground">버튼 크기</span>
-            {BUTTON_SIZES.map((b) => (
-              <button
-                key={b.value}
-                type="button"
-                aria-pressed={size.button === b.value}
-                onClick={() => setButton(b.value)}
-                className="rounded-full border px-2.5 py-0.5 hover:bg-muted aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-              >
-                {b.label}
-              </button>
-            ))}
-          </div>
-          <p className="text-muted-foreground">창 크기는 왼쪽 위 모서리를 끌어서 바꿔요.</p>
-          {resized && (
-            <button type="button" onClick={resetPanel} className="underline underline-offset-2 hover:text-foreground">
-              창 크기 되돌리기
-            </button>
-          )}
-        </div>
-      )}
 
       <ol ref={list} aria-label="대화" aria-live="polite" className="flex min-h-48 flex-1 flex-col gap-2 overflow-y-auto px-4 py-3 text-sm">
         <li className="max-w-[85%] self-start rounded-2xl rounded-bl-sm bg-muted px-3 py-2 whitespace-pre-wrap">{GREETING}</li>
@@ -280,7 +248,10 @@ export function ChatWidget() {
         </ul>
       )}
 
-      <form onSubmit={onSubmit} className="flex items-end gap-2 border-t p-3">
+      <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2 border-t p-3">
+        <p id="chat-privacy" className="w-full text-xs text-muted-foreground">
+          개인정보(이름·전화번호·주소·계좌 등)는 입력하지 마세요.
+        </p>
         <label htmlFor="chat-input" className="sr-only">
           질문
         </label>
@@ -293,6 +264,7 @@ export function ChatWidget() {
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="궁금한 걸 적어 주세요"
+          aria-describedby="chat-privacy"
           className="max-h-32 min-h-10 flex-1 resize-none rounded-md border bg-background px-3 py-2 text-base sm:text-sm"
         />
         <Button type="submit" size="icon" aria-label="보내기" disabled={!draft.trim() || ask.isPending}>

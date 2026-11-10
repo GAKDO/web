@@ -138,24 +138,14 @@ test("세션이 바뀌기 전에 보낸 질문의 답이 바뀐 뒤에 와도 �
   expect(within(reopened).getByLabelText("질문")).toHaveValue("");
 });
 
-test("크기 설정에서 도우미 버튼을 크게 고르면 닫은 뒤 버튼이 커지고, 새로 열어도 기억한다", async () => {
-  const first = renderApp("/guide");
-  expect(await screen.findByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-14");
-  expect(localStorage.length).toBe(0);
-  const dialog = await openChat();
-  await userEvent.click(within(dialog).getByRole("button", { name: "크기 설정" }));
-  const group = within(dialog).getByRole("group", { name: "버튼 크기" });
-  await userEvent.click(within(group).getByRole("button", { name: "크게" }));
-  expect(within(group).getByRole("button", { name: "크게" })).toHaveAttribute("aria-pressed", "true");
-  await userEvent.click(within(dialog).getByRole("button", { name: "도우미 닫기" }));
-  expect(screen.getByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-20");
-  first.unmount();
-
+test("도우미 버튼은 늘 보통 크기로 보이고, 창 머리에는 크기 설정 버튼이 없다", async () => {
   renderApp("/guide");
-  expect(await screen.findByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-20");
+  expect(await screen.findByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-14");
+  const dialog = await openChat();
+  expect(within(dialog).queryByRole("button", { name: "크기 설정" })).not.toBeInTheDocument();
 });
 
-test("왼쪽 위 손잡이를 끌거나 화살표로 움직이면 창 크기가 바뀌고, 되돌리기로 처음 크기가 된다", async () => {
+test("왼쪽 위 손잡이를 끌거나 화살표로 움직이면 창 크기가 바뀌고, 두 번 누르거나 Home 키를 누르면 처음 크기가 된다", async () => {
   renderApp("/guide");
   const dialog = await openChat();
   const handle = within(dialog).getByRole("button", { name: "창 크기 조절" });
@@ -176,18 +166,30 @@ test("왼쪽 위 손잡이를 끌거나 화살표로 움직이면 창 크기가 
   await userEvent.keyboard("{ArrowRight>10/}{ArrowDown>20/}");
   expect([width(), height()]).toEqual(["320px", "360px"]);
 
-  await userEvent.click(within(dialog).getByRole("button", { name: "크기 설정" }));
-  await userEvent.click(within(dialog).getByRole("button", { name: "창 크기 되돌리기" }));
+  await userEvent.dblClick(handle);
   expect([width(), height()]).toEqual(["384px", "576px"]);
-  expect(within(dialog).queryByRole("button", { name: "창 크기 되돌리기" })).not.toBeInTheDocument();
+
+  handle.focus();
+  await userEvent.keyboard("{ArrowLeft}{ArrowUp}");
+  expect([width(), height()]).toEqual(["416px", "608px"]);
+  await userEvent.keyboard("{Home}");
+  expect([width(), height()]).toEqual(["384px", "576px"]);
 });
 
 test("저장된 창 크기가 깨졌거나 최소보다 작으면 기본값이나 최소 크기로 연다", async () => {
   localStorage.setItem("trace.chat.size", JSON.stringify({ button: "huge", width: "wide", height: 100 }));
   renderApp("/guide");
-  const opener = await screen.findByRole("button", { name: "TRACE 도우미 열기" });
-  expect(opener).toHaveClass("size-14");
+  expect(await screen.findByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-14");
   const dialog = await openChat();
   expect(dialog.style.getPropertyValue("--chat-w")).toBe("384px");
   expect(dialog.style.getPropertyValue("--chat-h")).toBe("360px");
+});
+
+test("하루 상한에 닿으면 서버가 준 '내일 다시' 안내를 보이고, 입력 칸 위에 개인정보를 적지 말라고 알린다", async () => {
+  renderApp("/guide");
+  const dialog = await openChat();
+  const input = within(dialog).getByRole("textbox", { name: "질문" });
+  expect(input).toHaveAccessibleDescription(/개인정보.*입력하지 마세요/);
+  await userEvent.type(input, "하루 한도{Enter}");
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent("오늘 질문할 수 있는 횟수를 다 썼어요. 내일 다시 물어봐 주세요.");
 });
