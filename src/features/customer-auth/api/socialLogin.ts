@@ -40,5 +40,5 @@ export const SOCIAL_ERROR_MESSAGE: Record<SocialLoginError, string> = {
 
 export function socialErrorMessage(raw: string | null): string | null {
   if (!raw) return null;
-  return raw in SOCIAL_ERROR_MESSAGE ? SOCIAL_ERROR_MESSAGE[raw as SocialLoginError] : SOCIAL_ERROR_MESSAGE.PROVIDER_ERROR;
+  return Object.prototype.hasOwnProperty.call(SOCIAL_ERROR_MESSAGE, raw) ? SOCIAL_ERROR_MESSAGE[raw as SocialLoginError] : SOCIAL_ERROR_MESSAGE.PROVIDER_ERROR;
 }

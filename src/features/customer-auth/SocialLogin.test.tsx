@@ -38,3 +38,9 @@ test("회원 가입을 숨긴 배포에서는 소셜 버튼을 보이지 않는�
   expect(await screen.findByLabelText("이메일")).toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "Google로 계속하기" })).not.toBeInTheDocument();
 });
+
+test("모르는 socialError 값(constructor 같은 이름 포함)은 일반 실패 안내로 보인다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", ACCOUNT_ON);
+  renderApp("/login?socialError=constructor");
+  expect(await screen.findByRole("alert")).toHaveTextContent("로그인 서비스와 연결하지 못했습니다");
+});
