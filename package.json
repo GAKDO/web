@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "preview": "vite preview",
-    "gen:api": "openapi-typescript contracts/openapi/auth-server.yaml -o src/shared/api/generated/auth.ts && openapi-typescript contracts/openapi/rental-server.yaml -o src/shared/api/generated/rental.ts && openapi-typescript contracts/openapi/capture-server.yaml -o src/shared/api/generated/capture.ts && openapi-typescript contracts/openapi/report-server.yaml -o src/shared/api/generated/report.ts && openapi-typescript contracts/openapi/diagnostics-server.yaml -o src/shared/api/generated/diagnostics.ts"
+    "gen:api": "openapi-typescript contracts/openapi/auth-server.yaml -o src/shared/api/generated/auth.ts && openapi-typescript contracts/openapi/rental-server.yaml -o src/shared/api/generated/rental.ts && openapi-typescript contracts/openapi/capture-server.yaml -o src/shared/api/generated/capture.ts && openapi-typescript contracts/openapi/report-server.yaml -o src/shared/api/generated/report.ts && openapi-typescript contracts/openapi/diagnostics-server.yaml -o src/shared/api/generated/diagnostics.ts && openapi-typescript contracts/openapi/chat-server.yaml -o src/shared/api/generated/chat.ts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "5.2.8",

@@ -1,0 +1,136 @@
+openapi: 3.1.0
+info:
+  title: TRACE chat-server
+  version: 1.0.0
+  description: |
+    사이트 도우미 챗봇(11/10 민서 요청, 구현 GAKDO/chat-server). 사이트 사용자가 자연어로 묻는 질문에 답한다.
+
+    - 로그인 없이 연다. 사이트 사용법(이용 안내·등급 규칙·FAQ)은 누구에게나 답한다.
+    - `Authorization: Bearer`가 있으면 chat-server가 그 토큰으로 기존 경로(`GET /api/v1/rentals`, `/api/v1/rentals/{rentalId}`,
+      `/api/v1/captures/checkpoints/{checkpointId}/inspection`)를 읽어 내 렌탈·검사 결과도 답한다. 권한은 그 경로들의 x-trace-access가 그대로 정하고,
+      챗봇은 읽기(GET)만 한다. gateway는 이 경로에서 토큰을 검사하지 않지만 헤더는 그대로 넘긴다.
+    - 모델은 Gemini(무료 API)를 먼저 쓰고, 한도를 다 쓰면 Ollama(qwen2.5)로 답한다. 어느 쪽이 답했는지는 `provider`.
+    - 대화는 서버에 저장하지 않는다. 화면이 최근 대화를 함께 보낸다.
+    - 오류는 모두 `application/problem+json`(Problem, `code`는 codes.yaml `error_code`).
+servers:
+  - url: https://{gateway}
+    description: gateway(8314) 뒤
+    variables:
+      gateway:
+        default: localhost:8314
+tags:
+  - name: 챗봇
+    description: 사이트 도우미 질문·답
+  - name: 운영
+    description: ping
+paths:
+  /api/v1/chat/ping:
+    get:
+      tags: [운영]
+      operationId: chatPing
+      summary: 배포 확인
+      description: 로그인 없이 연다.
+      security: []
+      responses:
+        '200':
+          description: 정상
+          content:
+            application/json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/PingResponse'
+              example:
+                service: chat-server
+                version: 0.1.0
+                commit: b72db30
+  /api/v1/chat:
+    post:
+      tags: [챗봇]
+      operationId: askChat
+      summary: 질문하고 답 받기
+      description: |
+        `messages`의 마지막은 사용자 질문(`role: user`)이어야 한다. 모델에는 최근 10개만 보낸다.
+        질문에 렌탈·검사·등급·반납 같은 말이 있고 Bearer 토큰이 있을 때만 내 정보를 읽는다(같은 토큰은 30초 캐시).
+        토큰이 만료됐으면 401이 아니라 "다시 로그인해 주세요"라는 답을 돌려준다.
+        사용자(토큰) 또는 IP 하나당 분당 20개(429 RATE_LIMITED). 두 모델이 모두 답하지 못하면 503 INTERNAL_ERROR.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            example:
+              messages:
+                - role: user
+                  content: 반납은 어떻게 해요?
+      responses:
+        '200':
+          description: 답
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+              example:
+                reply: 돌려줄 때 검사 부스에서 출고 때와 같은 방식으로 다시 찍어 처음 사진과 비교해요. 새로 생긴 흠집만 표시되고, 결과는 /my/rentals에서 볼 수 있어요.
+                provider: gemini
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '429':
+          description: 요청 제한 초과 (사용자·IP당 분당 20개, RATE_LIMITED)
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 질문이 너무 많습니다
+                status: 429
+                code: RATE_LIMITED
+        '503':
+          description: 두 모델 모두 답하지 못함 (INTERNAL_ERROR)
+          x-trace-error-codes: [INTERNAL_ERROR]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 챗봇이 잠시 답할 수 없습니다
+                status: 503
+                code: INTERNAL_ERROR
+components:
+  schemas:
+    ChatMessage:
+      type: object
+      additionalProperties: false
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+          description: user=사용자 질문, assistant=챗봇 답
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    ChatRequest:
+      type: object
+      additionalProperties: false
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          description: 최근 대화(오래된 것부터). 마지막은 user
+          minItems: 1
+          maxItems: 40
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+    ChatResponse:
+      type: object
+      required: [reply, provider]
+      properties:
+        reply:
+          type: string
+          description: 챗봇 답(한국어, 일반 글)
+        provider:
+          type: string
+          enum: [gemini, ollama]
+          description: 답한 모델. gemini=Google AI Studio 무료 API, ollama=학교 서버 qwen2.5

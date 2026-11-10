@@ -5,13 +5,13 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 src="${1:-../contracts}"
 dst=contracts
-for f in codes.yaml openapi/auth-server.yaml openapi/rental-server.yaml openapi/capture-server.yaml openapi/report-server.yaml openapi/diagnostics-server.yaml diagnostics/result.schema.json schemas/codes.gen.schema.json openapi/components/common.yaml openapi/components/codes.gen.yaml; do
+for f in codes.yaml openapi/auth-server.yaml openapi/rental-server.yaml openapi/capture-server.yaml openapi/report-server.yaml openapi/diagnostics-server.yaml openapi/chat-server.yaml diagnostics/result.schema.json schemas/codes.gen.schema.json openapi/components/common.yaml openapi/components/codes.gen.yaml; do
   [ -f "$src/$f" ] || { echo "계약 파일이 없습니다: $src/$f" >&2; exit 1; }
 done
 rm -rf "$dst"
 mkdir -p "$dst/openapi/components" "$dst/diagnostics" "$dst/schemas"
 cp "$src/codes.yaml" "$dst/"
-cp "$src/openapi/auth-server.yaml" "$src/openapi/rental-server.yaml" "$src/openapi/capture-server.yaml" "$src/openapi/report-server.yaml" "$src/openapi/diagnostics-server.yaml" "$dst/openapi/"
+cp "$src/openapi/auth-server.yaml" "$src/openapi/rental-server.yaml" "$src/openapi/capture-server.yaml" "$src/openapi/report-server.yaml" "$src/openapi/diagnostics-server.yaml" "$src/openapi/chat-server.yaml" "$dst/openapi/"
 cp "$src/diagnostics/result.schema.json" "$dst/diagnostics/"
 cp "$src/schemas/codes.gen.schema.json" "$dst/schemas/"
 cp "$src/openapi/components/common.yaml" "$src/openapi/components/codes.gen.yaml" "$dst/openapi/components/"

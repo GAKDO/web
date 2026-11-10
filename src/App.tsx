@@ -34,6 +34,7 @@ import { RequireCustomer } from "./shared/auth/RequireCustomer";
 import { DeviceDiagnosticsPage } from "./features/benchmark/components/DeviceDiagnosticsPage";
 import { ArchivedRoute } from "./shared/config/ArchivedRoute";
 import { isArchived } from "./shared/config/features";
+import { ChatWidget } from "./features/chat/components/ChatWidget";
 
 /** 수령 QR 주소. 폰 촬영을 숨긴 배포에서는 렌탈을 계정에 연결만 한다(내 렌탈이 보일 때) */
 function CaptureOrClaim() {
@@ -51,6 +52,8 @@ function RootLayout() {
     <>
       <ScrollRestoration />
       <Outlet />
+      {/* 사이트 도우미 챗봇(11/10): 관리자·부스·폰 촬영 화면에서는 스스로 숨는다 */}
+      <ChatWidget />
     </>
   );
 }

@@ -1,0 +1,21 @@
+import { http, HttpResponse } from "msw";
+import type { ChatMessage, ChatResponse } from "../../api/types";
+import { problem } from "./problem";
+
+// 사이트 도우미 챗봇 목(contracts chat-server.yaml). 질문 글로 경우를 고른다
+export const CHAT_TRIGGERS = { rateLimited: "너무 많이", serverError: "고장" } as const;
+
+export const chatHandlers = [
+  http.post("*/api/v1/chat", async ({ request }) => {
+    const body = (await request.json()) as { messages: ChatMessage[] };
+    const last = body.messages[body.messages.length - 1]?.content ?? "";
+    if (last.includes(CHAT_TRIGGERS.rateLimited)) return problem(429, "RATE_LIMITED", "요청 제한");
+    if (last.includes(CHAT_TRIGGERS.serverError)) return problem(503, "INTERNAL_ERROR", "두 모델 모두 실패");
+    const loggedIn = request.headers.get("Authorization") !== null;
+    const reply: ChatResponse = {
+      reply: `${loggedIn ? "[로그인] " : ""}대화 ${body.messages.length}개를 받았어요. 질문: ${last}`,
+      provider: "gemini",
+    };
+    return HttpResponse.json(reply);
+  }),
+];
