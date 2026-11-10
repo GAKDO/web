@@ -1,5 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 import { renderApp, renderAsAdmin, renderAsCustomer } from "../../test/renderApp";
 
 async function openChat() {
@@ -26,13 +27,34 @@ test("추천 질문을 누르면 바로 보내고, 로그인한 고객은 토큰
   expect(within(dialog).queryByRole("list", { name: "이런 걸 물어보세요" })).not.toBeInTheDocument();
 });
 
-test("요청 제한과 서버 오류는 대화 안에 다시 보내라는 문장으로 알려 준다", async () => {
+test("요청 제한과 서버 오류는 대화 안에 다시 보내라는 문장으로 알리고, 실패한 질문은 대화에서 빼 입력 칸에 돌려놓는다", async () => {
   renderApp("/guide");
   const dialog = await openChat();
-  await userEvent.type(within(dialog).getByLabelText("질문"), "너무 많이{Enter}");
+  const input = within(dialog).getByLabelText("질문");
+  const log = within(dialog).getByRole("list", { name: "대화" });
+  await userEvent.type(input, "너무 많이{Enter}");
   expect(await within(dialog).findByRole("alert")).toHaveTextContent("1분 뒤 다시 보내 주세요");
-  await userEvent.type(within(dialog).getByLabelText("질문"), "고장{Enter}");
+  expect(input).toHaveValue("너무 많이");
+  expect(within(log).queryByText("너무 많이")).not.toBeInTheDocument();
+  await userEvent.clear(input);
+  await userEvent.type(input, "고장{Enter}");
   expect(await within(dialog).findByRole("alert")).toHaveTextContent("지금은 답할 수 없어요");
+  await userEvent.clear(input);
+  await userEvent.type(input, "안녕{Enter}");
+  expect(await within(log).findByText("대화 1개를 받았어요. 질문: 안녕")).toBeInTheDocument();
+});
+
+test("로그아웃하면 앞 계정의 대화를 지운다", async () => {
+  const { router } = renderAsCustomer("/my/account");
+  const dialog = await openChat();
+  await userEvent.type(within(dialog).getByLabelText("질문"), "내 렌탈{Enter}");
+  expect(await within(dialog).findByText(/\[로그인\] 대화 1개/)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "도우미 닫기" }));
+  await userEvent.click(screen.getByRole("button", { name: "로그아웃" }));
+  await vi.waitFor(() => expect(router.state.location.pathname).not.toBe("/my/account"));
+  const reopened = await openChat();
+  expect(within(reopened).queryByText(/\[로그인\]/)).not.toBeInTheDocument();
+  expect(within(reopened).queryByText("내 렌탈")).not.toBeInTheDocument();
 });
 
 test("Esc나 닫기 버튼으로 닫으면 여는 버튼으로 돌아오고, 대화는 다시 열어도 남아 있다", async () => {

@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { MessageCircle, SendHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "../../../shared/api/client";
+import { useAuth } from "../../../shared/auth/AuthProvider";
 import type { ChatMessage } from "../../../shared/api/types";
 import { askChat, MAX_CONTENT } from "../api/askChat";
 
@@ -35,10 +36,38 @@ export function ChatWidget() {
   const input = useRef<HTMLTextAreaElement>(null);
   const opener = useRef<HTMLButtonElement>(null);
 
+  // 로그인·로그아웃으로 세션이 바뀌면 대화를 비운다. 앞 계정의 내 렌탈 답이 다음 사람에게 보이거나
+  // 다음 요청에 섞여 가지 않게 하고, 바뀌기 전에 보낸 요청의 답은 세대 번호로 버린다
+  const { status } = useAuth();
+  const session = status === "unknown" ? null : status;
+  const lastSession = useRef(session);
+  const generation = useRef(0);
+
   const ask = useMutation({
-    mutationFn: askChat,
-    onSuccess: (data) => setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]),
+    mutationFn: async ({ history, gen }: { history: ChatMessage[]; gen: number }) => ({ data: await askChat(history), gen }),
+    onSuccess: ({ data, gen }) => {
+      if (gen !== generation.current) return;
+      setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
+    },
+    onError: (_error, { history, gen }) => {
+      if (gen !== generation.current) return;
+      // 실패한 질문은 대화에서 빼고 입력 칸에 돌려놓는다. 다시 보내도 같은 질문이 두 번 쌓이지 않는다
+      setMessages(history.slice(0, -1));
+      setDraft((d) => d || history[history.length - 1].content);
+    },
   });
+
+  useEffect(() => {
+    if (session === null) return;
+    if (lastSession.current !== null && lastSession.current !== session) {
+      generation.current += 1;
+      setMessages([]);
+      setDraft("");
+      ask.reset();
+    }
+    lastSession.current = session;
+    // ask.reset은 렌더마다 새 함수라 세션이 바뀔 때만 돈다
+  }, [session]);
 
   useEffect(() => {
     list.current?.lastElementChild?.scrollIntoView?.({ block: "end" });
@@ -60,7 +89,7 @@ export function ChatWidget() {
     const next: ChatMessage[] = [...messages, { role: "user", content }];
     setMessages(next);
     setDraft("");
-    ask.mutate(next);
+    ask.mutate({ history: next, gen: generation.current });
   }
 
   function onSubmit(e: FormEvent) {
