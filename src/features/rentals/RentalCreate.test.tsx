@@ -113,3 +113,22 @@ test("렌탈 목록에서 검사 등급을 문제 있는 것만으로 고르면 
   expect(router.state.location.search).toContain("problem=1");
   expect(router.state.location.search).toContain("status=OPEN");
 });
+
+test("렌탈 목록의 검사 결과 칸은 지금 시점 등급을 문제 있음·없음과 함께 보이고, 누르면 그 검사 결과로 간다(contracts #42)", async () => {
+  const device = db.devices[2];
+  const at = new Date().toISOString();
+  const checkpointId = nanoid();
+  const rentalId = nanoid();
+  db.rentals.push({
+    rentalId, deviceId: device.deviceId, renterRef: "R-2201", status: "OPEN", startedAt: at, endedAt: null, createdAt: at,
+    checkpoints: [{ checkpointId, type: "OUT", status: "SEALED", occurredAt: at }],
+  });
+  const base = [...db.report.inspections.values()][0];
+  db.report.inspections.set(checkpointId, { ...base, checkpointId, grade: "C" });
+  const u = user();
+  const { router } = renderAsAdmin("/admin/rentals");
+  const row = await screen.findByRole("listitem", { name: device.serial });
+  const badge = await within(row).findByText("문제 있음 · C등급");
+  await u.click(badge);
+  await waitFor(() => expect(router.state.location.pathname).toBe(`/admin/inspections/${rentalId}/${checkpointId}`));
+});

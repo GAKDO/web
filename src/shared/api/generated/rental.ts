@@ -348,6 +348,11 @@ export interface components {
             status: components["schemas"]["RentalCheckpointStatus"];
             /** @description 촬영이 끝난 시각, 아직이면 null */
             occurredAt: components["schemas"]["DateTime"] | null;
+            /**
+             * @description 이 시점 검사의 등급(trace.checkpoint.graded의 마지막 값). 아직 등급이 없으면 null.
+             *     선택 필드(11/10, contracts #23 후속: 렌탈 목록에서 왜 문제인지 보이게), rental-server는 항상 보낸다.
+             */
+            grade?: components["schemas"]["InspectionGrade"] | null;
         };
         CheckpointCreateRequest: {
             type: components["schemas"]["RentalCheckpointType"];
@@ -569,6 +574,11 @@ export interface components {
          * @enum {string}
          */
         RentalCheckpointStatus: "OPEN" | "CAPTURED" | "GRADED" | "SEALED";
+        /**
+         * @description codes.yaml inspection.grade
+         * @enum {string}
+         */
+        InspectionGrade: "A" | "B" | "C" | "D";
         /**
          * @description codes.yaml error_code
          * @enum {string}
