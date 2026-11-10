@@ -548,3 +548,30 @@ test("직접 표시한 흠집은 검수 완료 전에 지울 수 있다(11/9)", 
   await user.click(within(editor).getByRole("button", { name: "지우기" }));
   expect(await screen.findByRole("region", { name: "AI가 놓친 흠집 직접 표시 · 0개" })).toBeInTheDocument();
 });
+
+test("문제 있는 검사만을 누르면 지금 시점 등급이 B~D인 기기만 남고 총 건수가 바뀌며, 전체를 누르면 돌아온다(contracts #23)", async () => {
+  addRental("C02AIR0002", "GRADED", { grade: "D", ruleVersion: "grade-rules-v1", reasons: ["찍힘"], defects: [defect("TOP", "dent", 0.8, 3)] });
+  const user = userEvent.setup();
+  const { router } = renderAsAdmin("/admin/inspections");
+  await card("LGGRAM0001");
+  const allTotal = Number((await screen.findByText(/^총/)).querySelector("strong")?.textContent);
+  expect(allTotal).toBeGreaterThan(2);
+  await user.click(screen.getByRole("button", { name: "문제 있는 검사만" }));
+  expect(screen.getByRole("button", { name: "문제 있는 검사만" })).toHaveAttribute("aria-pressed", "true");
+  await waitFor(() => expect(screen.queryByRole("listitem", { name: "LGGRAM0001" })).not.toBeInTheDocument());
+  expect(await within(await card("C02AIR0002")).findByText("문제 있음 · D등급")).toBeInTheDocument();
+  expect(screen.queryByRole("listitem", { name: "C02AIR0001" })).not.toBeInTheDocument();
+  const problemTotal = await screen.findByText(/^문제 있는 검사 총/);
+  expect(Number(problemTotal.querySelector("strong")?.textContent)).toBeLessThan(allTotal);
+  expect(router.state.location.search).toContain("problem=1");
+  await user.click(screen.getByRole("button", { name: "전체" }));
+  expect(await card("LGGRAM0001")).toBeInTheDocument();
+});
+
+test("문제 있는 검사가 하나도 없으면 빈 목록 안내가 보인다", async () => {
+  db.report.inspections.forEach((ins) => {
+    if (ins.grade && ins.grade !== "A") ins.grade = "A";
+  });
+  renderAsAdmin("/admin/inspections?problem=1");
+  expect(await screen.findByText(/지금 문제 있는 검사가 없습니다/)).toBeInTheDocument();
+});

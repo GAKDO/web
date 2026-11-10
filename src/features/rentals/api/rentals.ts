@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, unwrap } from "../../../shared/api/client";
-import type { CheckpointType, Rental, RentalCreateRequest, RentalStatus } from "../../../shared/api/types";
+import type { CheckpointType, Rental, RentalCreateRequest, RentalStatus, RentalUpdateRequest } from "../../../shared/api/types";
 import { nextAction } from "../nextAction";
 
 const RENTALS = ["rentals"] as const;
@@ -9,11 +9,16 @@ const rentalKey = (rentalId: string) => [...RENTALS, "detail", rentalId] as cons
 /** 목록을 열어 둔 동안 다시 읽는 간격(검사 결과 목록). 부스가 시점을 시작하면 카드의 지금 시점이 바뀐다 */
 export const RENTALS_LIVE_MS = 5000;
 
-export function useRentals(status?: RentalStatus, options: { live?: boolean } = {}) {
+/**
+ * 렌탈 목록(커서). problem(contracts #23, 11/10)이면 지금 시점 등급이 B·C·D인 렌탈만 서버가 거른다.
+ * 첫 쪽 응답의 totalCount가 같은 조건의 전체 건수다(옛 서버는 없음)
+ */
+export function useRentals(status?: RentalStatus, options: { live?: boolean; problem?: boolean } = {}) {
+  const problem = options.problem ? true : undefined;
   return useInfiniteQuery({
-    queryKey: [...RENTALS, "list", status ?? "all"],
+    queryKey: [...RENTALS, "list", status ?? "all", problem ? "problem" : "any"],
     initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) => unwrap(api.GET("/api/v1/rentals", { params: { query: { status, cursor: pageParam } } })),
+    queryFn: ({ pageParam }) => unwrap(api.GET("/api/v1/rentals", { params: { query: { status, problem, cursor: pageParam } } })),
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     refetchInterval: options.live ? RENTALS_LIVE_MS : false,
   });
@@ -36,6 +41,18 @@ export function useRental(rentalId: string) {
     queryKey: rentalKey(rentalId),
     queryFn: () => unwrap(api.GET("/api/v1/rentals/{rentalId}", { params: { path: { rentalId } } })),
     refetchInterval: (query) => rentalPollMs(query.state.data),
+  });
+}
+
+/** 고객 이름·반납 예정일·메모 고치기(contracts #23, 11/10). 보낸 칸만 바뀌고 null은 비운다 */
+export function useUpdateRental(rentalId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: RentalUpdateRequest) => unwrap(api.PATCH("/api/v1/rentals/{rentalId}", { params: { path: { rentalId } }, body })),
+    onSuccess: (rental) => {
+      client.setQueryData(rentalKey(rentalId), rental);
+      void client.invalidateQueries({ queryKey: [...RENTALS, "list"] });
+    },
   });
 }
 

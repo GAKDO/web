@@ -13,11 +13,11 @@ interface Tile {
 }
 
 /**
- * 검사 결과 맨 위 요약 카드. 지금 보고 있는 쪽만 센다.
- * 전체 건수는 계약에 아직 없어서(contracts#23) "이 쪽 N건 기준"이라고 함께 적고, 더 있으면 그것도 알린다.
+ * 검사 결과 맨 위 요약 카드. 판정별 칸은 지금 보고 있는 쪽만 센다(판정은 시점마다 capture-server에 묻기 때문).
+ * 전체 건수(total, contracts #23)가 오면 함께 적고, "이 쪽 N건 기준"과 다음 쪽 여부도 알린다.
  * 줄마다 쓰는 검사 결과와 같은 키라 따로 더 읽지 않는다
  */
-export function VerdictSummary({ items, hasMore }: { items: RentalSummary[]; hasMore: boolean }) {
+export function VerdictSummary({ items, hasMore, total }: { items: RentalSummary[]; hasMore: boolean; total?: number }) {
   const results = useQueries({ queries: items.map((r) => inspectionQuery(r.currentCheckpoint?.checkpointId)) });
   let ok = 0;
   let bad = 0;
@@ -54,7 +54,7 @@ export function VerdictSummary({ items, hasMore }: { items: RentalSummary[]; has
         ))}
       </ul>
       <p className="mt-2 mb-0 text-xs text-muted-foreground">
-        이 쪽 {items.length}건 기준
+        {total !== undefined && total > items.length ? `전체 ${total.toLocaleString("ko-KR")}건 중 ` : ""}이 쪽 {items.length}건 기준
         {other > 0 ? ` · 검사 전·판정 불가·읽지 못함 ${other}건은 위 칸에 넣지 않았습니다` : ""}
         {hasMore ? " · 다음 쪽이 더 있습니다" : ""}
       </p>

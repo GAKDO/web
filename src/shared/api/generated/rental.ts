@@ -33,7 +33,7 @@ export interface paths {
         };
         /**
          * 렌탈 목록
-         * @description ADMIN은 전체, CUSTOMER는 rentals 클레임에 있는 내 렌탈만 보인다. 최근 생성 순. 항목마다 지금 시점(currentCheckpoint)을 준다. (FR-USR-03) BOOTH(11/3 추가)는 부스 태블릿의 "검사 기다리는 기기" 목록용으로 진행 중(OPEN) 렌탈만 보인다. status를 무엇으로 보내든 OPEN으로 거른다. 부스는 currentCheckpoint가 OPEN인 항목을 고르고 그 checkpointId로 세트를 만든다(빌린 노트북이라 스티커·QR 없이 목록에서 탭). deviceId(11/6 추가)를 주면 그 기기의 렌탈만 보인다(기기별 렌탈 이력). 없는 기기 ID면 빈 목록. 역할별 거르기(CUSTOMER 클레임·BOOTH OPEN)는 그대로 겹쳐 적용한다.
+         * @description ADMIN은 전체, CUSTOMER는 rentals 클레임에 있는 내 렌탈만 보인다. 최근 생성 순. 항목마다 지금 시점(currentCheckpoint)을 준다. (FR-USR-03) BOOTH(11/3 추가)는 부스 태블릿의 "검사 기다리는 기기" 목록용으로 진행 중(OPEN) 렌탈만 보인다. status를 무엇으로 보내든 OPEN으로 거른다. 부스는 currentCheckpoint가 OPEN인 항목을 고르고 그 checkpointId로 세트를 만든다(빌린 노트북이라 스티커·QR 없이 목록에서 탭). deviceId(11/6 추가)를 주면 그 기기의 렌탈만 보인다(기기별 렌탈 이력). 없는 기기 ID면 빈 목록. 역할별 거르기(CUSTOMER 클레임·BOOTH OPEN)는 그대로 겹쳐 적용한다. problem=true(11/10 추가, contracts #23-1)면 지금 시점(currentCheckpoint)의 등급이 B·C·D인 렌탈만 보인다(관리자 검사 결과의 "문제 있는 검사만 보기"). 등급은 rental-server가 trace.checkpoint.graded에서 받은 마지막 값이고, 아직 등급이 없는 시점(판정 대기·사람 검수 대기·판정 불가)은 빠진다. false거나 없으면 거르지 않는다. 응답 totalCount(11/10 추가, contracts #23-4)는 같은 조건(역할별 거르기 포함)에 맞는 전체 건수다. CUSTOMER·BOOTH에게는 customerName이 null이다(관리자가 적는 값).
          */
         get: operations["listRentals"];
         put?: never;
@@ -41,6 +41,7 @@ export interface paths {
          * 렌탈 생성
          * @description ACTIVE 기기로만 만들 수 있고, 같은 기기에 진행 중(OPEN) 렌탈은 하나만. 생성되면 상태 OPEN. (FR-RNT-01)
          *     수리 중(MAINTENANCE)·폐기(RETIRED) 기기면 409 DEVICE_NOT_ACTIVE.
+         *     customerName·dueAt·note(11/10 추가, contracts #23-2)는 선택이다. 고객 이름은 개인정보라 관리자에게만 보이고 공개 목록(catalog)에는 나가지 않는다.
          */
         post: operations["createRental"];
         delete?: never;
@@ -60,7 +61,7 @@ export interface paths {
         };
         /**
          * 렌탈과 세 시점 상태
-         * @description CUSTOMER는 본인 렌탈만(아니면 403 OUT_OF_SCOPE). (FR-RNT-02)
+         * @description CUSTOMER는 본인 렌탈만(아니면 403 OUT_OF_SCOPE). (FR-RNT-02) 관리자 메모 note는 CUSTOMER에게 null이다(11/10 추가). customerName·dueAt은 본인에게도 보인다.
          */
         get: operations["getRental"];
         put?: never;
@@ -72,7 +73,11 @@ export interface paths {
         delete: operations["deleteTestRental"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * 렌탈 고객 이름·반납 예정일·메모 고치기
+         * @description 11/10 추가(contracts #23-2). 보낸 칸만 바꾸고 null을 보내면 그 칸을 비운다. 렌탈 상태와 관계없이(종료된 렌탈 포함) 고칠 수 있다. 시점·상태·대여자 참조는 바꾸지 않는다. 빈 본문은 400.
+         */
+        patch: operations["updateRental"];
         trace?: never;
     };
     "/api/v1/rentals/{rentalId}/checkpoints": {
@@ -318,7 +323,25 @@ export interface components {
             deviceId: components["schemas"]["PublicId"];
             /** @description 이름 대신 쓰는 내부 참조 번호 */
             renterRef: string;
+            customerName?: components["schemas"]["CustomerName"];
+            dueAt?: components["schemas"]["DueDate"];
+            note?: components["schemas"]["RentalNote"];
         };
+        /** @description 렌탈 고치기(11/10 추가). 보낸 칸만 바꾸고 null이면 비운다 */
+        RentalUpdateRequest: {
+            customerName?: components["schemas"]["CustomerName"] | null;
+            dueAt?: components["schemas"]["DueDate"] | null;
+            note?: components["schemas"]["RentalNote"] | null;
+        };
+        /** @description 고객(대여자) 이름 또는 고객사 이름(11/10 추가, 선택). 개인정보라 관리자·본인에게만 보인다. 앞뒤 공백은 서버가 지운다 */
+        CustomerName: string;
+        /**
+         * Format: date
+         * @description 반납 예정일(11/10 추가, 선택). 날짜만(YYYY-MM-DD, 한국 시간 기준)
+         */
+        DueDate: string;
+        /** @description 관리자 메모(11/10 추가, 선택). 관리자에게만 보인다. 앞뒤 공백은 서버가 지운다 */
+        RentalNote: string;
         Checkpoint: {
             checkpointId: components["schemas"]["PublicId"];
             type: components["schemas"]["RentalCheckpointType"];
@@ -339,6 +362,12 @@ export interface components {
             startedAt: components["schemas"]["DateTime"] | null;
             endedAt: components["schemas"]["DateTime"] | null;
             createdAt: components["schemas"]["DateTime"];
+            /** @description 고객 이름. 없으면 null. 선택 필드(11/10), rental-server는 항상 보낸다 */
+            customerName?: components["schemas"]["CustomerName"] | null;
+            /** @description 반납 예정일. 없으면 null. 선택 필드(11/10), rental-server는 항상 보낸다 */
+            dueAt?: components["schemas"]["DueDate"] | null;
+            /** @description 관리자 메모. 없거나 CUSTOMER가 읽으면 null. 선택 필드(11/10), rental-server는 항상 보낸다 */
+            note?: components["schemas"]["RentalNote"] | null;
             /** @description 시작된 시점(OUT·RCV·RET 순) */
             checkpoints: components["schemas"]["Checkpoint"][];
         };
@@ -360,10 +389,16 @@ export interface components {
              *     1.0.x에 더한 선택 필드지만 rental-server는 항상 보낸다(값이 없으면 null).
              */
             currentCheckpoint?: components["schemas"]["Checkpoint"] | null;
+            /** @description 고객 이름. 없거나 ADMIN이 아니면 null. 선택 필드(11/10), rental-server는 항상 보낸다 */
+            customerName?: components["schemas"]["CustomerName"] | null;
+            /** @description 반납 예정일. 없으면 null. 선택 필드(11/10), rental-server는 항상 보낸다 */
+            dueAt?: components["schemas"]["DueDate"] | null;
         };
         RentalPage: {
             items: components["schemas"]["RentalSummary"][];
             nextCursor: string | null;
+            /** @description 같은 거르기 조건에 맞는 전체 건수("총 N건"). 선택 필드(11/10, contracts */
+            totalCount?: number;
         };
         BoothCodeResponse: {
             code: components["schemas"]["BoothCode"];
@@ -414,6 +449,8 @@ export interface components {
         DevicePage: {
             items: components["schemas"]["Device"][];
             nextCursor: string | null;
+            /** @description 같은 거르기 조건(modelCode·status·q)에 맞는 전체 건수("총 N건"). 선택 필드(11/10, contracts */
+            totalCount?: number;
         };
         /** @description 공개 보유 기기 목록(listCatalogDevices). 쪽 나눔 없이 최대 200대 */
         CatalogDeviceList: {
@@ -719,6 +756,8 @@ export interface operations {
                 status?: components["schemas"]["RentalStatus"];
                 /** @description 이 기기의 렌탈만(기기별 렌탈 이력, 11/6 추가) */
                 deviceId?: components["schemas"]["PublicId"];
+                /** @description true면 지금 시점 등급이 B·C·D인 렌탈만(문제 있는 검사만 보기, 11/10 추가) */
+                problem?: boolean;
                 limit?: components["parameters"]["Limit"];
                 /** @description 이전 응답의 nextCursor. 비우면 처음부터. */
                 cursor?: components["parameters"]["Cursor"];
@@ -744,6 +783,8 @@ export interface operations {
                      *           "serial": "C02EXAMPLE01",
                      *           "modelCode": "MBA13-M2",
                      *           "renterRef": "R-2026-0012",
+                     *           "customerName": "김고객",
+                     *           "dueAt": "2026-11-19",
                      *           "status": "OPEN",
                      *           "startedAt": "2026-11-12T09:00:00+09:00",
                      *           "endedAt": null,
@@ -756,7 +797,8 @@ export interface operations {
                      *           }
                      *         }
                      *       ],
-                     *       "nextCursor": null
+                     *       "nextCursor": null,
+                     *       "totalCount": 1
                      *     }
                      */
                     "application/json": components["schemas"]["RentalPage"];
@@ -779,7 +821,10 @@ export interface operations {
                 /**
                  * @example {
                  *       "deviceId": "aAXQFO2Vz6ZTFbPctC2dq",
-                 *       "renterRef": "R-2026-0012"
+                 *       "renterRef": "R-2026-0012",
+                 *       "customerName": "김고객",
+                 *       "dueAt": "2026-11-19",
+                 *       "note": "충전기 함께 대여"
                  *     }
                  */
                 "application/json": components["schemas"]["RentalCreateRequest"];
@@ -800,6 +845,9 @@ export interface operations {
                      *       "deviceId": "aAXQFO2Vz6ZTFbPctC2dq",
                      *       "serial": "C02EXAMPLE01",
                      *       "renterRef": "R-2026-0012",
+                     *       "customerName": "김고객",
+                     *       "dueAt": "2026-11-19",
+                     *       "note": "충전기 함께 대여",
                      *       "status": "OPEN",
                      *       "startedAt": null,
                      *       "endedAt": null,
@@ -914,6 +962,42 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+        };
+    };
+    updateRental: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rentalId: components["parameters"]["RentalId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "dueAt": "2026-11-20",
+                 *       "note": "반납일 하루 연장(고객 요청)"
+                 *     }
+                 */
+                "application/json": components["schemas"]["RentalUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description 고친 렌탈 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rental"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     startCheckpoint: {
@@ -1197,7 +1281,8 @@ export interface operations {
                      *           "updatedAt": "2026-11-11T15:00:00+09:00"
                      *         }
                      *       ],
-                     *       "nextCursor": "eyJpZCI6IjAxOTNhMWMyIn0"
+                     *       "nextCursor": "eyJpZCI6IjAxOTNhMWMyIn0",
+                     *       "totalCount": 15
                      *     }
                      */
                     "application/json": components["schemas"]["DevicePage"];

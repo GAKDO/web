@@ -2,7 +2,7 @@ import { maskSerial } from "../../../shared/ui/maskSerial";
 import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { ApiError } from "../../../shared/api/problem";
 import { messageFor } from "../../../shared/api/errorMessages";
 import { CHECKPOINT_STATUS_LABEL, CHECKPOINT_TYPE_LABEL } from "../../../shared/codes/labels";
@@ -19,6 +19,34 @@ import { DataActions, DataCells, DataRow, DataTable } from "../../../shared/ui/D
 import { PageHeader } from "../../../shared/ui/PageHeader";
 import { Pager, usePaged } from "../../../shared/ui/Pager";
 import { formatDateTime } from "../../../shared/ui/format";
+import { TotalCount, totalOf } from "../../../shared/ui/TotalCount";
+import { cn } from "@/lib/utils";
+
+/** 전체 / 문제 있는 검사만 두 칸 고르기. 폰에서도 목록 위에 그대로 보인다 */
+function ProblemFilter({ value, onChange }: { value: boolean; onChange: (on: boolean) => void }) {
+  const options = [
+    { on: false, label: "전체" },
+    { on: true, label: "문제 있는 검사만" },
+  ];
+  return (
+    <div role="group" aria-label="판정으로 거르기" className="mb-4 inline-flex rounded-lg border bg-card p-1 shadow-xs">
+      {options.map((o) => (
+        <button
+          key={o.label}
+          type="button"
+          aria-pressed={value === o.on}
+          onClick={() => onChange(o.on)}
+          className={cn(
+            "min-h-10 rounded-md px-4 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+            value === o.on ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 
 /**
@@ -28,10 +56,24 @@ import { formatDateTime } from "../../../shared/ui/format";
  */
 export function InspectionListPage() {
   const client = useQueryClient();
-  const rentals = useRentals(undefined, { live: true });
+  // "문제 있는 검사만 보기"(contracts #23, 11/10): 서버가 지금 시점 등급 B·C·D만 거른다. 주소 ?problem=1에 남겨 상세에서 돌아와도 유지
+  const [params, setParams] = useSearchParams();
+  const problemOnly = params.get("problem") === "1";
+  const setProblemOnly = (on: boolean) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (on) next.set("problem", "1");
+        else next.delete("problem");
+        next.delete("page");
+        return next;
+      },
+      { preventScrollReset: true },
+    );
+  const rentals = useRentals(undefined, { live: true, problem: problemOnly });
   const models = useDeviceModels();
   const modelName = (code: string) => models.data?.find((m) => m.modelCode === code)?.name ?? code;
-  const paged = usePaged(rentals);
+  const paged = usePaged(rentals, problemOnly ? "problem" : "");
   // 상세에서 목록 링크로 돌아오면 보던 쪽(?page=N)으로
   const { search } = useLocation();
   const listBack = { path: `/admin/inspections${search}`, label: "검사 결과 목록으로" };
@@ -61,9 +103,15 @@ export function InspectionListPage() {
         />
       )}
       <ReviewQueue backTo={listBack} />
+      <ProblemFilter value={problemOnly} onChange={setProblemOnly} />
       {rentals.isPending && <p className="text-muted-foreground">불러오는 중…</p>}
-      {items.length > 0 && <VerdictSummary items={items} hasMore={paged.canNext} />}
-      {rentals.isSuccess && items.length === 0 && <p className="text-muted-foreground">검사할 렌탈이 없습니다. 렌탈을 먼저 만들어 주세요.</p>}
+      {items.length > 0 && <VerdictSummary items={items} hasMore={paged.canNext} total={totalOf(rentals)} />}
+      {rentals.isSuccess && items.length === 0 && (
+        <p className="text-muted-foreground">
+          {problemOnly ? "지금 문제 있는 검사가 없습니다. 등급 B·C·D가 나온 기기만 여기에 보입니다." : "검사할 렌탈이 없습니다. 렌탈을 먼저 만들어 주세요."}
+        </p>
+      )}
+      {rentals.isSuccess && items.length > 0 && <TotalCount query={rentals} label={problemOnly ? "문제 있는 검사 총" : "총"} />}
       <DataTable cols="minmax(11.5rem, 1.2fr) minmax(7rem, 1fr) 1.4fr 1.1fr 1.3fr 110px" labels={["검사 시각", "시리얼", "기기명", "지금 시점", "판정", ""]} label="검사 결과">
         {items.map((r) => {
           const checkpoint = r.currentCheckpoint ?? null;

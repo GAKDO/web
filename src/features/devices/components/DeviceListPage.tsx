@@ -13,6 +13,7 @@ import { Button } from "../../../shared/ui/Button";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { Field, SelectField } from "../../../shared/ui/Field";
 import { useDeviceModels, useDevices } from "../api/devices";
+import { TotalCount } from "../../../shared/ui/TotalCount";
 import { DeviceEditor } from "./DeviceEditor";
 import { StatusMenu } from "./StatusMenu";
 import { DataActions, DataCells, DataDetail, DataRow, DataTable } from "../../../shared/ui/DataTable";
@@ -149,6 +150,7 @@ export function DeviceListPage() {
       )}
       {devices.isPending && <p className="text-muted-foreground">불러오는 중…</p>}
       {devices.isSuccess && items.length === 0 && <p className="text-muted-foreground">조건에 맞는 기기가 없습니다.</p>}
+      {devices.isSuccess && items.length > 0 && <TotalCount query={devices} />}
       <DataTable cols="1.6fr minmax(110px, 1fr) 0.8fr 0.9fr 120px" labels={["기기명", "시리얼번호", "상태", "등록일", ""]} label="기기">
         {items.map((device) => (
           <DeviceCard key={device.deviceId} device={device} />

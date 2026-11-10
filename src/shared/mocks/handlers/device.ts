@@ -30,7 +30,7 @@ export const deviceHandlers = [
         (!q || d.serial.toLowerCase().includes(q) || (d.assetNo ?? "").toLowerCase().includes(q)),
     );
     const items = matched.slice(start, start + limit);
-    const body: DevicePage = { items, nextCursor: start + limit < matched.length ? String(start + limit) : null };
+    const body: DevicePage = { items, nextCursor: start + limit < matched.length ? String(start + limit) : null, totalCount: matched.length };
     return HttpResponse.json(body);
   }),
 

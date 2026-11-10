@@ -19,6 +19,7 @@ import { useCloseRental, useRental, useStartCheckpoint } from "../api/rentals";
 import { useRentalLive, type LiveState } from "../api/useRentalLive";
 import { nextAction } from "../nextAction";
 import { BoothIdsPanel } from "./BoothIdsPanel";
+import { RentalDetailsPanel } from "./RentalDetailsPanel";
 import { CaptureLinkPanel } from "./CaptureLinkPanel";
 import { CheckpointDiagnostics } from "./DiagnosticsPanel";
 import { DiagnosticsTrendToggle } from "../../benchmark/components/DiagnosticsTrend";
@@ -195,6 +196,9 @@ export function RentalDetailPage() {
           ["종료", formatDateTime(data.endedAt)],
         ]}
       />
+      {/* 고객 이름·반납 예정일·메모(contracts #23, 11/10). 고객 화면이 아니라 관리자 상세에만 있다 */}
+      <SectionTitle>고객·반납 예정</SectionTitle>
+      <RentalDetailsPanel rental={data} />
       <SectionTitle>부스에 넣을 ID</SectionTitle>
       <BoothIdsPanel rental={data} />
       <InspectionHistory rental={data} serial={serial} />
