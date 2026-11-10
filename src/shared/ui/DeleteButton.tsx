@@ -24,8 +24,10 @@ export function DeleteButton({ label, confirm, busy, onDelete, size }: DeleteBut
   const [error, setError] = useState<string | null>(null);
 
   function run() {
+    if (busy) return;
     setError(null);
-    onDelete()
+    Promise.resolve()
+      .then(onDelete)
       .then(() => setAsking(false))
       .catch((e: unknown) => {
         setAsking(false);

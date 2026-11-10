@@ -150,7 +150,7 @@ function DeleteTestRental({ rentalId }: { rentalId: string }) {
     <div className="mt-6 border-t pt-4">
       <DeleteButton
         label="시험 렌탈 지우기"
-        confirm="이 시험 렌탈을 지울까요? 출고·수령·반납 시점과 검사 사진·기록·리포트가 모두 함께 지워지고 되돌릴 수 없습니다."
+        confirm="이 시험 렌탈을 지울까요? 출고·수령·반납 시점과 검사 사진·기록·리포트가 모두 함께 지워지고 되돌릴 수 없습니다. 이 기기의 마지막 렌탈이면 기기도 함께 지워집니다."
         busy={remove.isPending}
         onDelete={() => remove.mutateAsync().then(() => navigate("/admin/rentals", { replace: true }))}
       />
