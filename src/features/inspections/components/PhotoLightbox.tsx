@@ -70,7 +70,7 @@ export function PhotoLightbox({ photos, index, onIndex, onClose }: Props) {
   return (
     <div
       ref={dialogRef}
-      className="fixed inset-0 z-30 grid place-items-center bg-zinc-950/75 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 grid place-items-center bg-zinc-950/75 p-4 backdrop-blur-[2px]"
       role="dialog"
       aria-modal="true"
       aria-label={`사진 크게 보기: ${photo.name}`}
