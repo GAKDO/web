@@ -13,6 +13,8 @@ import { pendingSignup } from "../../signup/pendingSignup";
 import { safeNext } from "../safeNext";
 import { ReceiveQrNotice } from "../ReceiveQrNotice";
 import { customerHome } from "../../../shared/config/customerHome";
+import { socialErrorMessage } from "../api/socialLogin";
+import { SocialLoginButtons } from "./SocialLoginButtons";
 
 /**
  * 로그인 `/login?next=<돌아올 경로>`. 사이트의 기본 로그인 입구(고객이 먼저 보이게)이고, 관리자 계정도 여기서 로그인한다.
@@ -30,6 +32,7 @@ export function CustomerLoginPage({ demoEmails = demoCustomerEmails() }: { demoE
   const [formKey, setFormKey] = useState(0);
   const [unverified, setUnverified] = useState<string | null>(null);
   const accountArchived = isArchived("account");
+  const socialError = socialErrorMessage(params.get("socialError"));
 
   if (status === "authenticated") return <Navigate to={target} replace />;
 
@@ -62,6 +65,11 @@ export function CustomerLoginPage({ demoEmails = demoCustomerEmails() }: { demoE
       <div className="grid gap-2 empty:hidden">
         {params.get("verified") === "1" && <Notice>메일 인증이 끝났습니다. 로그인해 주세요.</Notice>}
         {notice && <Notice>{LOGIN_NOTICE[notice]}</Notice>}
+        {socialError && (
+          <p role="alert" className="m-0 mb-3 text-sm text-warning">
+            {socialError}
+          </p>
+        )}
         {params.get("loggedOut") === "partial" && (
           <p role="alert" className="m-0 mb-3 text-sm text-warning">
             이 화면에서는 로그아웃했지만 서버에 알리지 못했습니다. 공용 PC라면 브라우저를 모두 닫아 주세요.
@@ -85,6 +93,8 @@ export function CustomerLoginPage({ demoEmails = demoCustomerEmails() }: { demoE
           ))}
         </div>
       )}
+      {/* 소셜 로그인은 처음이면 가입까지 하므로 회원 가입(account)을 숨긴 배포에서는 보이지 않는다 */}
+      {!accountArchived && <SocialLoginButtons next={next} />}
       <LoginForm key={formKey} initialEmail={email} onLogin={onLogin} />
       {unverified && !accountArchived && (
         <p className="m-0 mt-3 text-sm">

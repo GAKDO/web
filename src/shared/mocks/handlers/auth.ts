@@ -15,6 +15,8 @@ const tokenBody = (accessToken: string, role: TokenResponse["role"]): TokenRespo
 });
 
 export const authHandlers = [
+  // 소셜 로그인: 목에서는 키가 설정된 제공자가 없다(테스트가 server.use로 바꿔 끼운다)
+  http.get("*/api/v1/auth/oauth/providers", () => HttpResponse.json({ providers: [] })),
   http.post("*/api/v1/auth/signup", async ({ request }) => {
     const body = (await request.json()) as SignupRequest;
     if (!body.privacyAgreed) return problem(400, "CONSENT_REQUIRED", "개인정보 수집에 동의해 주세요");

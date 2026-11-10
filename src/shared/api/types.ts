@@ -22,6 +22,8 @@ export type TokenRole = AuthSchemas["AuthTokenRole"];
 export type Problem = AuthSchemas["Problem"];
 export type ErrorCode = AuthSchemas["ErrorCode"];
 export type PublicId = AuthSchemas["PublicId"];
+export type SocialProvider = AuthSchemas["AuthSocialProvider"];
+export type SocialLoginError = AuthSchemas["SocialLoginError"];
 
 export type Device = RentalSchemas["Device"];
 export type DevicePage = RentalSchemas["DevicePage"];
