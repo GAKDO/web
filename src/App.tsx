@@ -27,6 +27,7 @@ import { ClaimRentalPage } from "./features/report/components/ClaimRentalPage";
 import { VerifyPage } from "./features/verify/components/VerifyPage";
 import { CatalogPage } from "./features/catalog/components/CatalogPage";
 import { CatalogDetailPage } from "./features/catalog/components/CatalogDetailPage";
+import { PrivacyPage, TermsPage } from "./features/legal/components/LegalPages";
 import { SiteHeader } from "./shared/ui/SiteHeader";
 import { RequireAdmin } from "./shared/auth/RequireAdmin";
 import { RequireCustomer } from "./shared/auth/RequireCustomer";
@@ -72,6 +73,9 @@ export const routes: RouteObject[] = [
     children: [
       { path: "/devices", element: <CatalogPage /> },
       { path: "/devices/:deviceId", element: <CatalogDetailPage /> },
+      // 개인정보처리방침·이용약관(11/10): 소셜 로그인 제공자 앱 게시에 공개 주소가 필요하다
+      { path: "/privacy", element: <PrivacyPage /> },
+      { path: "/terms", element: <TermsPage /> },
     ],
   },
   // 고객 이용 안내(11/6): 대여는 창구, 고객은 QR로 렌탈을 계정에 연결. 로그인 없이 연다.
