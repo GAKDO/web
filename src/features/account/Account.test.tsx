@@ -87,6 +87,11 @@ describe("계정 탈퇴", () => {
     expect(db.accounts.some((a) => a.email === MOCK_CUSTOMER.email)).toBe(true);
   });
 
+  test("소셜 로그인으로 가입해 비밀번호가 없으면 비밀번호 재설정으로 갈 수 있다", async () => {
+    renderAsCustomer("/my/account/withdraw");
+    expect(await screen.findByRole("link", { name: "비밀번호 재설정" })).toHaveAttribute("href", "/password/reset");
+  });
+
   test("한 번 더 묻고 취소하면 탈퇴하지 않는다", async () => {
     const user = userEvent.setup();
     renderAsCustomer("/my/account/withdraw");

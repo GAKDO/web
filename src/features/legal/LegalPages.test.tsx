@@ -25,3 +25,8 @@ test("로그인 없이 /terms에서 이용약관을 보고 개인정보처리방
   expect(screen.getByRole("heading", { level: 1, name: "이용약관" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "개인정보처리방침" })).toHaveAttribute("href", "/privacy");
 });
+
+test("개인정보처리방침은 사이트 도우미가 질문을 Google Gemini로 보낸다고 알린다", () => {
+  renderAt("/privacy");
+  expect(screen.getByText(/Google Gemini API로 보내/)).toBeInTheDocument();
+});

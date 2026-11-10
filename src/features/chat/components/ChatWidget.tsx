@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent, type PointerEvent } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { MessageCircle, MoveDiagonal, SendHorizontal, Settings2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -121,6 +121,11 @@ export function ChatWidget() {
     setOpen(false);
   }
 
+  // 방침 화면으로 갈 때는 창만 접고, 초점을 여는 버튼으로 되돌리지 않는다(새 화면 본문을 읽게)
+  function leaveToPrivacy() {
+    wasOpen.current = false;
+    setOpen(false);
+  }
   // 창은 오른쪽 아래에 붙어 있으므로 왼쪽 위 손잡이를 왼쪽·위로 끌면 커진다
   function onResizeStart(e: PointerEvent<HTMLButtonElement>) {
     if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
@@ -189,7 +194,12 @@ export function ChatWidget() {
       <header className="flex items-center justify-between gap-2 border-b py-3 pr-4 pl-7">
         <div>
           <h2 className="text-sm font-semibold">TRACE 도우미</h2>
-          <p className="text-xs text-muted-foreground">AI가 답해요. 정확하지 않을 수 있어요.</p>
+          <p className="text-xs text-muted-foreground">
+            AI(Google Gemini)가 답해요. 정확하지 않을 수 있어요.{" "}
+            <Link to="/privacy" onClick={leaveToPrivacy} className="underline underline-offset-2 hover:text-foreground">
+              개인정보처리방침
+            </Link>
+          </p>
         </div>
         <div className="flex items-center gap-1">
           <button

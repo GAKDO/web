@@ -71,6 +71,13 @@ export function WithdrawPage() {
             렌탈 기록(사진·검사·진단·봉인)은 지워지지 않고 남습니다.
           </li>
         </ul>
+        <p className="m-0 mt-4 text-sm text-muted-foreground">
+          Google·GitHub로 가입해 비밀번호를 정한 적이 없다면{" "}
+          <Link to="/password/reset" className="font-medium text-foreground underline underline-offset-4">
+            비밀번호 재설정
+          </Link>
+          으로 먼저 비밀번호를 정해 주세요.
+        </p>
         <form onSubmit={ask} noValidate className="mt-5">
           <Field
             label="비밀번호 확인"
