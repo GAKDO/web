@@ -145,7 +145,7 @@ test("도우미 버튼은 늘 보통 크기로 보이고, 창 머리에는 크�
   expect(within(dialog).queryByRole("button", { name: "크기 설정" })).not.toBeInTheDocument();
 });
 
-test("왼쪽 위 손잡이를 끌거나 화살표로 움직이면 창 크기가 바뀌고, 두 번 누르면 처음 크기가 된다", async () => {
+test("왼쪽 위 손잡이를 끌거나 화살표로 움직이면 창 크기가 바뀌고, 두 번 누르거나 Home 키를 누르면 처음 크기가 된다", async () => {
   renderApp("/guide");
   const dialog = await openChat();
   const handle = within(dialog).getByRole("button", { name: "창 크기 조절" });
@@ -167,6 +167,12 @@ test("왼쪽 위 손잡이를 끌거나 화살표로 움직이면 창 크기가 
   expect([width(), height()]).toEqual(["320px", "360px"]);
 
   await userEvent.dblClick(handle);
+  expect([width(), height()]).toEqual(["384px", "576px"]);
+
+  handle.focus();
+  await userEvent.keyboard("{ArrowLeft}{ArrowUp}");
+  expect([width(), height()]).toEqual(["416px", "608px"]);
+  await userEvent.keyboard("{Home}");
   expect([width(), height()]).toEqual(["384px", "576px"]);
 });
 

@@ -140,6 +140,12 @@ export function ChatWidget() {
     drag.current = null;
   }
   function onResizeKey(e: KeyboardEvent<HTMLButtonElement>) {
+    // Home은 처음 크기로(방향키와 겹치지 않는 키. 손잡이를 두 번 누르는 것과 같다)
+    if (e.key === "Home") {
+      e.preventDefault();
+      resetPanel();
+      return;
+    }
     const delta: Record<string, [number, number]> = {
       ArrowLeft: [RESIZE_STEP, 0],
       ArrowRight: [-RESIZE_STEP, 0],
@@ -177,7 +183,7 @@ export function ChatWidget() {
       <button
         type="button"
         aria-label="창 크기 조절"
-        title="끌어서 창 크기를 바꿔요. 두 번 누르면 처음 크기로 돌아가요"
+        title="끌어서(또는 방향키로) 창 크기를 바꿔요. 두 번 누르거나 Home 키를 누르면 처음 크기로 돌아가요"
         onPointerDown={onResizeStart}
         onPointerMove={onResizeMove}
         onPointerUp={onResizeEnd}
