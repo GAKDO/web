@@ -104,6 +104,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/oauth/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 쓸 수 있는 소셜 로그인 제공자
+         * @description 서버에 client id·secret이 설정된 제공자만 돌려준다. 로그인 화면은 이 목록에 있는 버튼만 보인다.
+         */
+        get: operations["listSocialProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/oauth/{provider}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 소셜 로그인 시작
+         * @description 브라우저가 이 주소로 이동한다(fetch 아님). state를 만들어 10분 동안 저장하고, 같은 값을 `trace_oauth_state` 쿠키
+         *     (HttpOnly, SameSite=Lax, Path=/api/v1/auth/oauth)로 심은 뒤 제공자 인증 화면으로 302 보낸다.
+         *     이메일 권한을 함께 요청한다(Google `email`, GitHub `user:email`, 카카오 `account_email`, 네이버는 앱 설정의 이메일 필수 항목).
+         *     제공자가 꺼져 있으면 웹 `/login?socialError=UNAVAILABLE`로 302.
+         */
+        get: operations["startSocialLogin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/oauth/{provider}/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 소셜 로그인 콜백
+         * @description 제공자 앱에 등록하는 주소: `{WEB_PUBLIC_URL}/api/v1/auth/oauth/{provider}/callback`.
+         *     state가 쿼리와 `trace_oauth_state` 쿠키에서 같고 저장소에 남아 있어야 한다(한 번만 씀).
+         *     code를 토큰으로 바꾸고 제공자가 **인증했다고 알려 준 이메일**을 받는다(GitHub은 `/user/emails`의 인증된 primary).
+         *     계정 찾기: (1) 이 제공자 사용자 번호로 연결된 계정 → (2) 같은 이메일 계정에 연결(메일 인증 전이면 인증 완료로 바꿈)
+         *     → (3) 없으면 ACTIVE 고객 계정을 새로 만든다(로그인 화면의 개인정보 수집·이용 안내를 동의로 본다).
+         *     성공하면 `/login`과 같은 `trace_refresh` 쿠키를 심고 웹 `/login?next=<next>`로 302 보낸다. 웹은 `/refresh`로 세션을 연다.
+         *     실패하면 쿠키 없이 웹 `/login?socialError=<codes.yaml auth.social_login_error>&next=<next>`로 302 보낸다.
+         */
+        get: operations["socialLoginCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/refresh": {
         parameters: {
             query?: never;
@@ -365,6 +434,11 @@ export interface components {
             email: components["schemas"]["Email"];
             password: string;
         };
+        /** @description 콜백이 웹 `/login?socialError=<값>`으로 실어 보내는 실패 사유(화면이 안내 문장을 고른다) */
+        SocialLoginError: components["schemas"]["AuthSocialLoginError"];
+        SocialProvidersResponse: {
+            providers: components["schemas"]["AuthSocialProvider"][];
+        };
         TokenResponse: {
             accessToken: string;
             /** @constant */
@@ -527,6 +601,11 @@ export interface components {
          */
         AuthTokenRole: "ADMIN" | "CUSTOMER" | "BOOTH" | "AGENT";
         /**
+         * @description codes.yaml auth.social_provider
+         * @enum {string}
+         */
+        AuthSocialProvider: "GOOGLE" | "GITHUB" | "KAKAO" | "NAVER";
+        /**
          * @description codes.yaml auth.role
          * @enum {string}
          */
@@ -537,6 +616,11 @@ export interface components {
          * @example 2026-11-12T09:00:00+09:00
          */
         DateTime: string;
+        /**
+         * @description codes.yaml auth.social_login_error
+         * @enum {string}
+         */
+        AuthSocialLoginError: "UNAVAILABLE" | "CANCELLED" | "STATE_INVALID" | "EMAIL_REQUIRED" | "PROVIDER_ERROR";
     };
     responses: {
         /** @description 요청 제한 초과 (IP당 분당 10회, RATE_LIMITED) */
@@ -579,6 +663,22 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
+        /** @description 대상 없음 (NOT_FOUND) */
+        NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "title": "찾을 수 없습니다",
+                 *       "status": 404,
+                 *       "code": "NOT_FOUND"
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
         /** @description 토큰 없음·만료 (UNAUTHENTICATED) */
         Unauthorized: {
             headers: {
@@ -612,7 +712,10 @@ export interface components {
             };
         };
     };
-    parameters: never;
+    parameters: {
+        /** @description codes.yaml auth.social_provider를 소문자로(google·github·kakao·naver). 모르는 값은 404 */
+        SocialProviderPath: "google" | "github" | "kakao" | "naver";
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -900,6 +1003,95 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listSocialProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 켜진 제공자 목록(없으면 빈 배열) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "providers": [
+                     *         "GOOGLE",
+                     *         "GITHUB"
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SocialProvidersResponse"];
+                };
+            };
+        };
+    };
+    startSocialLogin: {
+        parameters: {
+            query?: {
+                /** @description 로그인 뒤 돌아갈 사이트 안 경로("/"로 시작). 사이트 밖 주소는 버린다. */
+                next?: string;
+            };
+            header?: never;
+            path: {
+                /** @description codes.yaml auth.social_provider를 소문자로(google·github·kakao·naver). 모르는 값은 404 */
+                provider: components["parameters"]["SocialProviderPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 제공자 인증 화면(또는 꺼져 있으면 웹 로그인 화면)으로 이동 */
+            302: {
+                headers: {
+                    Location?: string;
+                    /** @description trace_oauth_state=...; HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth/oauth; Max-Age=600 */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    socialLoginCallback: {
+        parameters: {
+            query?: {
+                code?: string;
+                state?: string;
+                /** @description 사용자가 제공자 화면에서 취소하면 제공자가 붙인다(→ CANCELLED) */
+                error?: string;
+            };
+            header?: never;
+            path: {
+                /** @description codes.yaml auth.social_provider를 소문자로(google·github·kakao·naver). 모르는 값은 404 */
+                provider: components["parameters"]["SocialProviderPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 웹 로그인 화면으로 이동(성공이면 리프레시 쿠키를 함께 심음) */
+            302: {
+                headers: {
+                    /** @description 예) https://gakdo.site/login?next=/me 또는 https://gakdo.site/login?socialError=EMAIL_REQUIRED */
+                    Location?: string;
+                    /** @description 성공이면 trace_refresh(로그인과 같음). 항상 trace_oauth_state를 지운다 */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
             429: components["responses"]["TooManyRequests"];
         };
     };

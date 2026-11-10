@@ -618,7 +618,7 @@ export interface components {
             modelVersion: string;
             /** @description 흠집을 낸 쪽(선택 필드, 11/9 추가. 서버는 항상 보낸다). AUTO는 모델, HUMAN은 관리자가 검수 화면에서 직접 더한 흠집 */
             source?: components["schemas"]["InspectionDefectSource"];
-            /** @description 같은 면·카메라에서 겹치는 흠집(조명만 다른 사진의 같은 흠집) 묶음의 대표 defectId(선택 필드, 11/8 추가). 검수 화면이 묶음 하나를 한 번에 정할 때 쓴다 */
+            /** @description 같은 면에서 겹치는 흠집 묶음의 대표 defectId(선택 필드, 11/8 추가). 조명만 다른 사진의 같은 흠집과, 11/9부터 CAM1·CAM2 두 카메라 사진에 함께 찍힌 같은 흠집(부스 보정 모서리로 옮긴 면 위 자리가 가까운 것)을 묶는다. 등급은 판정할 수 있는 면의 기각(DISMISSED)되지 않은 흠집을 이렇게 묶은 수로 센다(전체 검사의 판정 불가 면 흠집은 등급에 쓰지 않음). 검수 화면이 묶음 하나를 한 번에 정할 때 쓴다 */
             groupId?: components["schemas"]["PublicId"];
             /** @description 사람 검수 상태(선택 필드, 11/8 추가. 서버는 항상 보낸다) */
             review?: components["schemas"]["DefectReview"];

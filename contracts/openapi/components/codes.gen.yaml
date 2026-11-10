@@ -326,6 +326,23 @@ components:
       - BOOTH
       - AGENT
       description: codes.yaml auth.token_role
+    AuthSocialProvider:
+      type: string
+      enum:
+      - GOOGLE
+      - GITHUB
+      - KAKAO
+      - NAVER
+      description: codes.yaml auth.social_provider
+    AuthSocialLoginError:
+      type: string
+      enum:
+      - UNAVAILABLE
+      - CANCELLED
+      - STATE_INVALID
+      - EMAIL_REQUIRED
+      - PROVIDER_ERROR
+      description: codes.yaml auth.social_login_error
     ErrorCode:
       type: string
       enum:

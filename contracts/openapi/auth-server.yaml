@@ -240,6 +240,106 @@ paths:
                 code: EMAIL_NOT_VERIFIED
         '429':
           $ref: './components/common.yaml#/components/responses/TooManyRequests'
+  /api/v1/auth/oauth/providers:
+    get:
+      tags: [계정]
+      operationId: listSocialProviders
+      summary: 쓸 수 있는 소셜 로그인 제공자
+      description: |
+        서버에 client id·secret이 설정된 제공자만 돌려준다. 로그인 화면은 이 목록에 있는 버튼만 보인다.
+      security: []
+      responses:
+        '200':
+          description: 켜진 제공자 목록(없으면 빈 배열)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialProvidersResponse'
+              example:
+                providers: [GOOGLE, GITHUB]
+  /api/v1/auth/oauth/{provider}/start:
+    get:
+      tags: [계정]
+      operationId: startSocialLogin
+      summary: 소셜 로그인 시작
+      description: |
+        브라우저가 이 주소로 이동한다(fetch 아님). state를 만들어 10분 동안 저장하고, 같은 값을 `trace_oauth_state` 쿠키
+        (HttpOnly, SameSite=Lax, Path=/api/v1/auth/oauth)로 심은 뒤 제공자 인증 화면으로 302 보낸다.
+        이메일 권한을 함께 요청한다(Google `email`, GitHub `user:email`, 카카오 `account_email`, 네이버는 앱 설정의 이메일 필수 항목).
+        제공자가 꺼져 있으면 웹 `/login?socialError=UNAVAILABLE`로 302.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/SocialProviderPath'
+        - name: next
+          in: query
+          required: false
+          description: 로그인 뒤 돌아갈 사이트 안 경로("/"로 시작). 사이트 밖 주소는 버린다.
+          schema:
+            type: string
+            maxLength: 512
+      responses:
+        '302':
+          description: 제공자 인증 화면(또는 꺼져 있으면 웹 로그인 화면)으로 이동
+          headers:
+            Location:
+              schema:
+                type: string
+            Set-Cookie:
+              description: trace_oauth_state=...; HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth/oauth; Max-Age=600
+              schema:
+                type: string
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './components/common.yaml#/components/responses/TooManyRequests'
+  /api/v1/auth/oauth/{provider}/callback:
+    get:
+      tags: [계정]
+      operationId: socialLoginCallback
+      summary: 소셜 로그인 콜백
+      description: |
+        제공자 앱에 등록하는 주소: `{WEB_PUBLIC_URL}/api/v1/auth/oauth/{provider}/callback`.
+        state가 쿼리와 `trace_oauth_state` 쿠키에서 같고 저장소에 남아 있어야 한다(한 번만 씀).
+        code를 토큰으로 바꾸고 제공자가 **인증했다고 알려 준 이메일**을 받는다(GitHub은 `/user/emails`의 인증된 primary).
+        계정 찾기: (1) 이 제공자 사용자 번호로 연결된 계정 → (2) 같은 이메일 계정에 연결(메일 인증 전이면 인증 완료로 바꿈)
+        → (3) 없으면 ACTIVE 고객 계정을 새로 만든다(로그인 화면의 개인정보 수집·이용 안내를 동의로 본다).
+        성공하면 `/login`과 같은 `trace_refresh` 쿠키를 심고 웹 `/login?next=<next>`로 302 보낸다. 웹은 `/refresh`로 세션을 연다.
+        실패하면 쿠키 없이 웹 `/login?socialError=<codes.yaml auth.social_login_error>&next=<next>`로 302 보낸다.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/SocialProviderPath'
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          description: 사용자가 제공자 화면에서 취소하면 제공자가 붙인다(→ CANCELLED)
+          schema:
+            type: string
+      responses:
+        '302':
+          description: 웹 로그인 화면으로 이동(성공이면 리프레시 쿠키를 함께 심음)
+          headers:
+            Location:
+              description: 예) https://gakdo.site/login?next=/me 또는 https://gakdo.site/login?socialError=EMAIL_REQUIRED
+              schema:
+                type: string
+            Set-Cookie:
+              description: 성공이면 trace_refresh(로그인과 같음). 항상 trace_oauth_state를 지운다
+              schema:
+                type: string
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './components/common.yaml#/components/responses/TooManyRequests'
   /api/v1/auth/refresh:
     post:
       tags: [계정]
@@ -712,6 +812,15 @@ components:
       $ref: './components/common.yaml#/components/securitySchemes/bearerJwt'
     refreshCookie:
       $ref: './components/common.yaml#/components/securitySchemes/refreshCookie'
+  parameters:
+    SocialProviderPath:
+      name: provider
+      in: path
+      required: true
+      description: codes.yaml auth.social_provider를 소문자로(google·github·kakao·naver). 모르는 값은 404
+      schema:
+        type: string
+        enum: [google, github, kakao, naver]
   schemas:
     Email:
       type: string
@@ -774,6 +883,18 @@ components:
         password:
           type: string
           writeOnly: true
+    SocialLoginError:
+      description: 콜백이 웹 `/login?socialError=<값>`으로 실어 보내는 실패 사유(화면이 안내 문장을 고른다)
+      $ref: './components/codes.gen.yaml#/components/schemas/AuthSocialLoginError'
+    SocialProvidersResponse:
+      type: object
+      additionalProperties: false
+      required: [providers]
+      properties:
+        providers:
+          type: array
+          items:
+            $ref: './components/codes.gen.yaml#/components/schemas/AuthSocialProvider'
     TokenResponse:
       type: object
       required: [accessToken, tokenType, expiresIn, role]
