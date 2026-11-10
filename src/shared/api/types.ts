@@ -62,6 +62,9 @@ export type CaptureLinkResponse = AuthSchemas["CaptureLinkResponse"];
 export type CaptureTokenResponse = AuthSchemas["CaptureTokenResponse"];
 export type PhotoSpec = CaptureSchemas["PhotoSpec"];
 export type CaptureSetCreateRequest = CaptureSchemas["CaptureSetCreateRequest"];
+/** 반납 정산서(11/10, contracts #41) */
+export type Settlement = CaptureSchemas["Settlement"];
+export type SettlementLine = CaptureSchemas["SettlementLine"];
 export type CaptureSetCreateResponse = CaptureSchemas["CaptureSetCreateResponse"];
 export type CaptureDevice = CaptureSchemas["CaptureDevice"];
 export type CaptureSetCompleteRequest = CaptureSchemas["CaptureSetCompleteRequest"];

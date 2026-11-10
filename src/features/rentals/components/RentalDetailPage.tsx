@@ -27,6 +27,7 @@ import { formatDate, RENTAL_STATUS_VARIANT } from "./RentalListPage";
 import { InspectionHistory } from "../../inspections/components/InspectionHistory";
 import { formatDateTime } from "../../../shared/ui/format";
 import { useTimeline } from "../../report/api/report";
+import { SettlementCard } from "../../report/components/SettlementCard";
 
 const STEPS: CheckpointType[] = ["OUT", "RCV", "RET"];
 const BEFORE: Record<CheckpointType, string> = { OUT: "출고를", RCV: "수령을", RET: "반납을" };
@@ -96,6 +97,10 @@ function CheckpointSteps({ rental, serial, onError }: { rental: Rental; serial?:
                 {/* 진단 에이전트는 시점마다 붙는다. 봉인 전에만 코드를 만들고, 올라온 진단은 봉인 뒤에도 보인다. MVP 배포에서는 보관(숨김) */}
                 {!isArchived("diagnostics") && (
                   <CheckpointDiagnostics rentalId={rental.rentalId} checkpointId={checkpoint.checkpointId} open={checkpoint.status === "OPEN"} serial={serial} />
+                )}
+                {/* 반납 정산서: 검수·등급이 끝나면 규칙표로 바로 계산된다(11/10). 직원이 견적을 따로 내지 않는다 */}
+                {type === "RET" && (checkpoint.status === "GRADED" || checkpoint.status === "SEALED") && (
+                  <SettlementCard checkpointId={checkpoint.checkpointId} graded />
                 )}
               </>
             ) : (
