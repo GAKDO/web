@@ -24,6 +24,8 @@ interface Props {
   /** 시점 버튼을 누를 때마다 늘린다(같은 시점을 다시 눌러도 카메라를 그 자리로 되돌리게) */
   viewNonce: number;
   lidOpen: boolean;
+  /** 그래픽 장치가 3D 판을 거둬 갔을 때(탭이 많거나 GPU가 바쁠 때). 부모가 다시 그리기 버튼을 보인다 */
+  onContextLost?(): void;
 }
 
 /** 시점 버튼: 카메라를 그 자리로 옮기고, 도착하면 사용자가 자유롭게 돌리게 놓아 준다 */
@@ -77,7 +79,7 @@ function Pin({ pin, radius, selected, onSelect }: { pin: LaptopPin; radius: numb
   );
 }
 
-export default function LaptopViewer({ dimensions: d, modelCode, color, pins, selected, onSelect, view, viewNonce, lidOpen }: Props) {
+export default function LaptopViewer({ dimensions: d, modelCode, color, pins, selected, onSelect, view, viewNonce, lidOpen, onContextLost }: Props) {
   const controls = useRef<ElementRef<typeof OrbitControls>>(null);
   const size = Math.max(d.widthMm, d.depthMm);
   const body = bodyColor(color);
@@ -92,7 +94,16 @@ export default function LaptopViewer({ dimensions: d, modelCode, color, pins, se
   useEffect(() => () => void (document.body.style.cursor = ""), []);
 
   return (
-    <Canvas camera={{ position: [size * 0.15, size * 0.55, size * 1.3], fov: 38, near: 1, far: size * 20 }} dpr={[1, 2]}>
+    <Canvas
+      camera={{ position: [size * 0.15, size * 0.55, size * 1.3], fov: 38, near: 1, far: size * 20 }}
+      dpr={[1, 2]}
+      onCreated={({ gl }) => {
+        gl.domElement.addEventListener("webglcontextlost", (e) => {
+          e.preventDefault();
+          onContextLost?.();
+        });
+      }}
+    >
       <ambientLight intensity={0.35} />
       <directionalLight position={[size, size * 2, size]} intensity={1.1} />
       <directionalLight position={[-size, size * 0.6, -size]} intensity={0.35} />

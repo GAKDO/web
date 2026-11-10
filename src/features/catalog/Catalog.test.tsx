@@ -181,7 +181,7 @@ describe("보유 노트북 화면", () => {
     // 이 기기의 가장 최근 검사가 빠른 검사(QUICK)가 되도록 다른 렌탈은 뺀다
     db.rentals = db.rentals.filter((r) => r.deviceId !== quick.deviceId || r === quick);
     renderApp(`/devices/${quick.deviceId}`);
-    expect(await screen.findByRole("heading", { name: /외관 3D/ })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /외관과 흠집 위치/ })).toBeInTheDocument();
     expect(await screen.findByText(/이 브라우저에서는 3D를 볼 수 없습니다/)).toBeInTheDocument();
     const list = await screen.findByRole("complementary", { name: "흠집 목록" });
     expect(await within(list).findByText("확정된 흠집 2개")).toBeInTheDocument();
@@ -190,11 +190,19 @@ describe("보유 노트북 화면", () => {
     expect(screen.getByRole("heading", { name: "부스 사진 12장" })).toBeInTheDocument();
     expect(screen.queryByText(/C02PRO0001/)).not.toBeInTheDocument();
   });
+  test("등급은 뜻과 함께 읽히고, 검사·진단 기록이 없는 노트북은 빈칸 대신 이유 한 줄을 보인다", async () => {
+    const target = db.devices.find((dv) => dv.status !== "RETIRED")!;
+    db.rentals = db.rentals.filter((r) => r.deviceId !== target.deviceId);
+    renderApp("/devices");
+    expect((await screen.findAllByText("아직 부스 검사와 진단 기록이 없습니다")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/\((문제 없음|가벼운 긁힘|수리 검토|수리 필요)\)/).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "표 읽는 법" })).toBeInTheDocument();
+  });
   test("검사 전 노트북도 기종 3D 외관은 보이고, 흠집 대신 검사 전이라고 안내한다", async () => {
     const target = db.devices.find((dv) => dv.status !== "RETIRED")!;
     db.rentals = db.rentals.filter((r) => r.deviceId !== target.deviceId);
     renderApp(`/devices/${target.deviceId}`);
-    expect(await screen.findByRole("heading", { name: /외관 3D/ })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /외관과 흠집 위치/ })).toBeInTheDocument();
     expect(await screen.findByText(/이 브라우저에서는 3D를 볼 수 없습니다/)).toBeInTheDocument();
     const list = screen.getByRole("complementary", { name: "흠집 목록" });
     expect(within(list).getByRole("heading", { name: "검사 전" })).toBeInTheDocument();

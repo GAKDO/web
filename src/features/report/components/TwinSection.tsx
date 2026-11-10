@@ -19,7 +19,11 @@ export function hasWebGL(): boolean {
   if (typeof window === "undefined" || typeof window.WebGLRenderingContext === "undefined") return false;
   try {
     const canvas = document.createElement("canvas");
-    return !!(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+    const gl = (canvas.getContext("webgl2") ?? canvas.getContext("webgl")) as WebGLRenderingContext | null;
+    // 확인용으로 만든 그리기 판은 바로 놓아 준다. 브라우저는 동시에 쓸 수 있는 WebGL 판 수가 정해져 있어(크롬 약 16개)
+    // 화면을 옮길 때마다 하나씩 남기면 실제 3D 뷰어 판이 밀려나 꺼진다(11/10)
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    return !!gl;
   } catch {
     return false;
   }

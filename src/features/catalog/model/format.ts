@@ -37,10 +37,22 @@ export function percent(n: number | null): string {
   return n === null ? DASH : `${n.toFixed(1).replace(/\.0$/, "")}%`;
 }
 
-/** 등급 배지 색: A 초록 → D 빨강. 글자(A~D)도 함께 써서 색만으로 구분하지 않는다 */
+/**
+ * 등급 표시 색: A 초록 → D 빨강. 글자(A~D)도 함께 써서 색만으로 구분하지 않는다.
+ * 11/10: 다크 모드에서 글자만 밝아져 흰 바탕에서 안 보이던 C등급을 고쳤다. 밝은 바탕 + 900 글자 + 테두리로
+ * 모든 등급이 WCAG AA(작은 글자 4.5:1)를 넉넉히 넘는다(약 8~10:1). 사이트 전체 dark: 변형은 index.css에서 껐다
+ */
 export const GRADE_TONE: Record<Grade, string> = {
-  A: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200",
-  B: "bg-lime-100 text-lime-800 dark:bg-lime-900/40 dark:text-lime-200",
-  C: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
-  D: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200",
+  A: "border-emerald-300 bg-emerald-50 text-emerald-900",
+  B: "border-lime-300 bg-lime-50 text-lime-900",
+  C: "border-amber-300 bg-amber-50 text-amber-900",
+  D: "border-red-300 bg-red-50 text-red-900",
+};
+
+/** 등급 한 줄 뜻. 이용 안내 등급표(guide/content.ts GRADES)와 같은 말을 쓴다 */
+export const GRADE_MEANING: Record<Grade, string> = {
+  A: "문제 없음",
+  B: "가벼운 긁힘",
+  C: "수리 검토",
+  D: "수리 필요",
 };

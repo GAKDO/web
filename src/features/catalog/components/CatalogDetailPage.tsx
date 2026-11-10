@@ -1,4 +1,4 @@
-import { ArrowLeft, Box, Images } from "lucide-react";
+import { ArrowLeft, Images, RotateCcw } from "lucide-react";
 import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -20,19 +20,28 @@ import { laptopPins, PIN_COLOR, type LaptopPin } from "../model/laptop3d";
 import { AvailabilityBadge, GradeBadge } from "./Badges";
 import type { ViewPreset } from "./LaptopViewer";
 import { usePhotoSizes } from "../../../shared/laptop3d/usePhotoSizes";
+import { isChunkLoadError } from "../../../shared/app/chunkReload";
 
 // 공개 기기 상세(11/8 민서 요청): 노트북 3D 모델 위에 확정 흠집을 핀으로 찍고, 핀을 누르면 그 흠집이 찍힌 원본 사진을 보여 준다.
 // WebGL이 없거나 3D가 실패하면 사진 보기만 남는다. 사양·진단·벤치마크도 함께 보여 준다.
 
 const LaptopViewer = lazy(() => import("./LaptopViewer"));
 
-class ViewerBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
+/**
+ * 3D가 그리다 실패하면 사진 안내로 바꾼다. 11/10: 실패 이유를 콘솔에 남기고, 다시 그리기 버튼을 둔다.
+ * 배포 뒤 옛 화면이라 3D 조각을 못 받은 경우는 새로 고침을 권한다
+ */
+class ViewerBoundary extends Component<{ fallback(reason: "chunk" | "render", retry: () => void): ReactNode; children: ReactNode }, { error: unknown }> {
+  state: { error: unknown } = { error: null };
+  static getDerivedStateFromError(error: unknown) {
+    return { error };
+  }
+  componentDidCatch(error: unknown) {
+    console.error("[TRACE] 3D 뷰어 오류", error);
   }
   render() {
-    return this.state.failed ? this.props.fallback : this.props.children;
+    if (this.state.error === null) return this.props.children;
+    return this.props.fallback(isChunkLoadError(this.state.error) ? "chunk" : "render", () => this.setState({ error: null }));
   }
 }
 
@@ -73,6 +82,9 @@ export function CatalogDetailPage() {
   const [viewNonce, setViewNonce] = useState(0);
   const [lidOpen, setLidOpen] = useState(true);
   const [lightbox, setLightbox] = useState<{ photos: LightboxPhoto[]; index: number } | null>(null);
+  // 그래픽 장치가 3D 판을 거둬 가면(contextlost) 안내로 바꾸고, 다시 그리기를 누르면 새 판으로 다시 만든다
+  const [contextLost, setContextLost] = useState(false);
+  const [viewerKey, setViewerKey] = useState(0);
 
   const photos = inspection.data?.photos ?? [];
   const defects = inspection.data?.photoDefects ?? [];
@@ -121,20 +133,30 @@ export function CatalogDetailPage() {
   const summaryFailed = !row.inspection && catalog.data.inspectionsFailed && d.checkpoints.length > 0;
   const diag = row.diagnostics;
   const checkpoint = d.checkpoints.find((c) => c.checkpointId === row.inspection?.checkpointId);
-  const photoFallback = (reason: string) => (
-    <div className="grid aspect-[4/3] place-items-center rounded-2xl border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+  const photoFallback = (reason: string, action?: { label: string; run(): void }) => (
+    <div role="status" className="grid aspect-[4/3] place-items-center rounded-xl border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
       <span>
         <Images aria-hidden="true" className="mx-auto mb-2 size-6" />
         {reason}
         {photos.length > 0 && (
           <>
             <br />
-            아래 부스 사진에서 흠집을 확인해 주세요.
+            아래 부스 사진에서도 흠집을 볼 수 있습니다.
           </>
+        )}
+        {action && (
+          <button type="button" onClick={action.run} className="mx-auto mt-3 flex h-9 cursor-pointer items-center gap-1.5 rounded-full border bg-background px-4 text-sm text-foreground hover:bg-muted">
+            <RotateCcw aria-hidden="true" className="size-4" />
+            {action.label}
+          </button>
         )}
       </span>
     </div>
   );
+  const redraw = () => {
+    setContextLost(false);
+    setViewerKey((k) => k + 1);
+  };
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8 md:py-10">
@@ -151,39 +173,63 @@ export function CatalogDetailPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <AvailabilityBadge device={d} />
-          <GradeBadge grade={row.grade} />
+          <GradeBadge grade={row.grade} withMeaning />
           {row.defectCount !== null && <span className="text-sm font-semibold">흠집 {row.defectCount}개</span>}
         </div>
       </header>
 
       <section aria-labelledby="look" className="mt-8">
-        <h2 id="look" className="m-0 flex items-center gap-2 text-title font-bold">
-          <Box aria-hidden="true" className="size-5" /> 외관 3D
+        <h2 id="look" className="m-0 text-title font-bold">
+          외관과 흠집 위치
         </h2>
         <p className="m-0 mt-1 text-sm text-muted-foreground">
-          {checkpoint ? `${CHECKPOINT_TYPE_LABEL[checkpoint.type]} 검사(${formatDateTime(row.inspection?.gradedAt)}) 기준입니다. ` : ""}
           {row.inspection
-            ? "드래그해서 돌려 보고, 표시된 모양은 부스 사진에서 찾은 실제 흠집 모양이에요. 점을 누르면 그 흠집이 찍힌 사진을 볼 수 있어요. 위치는 사진에서 옮긴 대략 위치입니다."
+            ? `${checkpoint ? `${CHECKPOINT_TYPE_LABEL[checkpoint.type]} 검사 · ${formatDateTime(row.inspection.gradedAt)} 기준. ` : ""}색 점이 확정된 흠집이고, 위치는 사진에서 옮긴 대략 위치입니다.`
             : summaryFailed
-              ? "이 기종의 실제 치수로 만든 외관이에요. 흠집 기록을 불러오지 못해 위치를 표시하지 못했습니다."
-              : "이 기종의 실제 치수로 만든 외관이에요. 드래그해서 돌려 볼 수 있어요. 부스 검사를 마치면 흠집 위치가 여기에 표시됩니다."}
+              ? "흠집 기록을 불러오지 못해 기종 외관만 보여 드립니다."
+              : "아직 부스 검사 전이라 기종 외관만 보여 드립니다. 검사를 마치면 흠집 위치가 표시됩니다."}
         </p>
         <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <div>
             {inspection.isError && <ErrorBanner message="사진과 흠집 위치를 불러오지 못했습니다." onRetry={() => void inspection.refetch()} />}
-            {webgl ? (
-              <ViewerBoundary fallback={photoFallback("3D를 그리지 못했습니다.")}>
-                <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border bg-gradient-to-b from-zinc-100 to-zinc-200 dark:from-zinc-900 dark:to-zinc-800">
+            {webgl && contextLost ? (
+              photoFallback("그래픽 장치가 3D 화면을 멈췄습니다. 열린 탭이 많으면 생길 수 있어요.", { label: "3D 다시 그리기", run: redraw })
+            ) : webgl ? (
+              <ViewerBoundary
+                key={viewerKey}
+                fallback={(reason, retry) =>
+                  reason === "chunk"
+                    ? photoFallback("사이트가 새 버전으로 바뀌어 3D를 다시 불러와야 합니다.", { label: "새로 고침", run: () => window.location.reload() })
+                    : photoFallback("3D를 그리지 못했습니다.", { label: "다시 그리기", run: retry })
+                }
+              >
+                <div className="relative aspect-[4/3] overflow-hidden rounded-xl border bg-gradient-to-b from-zinc-100 to-zinc-200">
                   <Suspense fallback={<p className="grid h-full place-items-center text-sm">3D를 준비하는 중…</p>}>
-                    <LaptopViewer dimensions={d.dimensions} modelCode={d.modelCode} color={d.color} pins={pins} selected={selected} onSelect={(id) => setSelected(id)} view={view} viewNonce={viewNonce} lidOpen={lidOpen} />
+                    <LaptopViewer
+                      dimensions={d.dimensions}
+                      modelCode={d.modelCode}
+                      color={d.color}
+                      pins={pins}
+                      selected={selected}
+                      onSelect={(id) => setSelected(id)}
+                      view={view}
+                      viewNonce={viewNonce}
+                      lidOpen={lidOpen}
+                      onContextLost={() => setContextLost(true)}
+                    />
                   </Suspense>
+                  {/* 조작법은 3D 위에 바로 적는다(설명 문단을 읽지 않아도 쓸 수 있게) */}
+                  <p className="pointer-events-none absolute bottom-2 left-2 m-0 rounded-md bg-white/85 px-2 py-1 text-xs text-zinc-700">
+                    끌어서 돌리기 · 휠로 확대 · 점을 누르면 사진
+                  </p>
                 </div>
               </ViewerBoundary>
             ) : (
               photoFallback("이 브라우저에서는 3D를 볼 수 없습니다.")
             )}
             {webgl && (
-              <div role="group" aria-label="보는 방향" className="mt-2 flex flex-wrap gap-2">
+              <div role="group" aria-label="보는 방향" className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="mr-1 text-xs text-muted-foreground">보는 방향</span>
                 {VIEWS.map((v) => (
                   <button
                     key={v.view}
@@ -205,7 +251,7 @@ export function CatalogDetailPage() {
             )}
           </div>
 
-          <aside aria-label="흠집 목록" className={cn("rounded-2xl border bg-card p-4", !row.inspection && "self-start")}>
+          <aside aria-label="흠집 목록" className={cn("rounded-xl border bg-card p-4", !row.inspection && "self-start")}>
             {row.inspection ? (
               <h3 className="m-0 text-base font-semibold">확정된 흠집 {pins.length}개</h3>
             ) : (
@@ -276,11 +322,13 @@ export function CatalogDetailPage() {
         </div>
       </section>
 
-      <section aria-labelledby="spec" className="mt-10 grid gap-4 md:grid-cols-2">
-        <h2 id="spec" className="sr-only">
+      <section aria-labelledby="spec" className="mt-10">
+        <h2 id="spec" className="m-0 text-title font-bold">
           사양과 진단
         </h2>
-        <div className="rounded-2xl border bg-card p-4">
+        <p className="m-0 mt-1 text-sm text-muted-foreground">진단 프로그램이 이 노트북에서 직접 읽은 값입니다. 성능은 같은 조건으로 세 번 잰 중앙값이에요.</p>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className="rounded-xl border bg-card p-4">
           <h3 className="m-0 mb-1 text-base font-semibold">사양</h3>
           <dl className="m-0 text-sm">
             <Row label="CPU" value={d.spec?.cpu ?? "—"} />
@@ -290,8 +338,8 @@ export function CatalogDetailPage() {
             <Row label="크기" value={`${d.dimensions.widthMm} × ${d.dimensions.depthMm} mm`} />
           </dl>
         </div>
-        <div className="rounded-2xl border bg-card p-4">
-          <h3 className="m-0 mb-1 text-base font-semibold">진단·벤치마크</h3>
+        <div className="rounded-xl border bg-card p-4">
+          <h3 className="m-0 mb-1 text-base font-semibold">배터리·성능</h3>
           {!diag ? (
             <p className="m-0 text-sm text-muted-foreground">아직 진단 기록이 없습니다.</p>
           ) : (
@@ -306,6 +354,7 @@ export function CatalogDetailPage() {
             </dl>
           )}
         </div>
+        </div>
       </section>
 
       {photos.length > 0 && (
@@ -313,7 +362,7 @@ export function CatalogDetailPage() {
           <h2 id="photos" className="m-0 text-title font-bold">
             부스 사진 {photos.length}장
           </h2>
-          <p className="m-0 mt-1 text-sm text-muted-foreground">카메라 2대와 조명 여러 개로 찍은 원본 사진입니다. 빨간 테두리가 확정된 흠집입니다.</p>
+          <p className="m-0 mt-1 text-sm text-muted-foreground">카메라 2대와 조명 여러 개로 찍은 원본 사진입니다. 빨간 테두리가 확정된 흠집이고, 사진을 누르면 크게 볼 수 있습니다.</p>
           <PhotoGrid grids={faceGrids(photos, defects)} />
         </section>
       )}

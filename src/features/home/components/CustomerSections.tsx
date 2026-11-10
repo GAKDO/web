@@ -1,15 +1,16 @@
 import { Link } from "react-router-dom";
-import { Check, Laptop, Lock, ShieldCheck, Sparkles } from "lucide-react";
+import { Check } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Reveal } from "../../../shared/ui/Reveal";
 import { FAQ, STEPS } from "../../guide/content";
 
+// 11/10: 아이콘 + 제목 + 문장 칸을 똑같이 늘어놓은 모양이 "만든 티"가 난다는 피드백으로 아이콘을 빼고 글만 남겼다
 const VALUES = [
-  { icon: ShieldCheck, title: "원래 있던 흠집은 내 책임이 아니에요", text: "내보내기 전 부스 사진이 기준이라, 처음부터 있던 흠집은 따로 구분됩니다." },
-  { icon: Sparkles, title: "새로 생긴 흠집만 비교해요", text: "반납 때 처음 사진과 맞대어 새 흠집만 표시하니 다툴 일이 줄어듭니다." },
-  { icon: Lock, title: "기록은 업체도 못 고쳐요", text: "시점마다 봉인하고 지문을 메일로 보내 드립니다. 검증 페이지에서 누구나 확인해요." },
-  { icon: Laptop, title: "내 노트북을 한눈에", text: "마이페이지에서 빌린 기종의 사양과 출고·수령·반납 검사 결과를 봅니다." },
+  { title: "원래 있던 흠집은 내 책임이 아닙니다", text: "내보내기 전에 부스에서 찍은 사진이 기준이라, 처음부터 있던 흠집은 따로 구분됩니다." },
+  { title: "반납 때는 새로 생긴 흠집만 봅니다", text: "돌려줄 때 찍은 사진을 처음 사진과 맞대어 보고, 새로 생긴 흠집에만 표시합니다." },
+  { title: "기록은 업체도 고칠 수 없습니다", text: "검사가 끝날 때마다 기록을 봉인하고 지문을 메일로 보내 드립니다. 검증 페이지에서 누구나 확인할 수 있어요." },
+  { title: "빌린 노트북 기록은 마이페이지에", text: "빌린 기종의 사양과 출고·수령·반납 검사 결과를 한곳에서 봅니다." },
 ];
 
 const MYPAGE = ["빌린 노트북의 사양(프로세서·메모리·저장 공간)", "출고·수령·반납 단계별 등급", "사진 위 흠집 위치와 새 흠집 표시", "봉인 기록 검증 링크"];
@@ -51,11 +52,10 @@ export function CustomerSections({ signedIn, myHome, myHomeLabel }: { signedIn: 
         <Reveal as="h2" id="values" className={H2}>
           빌릴 때도, 돌려줄 때도 마음 편하게
         </Reveal>
-        <ul className="m-0 mt-12 grid list-none gap-x-12 gap-y-12 p-0 sm:grid-cols-2 md:mt-16">
-          {VALUES.map(({ icon: Icon, title, text }, i) => (
-            <Reveal as="li" key={title} index={i % 2}>
-              <Icon aria-hidden="true" className="size-6 text-brand" />
-              <h3 className="mt-4 mb-2 text-title font-semibold">{title}</h3>
+        <ul className="m-0 mt-10 grid list-none gap-x-12 gap-y-8 p-0 sm:grid-cols-2 md:mt-14">
+          {VALUES.map(({ title, text }, i) => (
+            <Reveal as="li" key={title} index={i % 2} className="border-t pt-5">
+              <h3 className="m-0 mb-2 text-title font-semibold">{title}</h3>
               <p className="m-0 max-w-[38ch] text-[0.9375rem] leading-relaxed text-muted-foreground">{text}</p>
             </Reveal>
           ))}
@@ -68,14 +68,10 @@ export function CustomerSections({ signedIn, myHome, myHomeLabel }: { signedIn: 
             대여부터 반납까지 4단계
           </Reveal>
           <ol className="m-0 mt-12 grid list-none gap-x-8 gap-y-10 p-0 md:mt-16 md:grid-cols-2 lg:grid-cols-4">
-            {STEPS.map(({ icon: Icon, title, text }, i) => (
-              <Reveal as="li" key={title} index={i} className="border-t border-white/15 pt-6">
-                <span className="block text-[2.5rem] leading-none font-bold tracking-[-0.04em] text-white/25 tabular-nums" aria-hidden="true">
-                  {i + 1}
-                </span>
-                <h3 className="mt-6 mb-2 flex items-center gap-2 text-title font-semibold">
-                  <Icon aria-hidden="true" className="size-5 text-brand" />
-                  <span className="sr-only">{i + 1}단계 </span>
+            {STEPS.map(({ title, text }, i) => (
+              <Reveal as="li" key={title} index={i} className="border-t border-white/15 pt-5">
+                <h3 className="m-0 mb-2 text-title font-semibold">
+                  <span className="mr-2 text-zinc-400 tabular-nums">{i + 1}.</span>
                   {title}
                 </h3>
                 <p className="m-0 text-[0.9375rem] leading-relaxed text-zinc-400">{text}</p>
