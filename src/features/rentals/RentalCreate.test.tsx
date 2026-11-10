@@ -98,3 +98,18 @@ test("기기 100대 목록에서 검색 결과가 1초 안에 보인다", async 
   await screen.findByRole("listitem", { name: "BULK042" }, { timeout: 1000 });
   expect(performance.now() - startedAt).toBeLessThan(1000);
 });
+
+test("렌탈 목록에서 검사 등급을 문제 있는 것만으로 고르면 주소에 problem=1이 붙고 문제 있는 렌탈만 센다(contracts #23)", async () => {
+  db.report.inspections.forEach((ins) => {
+    if (ins.grade && ins.grade !== "A") ins.grade = "A";
+  });
+  const u = user();
+  const { router } = renderAsAdmin("/admin/rentals");
+  await screen.findByText(/^총/);
+  await u.selectOptions(screen.getByLabelText("검사 등급"), "1");
+  expect(await screen.findByText(/지금 문제 있는 렌탈이 없습니다/)).toBeInTheDocument();
+  expect(router.state.location.search).toContain("problem=1");
+  await u.selectOptions(screen.getByLabelText("렌탈 상태"), "OPEN");
+  expect(router.state.location.search).toContain("problem=1");
+  expect(router.state.location.search).toContain("status=OPEN");
+});

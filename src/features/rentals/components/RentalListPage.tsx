@@ -50,11 +50,23 @@ export function RentalListPage() {
   const raw = params.get("status");
   // 계약에 없는 값(?status=INVALID)은 거르지 않고 전체를 보인다
   const status = raw && Object.hasOwn(RENTAL_STATUS_LABEL, raw) ? (raw as RentalStatus) : undefined;
-  const rentals = useRentals(status);
+  // 검사 결과 화면과 같은 "문제 있는 것만"(지금 시점 등급 B·C·D, contracts #23). 렌탈 목록에서도 찾기 쉽게 둔다
+  const problemOnly = params.get("problem") === "1";
+  const rentals = useRentals(status, { problem: problemOnly });
   const models = useDeviceModels();
   const modelName = (code: string) => models.data?.find((m) => m.modelCode === code)?.name ?? code;
-  const paged = usePaged(rentals, status ?? "");
+  const paged = usePaged(rentals, `${status ?? ""}|${problemOnly ? "problem" : ""}`);
   const items = paged.items;
+  const setFilter = (key: "status" | "problem", value: string) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        return next;
+      },
+      { preventScrollReset: true },
+    );
 
   return (
     <section>
@@ -67,14 +79,18 @@ export function RentalListPage() {
           </Link>
         }
       />
-      <FilterPanel active={status ? 1 : 0} onReset={() => setParams({}, { preventScrollReset: true })}>
-        <SelectField label="렌탈 상태" value={status ?? ""} onChange={(e) => setParams(e.target.value ? { status: e.target.value } : {}, { preventScrollReset: true })}>
+      <FilterPanel active={(status ? 1 : 0) + (problemOnly ? 1 : 0)} onReset={() => setParams({}, { preventScrollReset: true })}>
+        <SelectField label="렌탈 상태" value={status ?? ""} onChange={(e) => setFilter("status", e.target.value)}>
           <option value="">전체</option>
           {Object.entries(RENTAL_STATUS_LABEL).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
           ))}
+        </SelectField>
+        <SelectField label="검사 등급" value={problemOnly ? "1" : ""} onChange={(e) => setFilter("problem", e.target.value)}>
+          <option value="">전체</option>
+          <option value="1">문제 있는 것만 (B·C·D)</option>
         </SelectField>
       </FilterPanel>
       {rentals.isError && (
@@ -84,8 +100,10 @@ export function RentalListPage() {
         />
       )}
       {rentals.isPending && <p className="text-muted-foreground">불러오는 중…</p>}
-      {rentals.isSuccess && items.length === 0 && <p className="text-muted-foreground">렌탈이 없습니다.</p>}
-      {rentals.isSuccess && items.length > 0 && <TotalCount query={rentals} />}
+      {rentals.isSuccess && items.length === 0 && (
+        <p className="text-muted-foreground">{problemOnly ? "지금 문제 있는 렌탈이 없습니다. 지금 시점 등급이 B·C·D인 렌탈만 여기에 보입니다." : "렌탈이 없습니다."}</p>
+      )}
+      {rentals.isSuccess && items.length > 0 && <TotalCount query={rentals} label={problemOnly ? "문제 있는 렌탈 총" : "총"} />}
       <DataTable cols="minmax(110px, 1fr) 1.3fr 1fr 0.7fr 1.5fr 1fr" labels={["시리얼", "기종", "고객", "상태", "지금 시점", "반납 예정·만든 날"]} label="렌탈">
         {items.map((r) => (
           <DataRow key={r.rentalId} label={r.serial} className="grid-cols-1">
