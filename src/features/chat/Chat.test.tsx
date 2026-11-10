@@ -1,10 +1,24 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { renderApp, renderAsAdmin, renderAsCustomer } from "../../test/renderApp";
 import { http, HttpResponse } from "msw";
 import { MOCK_ADMIN } from "../../shared/mocks/db";
 import { server } from "../../shared/mocks/node";
+
+beforeEach(() => window.localStorage.clear());
+
+// jsdom에는 PointerEvent가 없어 clientX가 빠진다. 마우스 이벤트로 대신 만든다
+if (typeof window.PointerEvent === "undefined") {
+  class PointerEventShim extends MouseEvent {
+    pointerId: number;
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 0;
+    }
+  }
+  window.PointerEvent = PointerEventShim as unknown as typeof PointerEvent;
+}
 
 async function openChat() {
   await userEvent.click(await screen.findByRole("button", { name: "TRACE 도우미 열기" }));
@@ -122,4 +136,58 @@ test("세션이 바뀌기 전에 보낸 질문의 답이 바뀐 뒤에 와도 �
   expect(within(reopened).queryByText("앞 계정에게 보낼 늦은 답")).not.toBeInTheDocument();
   expect(within(reopened).queryByText("늦은 질문")).not.toBeInTheDocument();
   expect(within(reopened).getByLabelText("질문")).toHaveValue("");
+});
+
+test("크기 설정에서 도우미 버튼을 크게 고르면 닫은 뒤 버튼이 커지고, 새로 열어도 기억한다", async () => {
+  const first = renderApp("/guide");
+  expect(await screen.findByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-14");
+  expect(localStorage.length).toBe(0);
+  const dialog = await openChat();
+  await userEvent.click(within(dialog).getByRole("button", { name: "크기 설정" }));
+  const group = within(dialog).getByRole("group", { name: "버튼 크기" });
+  await userEvent.click(within(group).getByRole("button", { name: "크게" }));
+  expect(within(group).getByRole("button", { name: "크게" })).toHaveAttribute("aria-pressed", "true");
+  await userEvent.click(within(dialog).getByRole("button", { name: "도우미 닫기" }));
+  expect(screen.getByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-20");
+  first.unmount();
+
+  renderApp("/guide");
+  expect(await screen.findByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-20");
+});
+
+test("왼쪽 위 손잡이를 끌거나 화살표로 움직이면 창 크기가 바뀌고, 되돌리기로 처음 크기가 된다", async () => {
+  renderApp("/guide");
+  const dialog = await openChat();
+  const handle = within(dialog).getByRole("button", { name: "창 크기 조절" });
+  const width = () => dialog.style.getPropertyValue("--chat-w");
+  const height = () => dialog.style.getPropertyValue("--chat-h");
+  expect([width(), height()]).toEqual(["384px", "576px"]);
+
+  fireEvent.pointerDown(handle, { clientX: 500, clientY: 300, pointerId: 1 });
+  fireEvent.pointerMove(handle, { clientX: 400, clientY: 250, pointerId: 1 });
+  fireEvent.pointerUp(handle, { pointerId: 1 });
+  expect([width(), height()]).toEqual(["484px", "626px"]);
+  fireEvent.pointerMove(handle, { clientX: 0, clientY: 0, pointerId: 1 });
+  expect(width()).toBe("484px");
+
+  handle.focus();
+  await userEvent.keyboard("{ArrowRight}{ArrowRight}{ArrowDown}");
+  expect([width(), height()]).toEqual(["420px", "594px"]);
+  await userEvent.keyboard("{ArrowRight>10/}{ArrowDown>20/}");
+  expect([width(), height()]).toEqual(["320px", "360px"]);
+
+  await userEvent.click(within(dialog).getByRole("button", { name: "크기 설정" }));
+  await userEvent.click(within(dialog).getByRole("button", { name: "창 크기 되돌리기" }));
+  expect([width(), height()]).toEqual(["384px", "576px"]);
+  expect(within(dialog).queryByRole("button", { name: "창 크기 되돌리기" })).not.toBeInTheDocument();
+});
+
+test("저장된 창 크기가 깨졌거나 최소보다 작으면 기본값이나 최소 크기로 연다", async () => {
+  localStorage.setItem("trace.chat.size", JSON.stringify({ button: "huge", width: "wide", height: 100 }));
+  renderApp("/guide");
+  const opener = await screen.findByRole("button", { name: "TRACE 도우미 열기" });
+  expect(opener).toHaveClass("size-14");
+  const dialog = await openChat();
+  expect(dialog.style.getPropertyValue("--chat-w")).toBe("384px");
+  expect(dialog.style.getPropertyValue("--chat-h")).toBe("360px");
 });
