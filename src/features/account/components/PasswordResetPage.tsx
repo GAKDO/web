@@ -8,6 +8,7 @@ import { requestPasswordReset, resetPassword } from "../api";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AuthHeading, AuthShell } from "../../../shared/ui/AuthShell";
+import { useAuth } from "../../../shared/auth/AuthProvider";
 
 type Step = "email" | "code" | "done";
 
@@ -26,6 +27,7 @@ function resetMessage(error: unknown): string {
 
 /** 비밀번호 재설정 `/password/reset`(FR-USR-06). 이메일 → 받은 6자리 코드와 새 비밀번호 → 완료 */
 export function PasswordResetPage() {
+  const { clearSession } = useAuth();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -65,6 +67,8 @@ export function PasswordResetPage() {
     setError(null);
     try {
       await resetPassword(email.trim(), code, password);
+      // 로그인한 채(예: 소셜 가입자가 탈퇴 전에) 바꿨으면 이 화면 세션도 끝내, "새 비밀번호로 로그인"이 로그인 폼을 열게 한다
+      clearSession();
       setStep("done");
     } catch (e) {
       setError(resetMessage(e));

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { MessageCircle, SendHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -135,9 +135,9 @@ export function ChatWidget() {
           <h2 className="text-sm font-semibold">TRACE 도우미</h2>
           <p className="text-xs text-muted-foreground">
             AI(Google Gemini)가 답해요. 정확하지 않을 수 있어요.{" "}
-            <a href="/privacy" className="underline underline-offset-2 hover:text-foreground">
+            <Link to="/privacy" className="underline underline-offset-2 hover:text-foreground">
               개인정보처리방침
-            </a>
+            </Link>
           </p>
         </div>
         <button type="button" onClick={close} aria-label="도우미 닫기" className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">

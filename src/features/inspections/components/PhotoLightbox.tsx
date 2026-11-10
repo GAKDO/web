@@ -1,6 +1,7 @@
 import { Button as UiButton } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { PhotoWithDefects, type OverlayDefect } from "./PhotoWithDefects";
 
 export interface LightboxPhoto {
@@ -67,7 +68,8 @@ export function PhotoLightbox({ photos, index, onIndex, onClose }: Props) {
   }, [index, hasPrev, hasNext, onIndex, onClose]);
 
   if (!photo) return null;
-  return (
+  // 조상의 transform·animation이 fixed 기준과 쌓임 순서를 바꾸지 않게 body에 그린다(관리자 아래 탭·챗봇 버튼 위)
+  return createPortal(
     <div
       ref={dialogRef}
       className="fixed inset-0 z-50 grid place-items-center bg-zinc-950/75 p-4 backdrop-blur-[2px]"
@@ -99,6 +101,7 @@ export function PhotoLightbox({ photos, index, onIndex, onClose }: Props) {
           </UiButton>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
