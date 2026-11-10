@@ -42,6 +42,17 @@ export function useInspection(checkpointId: string | undefined) {
   });
 }
 
+/** 반납 정산서(11/10). 반납 시점이 등급을 받은 뒤에만 부른다(그 전에는 서버도 PENDING) */
+export function useSettlement(checkpointId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: [...REPORT, "settlement", checkpointId],
+    queryFn: () =>
+      unwrap(api.GET("/api/v1/captures/checkpoints/{checkpointId}/settlement", { params: { path: { checkpointId: checkpointId ?? "" } } })),
+    enabled: !!checkpointId && enabled,
+    retry: false,
+  });
+}
+
 /** 사진 보기 주소는 10분 뒤 만료된다. 만료 1분 전에 새로 받는다(FR-009) */
 export function mediaRefreshMs(expiresAt: string, now = Date.now()): number {
   return Math.max(5_000, new Date(expiresAt).getTime() - now - 60_000);

@@ -183,6 +183,13 @@ components:
       - C
       - D
       description: codes.yaml inspection.grade
+    InspectionSettlementStatus:
+      type: string
+      enum:
+      - READY
+      - PENDING
+      - NOT_APPLICABLE
+      description: codes.yaml inspection.settlement_status
     DiagnosticsComponentKind:
       type: string
       enum:

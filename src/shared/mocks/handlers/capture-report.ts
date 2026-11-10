@@ -1,12 +1,26 @@
 import { http, HttpResponse } from "msw";
 import { nanoid } from "nanoid";
-import type { DefectReview, DefectReviewQueueItem, DefectReviewRequest, HumanDefectRequest, Inspection, InspectionReview, PhotoDefect } from "../../api/types";
+import type { Settlement, DefectReview, DefectReviewQueueItem, DefectReviewRequest, HumanDefectRequest, Inspection, InspectionReview, PhotoDefect } from "../../api/types";
 import { accountFromRequest, db } from "../db";
 import { problem } from "./problem";
 import { rentalDenied, rentalOfCheckpoint } from "./report";
 
 // WE3 리포트가 로그인 JWT로 읽는 capture-server 검사 결과·사진 보기 주소 목(WE2의 촬영 목과 따로 둔다)
 export const captureReportHandlers = [
+  // 반납 정산서(11/10). 목은 검사 결과가 있으면 찍힘 하나짜리 예시, 없으면 계산 전(PENDING)
+  http.get("*/api/v1/captures/checkpoints/:checkpointId/settlement", ({ request, params }) => {
+    const checkpointId = String(params.checkpointId);
+    const no = rentalDenied(request, rentalOfCheckpoint(checkpointId));
+    if (no) return no;
+    const graded = db.report.inspections.get(checkpointId)?.grade;
+    const base = { checkpointId, checkpointType: "RET", ruleVersion: "settlement-rules-v1", currency: "KRW", cap: 300000 } as const;
+    const body: Settlement = graded
+      ? { ...base, status: "READY", grade: graded, subtotal: 30000, total: 30000, notes: ["빠른 검사라 위치 대신 면·종류별 흠집 수가 앞 시점보다 늘어난 만큼만 신규로 계산"],
+          lines: [{ defectId: `${checkpointId}-d1`, face: "TOP", class: "dent", lengthMm: 3.2, areaMm2: 6.1, amount: 30000, rule: "찍힘 5mm 미만" }] }
+      : { ...base, status: "PENDING", grade: null, lines: [], subtotal: 0, total: 0, notes: ["검수·등급이 끝나면 계산됩니다"] };
+    return HttpResponse.json(body);
+  }),
+
   http.get("*/api/v1/captures/checkpoints/:checkpointId/inspection", ({ request, params }) => {
     const checkpointId = String(params.checkpointId);
     const no = rentalDenied(request, rentalOfCheckpoint(checkpointId));
