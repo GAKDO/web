@@ -29,7 +29,10 @@ export function SocialLoginButtons({ next }: { next: string }) {
       </div>
       <p className="m-0 mt-2 text-xs text-zinc-400">
         처음 로그인하면 그 계정의 이메일로 TRACE 회원가입이 되고, 이메일·이름 수집·이용에 동의한 것으로 봅니다. 같은 이메일로 가입한 계정이
-        있으면 그 계정으로 로그인됩니다.
+        있으면 그 계정으로 로그인됩니다.{" "}
+        <a href="/privacy" className="underline underline-offset-2 hover:text-zinc-200">
+          개인정보처리방침
+        </a>
       </p>
       <AuthDivider>또는 이메일로 로그인</AuthDivider>
     </section>

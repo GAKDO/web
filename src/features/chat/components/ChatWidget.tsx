@@ -133,7 +133,12 @@ export function ChatWidget() {
       <header className="flex items-center justify-between border-b px-4 py-3">
         <div>
           <h2 className="text-sm font-semibold">TRACE 도우미</h2>
-          <p className="text-xs text-muted-foreground">AI가 답해요. 정확하지 않을 수 있어요.</p>
+          <p className="text-xs text-muted-foreground">
+            AI(Google Gemini)가 답해요. 정확하지 않을 수 있어요.{" "}
+            <a href="/privacy" className="underline underline-offset-2 hover:text-foreground">
+              개인정보처리방침
+            </a>
+          </p>
         </div>
         <button type="button" onClick={close} aria-label="도우미 닫기" className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
           <X aria-hidden="true" className="size-5" />
