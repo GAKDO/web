@@ -43,8 +43,10 @@ function read(): ChatSize {
     if (!raw) return DEFAULT;
     const v = JSON.parse(raw) as Partial<ChatSize>;
     const button = BUTTON_SIZES.some((b) => b.value === v.button) ? (v.button as ButtonSize) : DEFAULT.button;
-    const width = typeof v.width === "number" ? v.width : DEFAULT.width;
-    const height = typeof v.height === "number" ? v.height : DEFAULT.height;
+    // 손으로 고쳤거나 깨진 값은 기본값으로, 최소보다 작은 값은 최소로. 큰 값은 CSS가 화면에 맞게 줄인다
+    const valid = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
+    const width = valid(v.width) ? Math.max(MIN_PANEL.width, v.width) : DEFAULT.width;
+    const height = valid(v.height) ? Math.max(MIN_PANEL.height, v.height) : DEFAULT.height;
     return { button, width, height };
   } catch {
     return DEFAULT;

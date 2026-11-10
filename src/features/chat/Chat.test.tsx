@@ -181,3 +181,13 @@ test("왼쪽 위 손잡이를 끌거나 화살표로 움직이면 창 크기가 
   expect([width(), height()]).toEqual(["384px", "576px"]);
   expect(within(dialog).queryByRole("button", { name: "창 크기 되돌리기" })).not.toBeInTheDocument();
 });
+
+test("저장된 창 크기가 깨졌거나 최소보다 작으면 기본값이나 최소 크기로 연다", async () => {
+  localStorage.setItem("trace.chat.size", JSON.stringify({ button: "huge", width: "wide", height: 100 }));
+  renderApp("/guide");
+  const opener = await screen.findByRole("button", { name: "TRACE 도우미 열기" });
+  expect(opener).toHaveClass("size-14");
+  const dialog = await openChat();
+  expect(dialog.style.getPropertyValue("--chat-w")).toBe("384px");
+  expect(dialog.style.getPropertyValue("--chat-h")).toBe("360px");
+});
