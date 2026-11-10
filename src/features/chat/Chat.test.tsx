@@ -141,6 +141,7 @@ test("세션이 바뀌기 전에 보낸 질문의 답이 바뀐 뒤에 와도 �
 test("크기 설정에서 도우미 버튼을 크게 고르면 닫은 뒤 버튼이 커지고, 새로 열어도 기억한다", async () => {
   const first = renderApp("/guide");
   expect(await screen.findByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-14");
+  expect(localStorage.length).toBe(0);
   const dialog = await openChat();
   await userEvent.click(within(dialog).getByRole("button", { name: "크기 설정" }));
   const group = within(dialog).getByRole("group", { name: "버튼 크기" });

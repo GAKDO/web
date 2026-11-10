@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /** 도우미 버튼 크기. 사용자가 창 머리에서 고른다 */
 export type ButtonSize = "sm" | "md" | "lg";
@@ -51,21 +51,33 @@ function read(): ChatSize {
   }
 }
 
-/** 도우미 버튼 크기와 창 크기. 이 브라우저에 기억해 다음에 열어도 그대로다 */
+function write(size: ChatSize) {
+  try {
+    window.localStorage.setItem(KEY, JSON.stringify(size));
+  } catch {
+    // 저장하지 못해도 이번 화면에서는 그대로 쓴다
+  }
+}
+
+/**
+ * 도우미 버튼 크기와 창 크기. 사용자가 바꿀 때만 이 브라우저에 기억해 다음에 열어도 그대로다
+ * (바꾸지 않은 사람의 저장소에는 아무것도 쓰지 않는다)
+ */
 export function useChatSize() {
   const [size, setSize] = useState<ChatSize>(read);
+  const changed = useRef(false);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(KEY, JSON.stringify(size));
-    } catch {
-      // 저장하지 못해도 이번 화면에서는 그대로 쓴다
-    }
+    if (changed.current) write(size);
   }, [size]);
 
-  const setButton = useCallback((button: ButtonSize) => setSize((s) => ({ ...s, button })), []);
-  const setPanel = useCallback((width: number, height: number) => setSize((s) => ({ ...s, ...clampPanel(width, height) })), []);
-  const resetPanel = useCallback(() => setSize((s) => ({ ...s, ...DEFAULT_PANEL })), []);
+  const update = useCallback((patch: Partial<ChatSize>) => {
+    changed.current = true;
+    setSize((s) => ({ ...s, ...patch }));
+  }, []);
+  const setButton = useCallback((button: ButtonSize) => update({ button }), [update]);
+  const setPanel = useCallback((width: number, height: number) => update(clampPanel(width, height)), [update]);
+  const resetPanel = useCallback(() => update({ ...DEFAULT_PANEL }), [update]);
 
   return { size, setButton, setPanel, resetPanel };
 }
