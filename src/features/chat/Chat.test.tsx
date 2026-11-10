@@ -138,16 +138,14 @@ test("세션이 바뀌기 전에 보낸 질문의 답이 바뀐 뒤에 와도 �
   expect(within(reopened).getByLabelText("질문")).toHaveValue("");
 });
 
-test("도우미 버튼은 크기 설정 없이 늘 크게 보이고, 크기 설정에는 버튼 크기 고르기가 없다", async () => {
+test("도우미 버튼은 늘 보통 크기로 보이고, 창 머리에는 크기 설정 버튼이 없다", async () => {
   renderApp("/guide");
-  expect(await screen.findByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-20");
+  expect(await screen.findByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-14");
   const dialog = await openChat();
-  await userEvent.click(within(dialog).getByRole("button", { name: "크기 설정" }));
-  expect(within(dialog).queryByRole("group", { name: "버튼 크기" })).not.toBeInTheDocument();
-  expect(within(dialog).getByText("창 크기는 왼쪽 위 모서리를 끌어서 바꿔요.")).toBeInTheDocument();
+  expect(within(dialog).queryByRole("button", { name: "크기 설정" })).not.toBeInTheDocument();
 });
 
-test("왼쪽 위 손잡이를 끌거나 화살표로 움직이면 창 크기가 바뀌고, 되돌리기로 처음 크기가 된다", async () => {
+test("왼쪽 위 손잡이를 끌거나 화살표로 움직이면 창 크기가 바뀌고, 두 번 누르면 처음 크기가 된다", async () => {
   renderApp("/guide");
   const dialog = await openChat();
   const handle = within(dialog).getByRole("button", { name: "창 크기 조절" });
@@ -168,16 +166,14 @@ test("왼쪽 위 손잡이를 끌거나 화살표로 움직이면 창 크기가 
   await userEvent.keyboard("{ArrowRight>10/}{ArrowDown>20/}");
   expect([width(), height()]).toEqual(["320px", "360px"]);
 
-  await userEvent.click(within(dialog).getByRole("button", { name: "크기 설정" }));
-  await userEvent.click(within(dialog).getByRole("button", { name: "창 크기 되돌리기" }));
+  await userEvent.dblClick(handle);
   expect([width(), height()]).toEqual(["384px", "576px"]);
-  expect(within(dialog).queryByRole("button", { name: "창 크기 되돌리기" })).not.toBeInTheDocument();
 });
 
 test("저장된 창 크기가 깨졌거나 최소보다 작으면 기본값이나 최소 크기로 연다", async () => {
   localStorage.setItem("trace.chat.size", JSON.stringify({ button: "huge", width: "wide", height: 100 }));
   renderApp("/guide");
-  expect(await screen.findByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-20");
+  expect(await screen.findByRole("button", { name: "TRACE 도우미 열기" })).toHaveClass("size-14");
   const dialog = await openChat();
   expect(dialog.style.getPropertyValue("--chat-w")).toBe("384px");
   expect(dialog.style.getPropertyValue("--chat-h")).toBe("360px");

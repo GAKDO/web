@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent, type PointerEvent } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { MessageCircle, MoveDiagonal, SendHorizontal, Settings2, X } from "lucide-react";
+import { MessageCircle, MoveDiagonal, SendHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "../../../shared/api/client";
 import { useAuth } from "../../../shared/auth/AuthProvider";
 import type { ChatMessage } from "../../../shared/api/types";
 import { askChat, MAX_CONTENT } from "../api/askChat";
-import { DEFAULT_PANEL, useChatSize } from "../hooks/useChatSize";
+import { useChatSize } from "../hooks/useChatSize";
 
 /** 관리자·부스 태블릿·폰 촬영 화면에는 띄우지 않는다(작업 화면을 가리지 않게) */
 const HIDDEN_PREFIXES = ["/admin", "/booth", "/capture"];
@@ -44,7 +44,6 @@ export function ChatWidget() {
   const input = useRef<HTMLTextAreaElement>(null);
   const opener = useRef<HTMLButtonElement>(null);
   const { size, setPanel, resetPanel } = useChatSize();
-  const [showSettings, setShowSettings] = useState(false);
   const drag = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
 
   // 로그인·로그아웃으로 세션이 바뀌면(로그아웃 없이 다른 계정으로 로그인해도) 대화를 비운다. 앞 계정의 내 렌탈 답이
@@ -152,7 +151,6 @@ export function ChatWidget() {
     e.preventDefault();
     setPanel(size.width + d[0], size.height + d[1]);
   }
-  const resized = size.width !== DEFAULT_PANEL.width || size.height !== DEFAULT_PANEL.height;
 
   if (!open) {
     return (
@@ -161,9 +159,9 @@ export function ChatWidget() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="TRACE 도우미 열기"
-        className="fixed right-4 bottom-4 z-40 inline-flex size-20 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+        className="fixed right-4 bottom-4 z-40 inline-flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
       >
-        <MessageCircle aria-hidden="true" className="size-9" />
+        <MessageCircle aria-hidden="true" className="size-6" />
       </button>
     );
   }
@@ -201,32 +199,11 @@ export function ChatWidget() {
           </p>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setShowSettings((v) => !v)}
-            aria-label="크기 설정"
-            aria-expanded={showSettings}
-            aria-controls="chat-size-settings"
-            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <Settings2 aria-hidden="true" className="size-5" />
-          </button>
           <button type="button" onClick={close} aria-label="도우미 닫기" className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
             <X aria-hidden="true" className="size-5" />
           </button>
         </div>
       </header>
-
-      {showSettings && (
-        <div id="chat-size-settings" className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-2 text-xs">
-          <p className="text-muted-foreground">창 크기는 왼쪽 위 모서리를 끌어서 바꿔요.</p>
-          {resized && (
-            <button type="button" onClick={resetPanel} className="underline underline-offset-2 hover:text-foreground">
-              창 크기 되돌리기
-            </button>
-          )}
-        </div>
-      )}
 
       <ol ref={list} aria-label="대화" aria-live="polite" className="flex min-h-48 flex-1 flex-col gap-2 overflow-y-auto px-4 py-3 text-sm">
         <li className="max-w-[85%] self-start rounded-2xl rounded-bl-sm bg-muted px-3 py-2 whitespace-pre-wrap">{GREETING}</li>
