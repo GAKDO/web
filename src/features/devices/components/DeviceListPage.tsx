@@ -16,6 +16,8 @@ import { useDeviceModels, useDevices } from "../api/devices";
 import { TotalCount } from "../../../shared/ui/TotalCount";
 import { DeviceEditor } from "./DeviceEditor";
 import { StatusMenu } from "./StatusMenu";
+import { DeleteButton } from "../../../shared/ui/DeleteButton";
+import { useDeleteDevice } from "../api/devices";
 import { DataActions, DataCells, DataDetail, DataRow, DataTable } from "../../../shared/ui/DataTable";
 import { InfoList } from "../../../shared/ui/InfoList";
 import { PageHeader } from "../../../shared/ui/PageHeader";
@@ -80,6 +82,7 @@ function DeviceCard({ device }: { device: Device }) {
                 <Link className={buttonVariants({ variant: "outline" })} to={`/admin/devices/${device.deviceId}`}>
                   렌탈 이력
                 </Link>
+                <DeleteDevice device={device} />
               </div>
             </>
           )}
@@ -159,4 +162,17 @@ export function DeviceListPage() {
       <Pager paged={paged} label="기기" />
     </section>
   );
+}
+
+/**
+ * 기기 지우기(11/10). 시험 기기(TEST-)는 렌탈·검사 기록까지 함께 지워진다.
+ * 실제 기기는 렌탈 이력이 없을 때만 지워지고, 있으면 서버가 막아 "폐기로 바꿔 주세요"를 보인다
+ */
+function DeleteDevice({ device }: { device: Device }) {
+  const remove = useDeleteDevice();
+  const test = device.serial.startsWith("TEST-");
+  const confirm = test
+    ? "이 시험 기기를 지울까요? 이 기기의 렌탈과 검사 사진·기록도 모두 함께 지워지고 되돌릴 수 없습니다."
+    : "이 기기를 지울까요? 렌탈 이력이 없는 기기만 지워지며 되돌릴 수 없습니다.";
+  return <DeleteButton label="기기 지우기" confirm={confirm} busy={remove.isPending} onDelete={() => remove.mutateAsync(device.deviceId)} />;
 }

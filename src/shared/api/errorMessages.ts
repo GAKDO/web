@@ -39,6 +39,8 @@ const MESSAGES: Record<ErrorCode, string> = {
   DEVICE_STATUS_TRANSITION_INVALID: "폐기한 기기는 바로 사용 가능으로 바꿀 수 없습니다. 먼저 수리 중으로 되돌리세요.",
   PILOT_ALIAS_EXISTS: "이미 있는 파일럿 별칭입니다.",
   NOT_TEST_DATA: "시험 데이터(시리얼 TEST-)만 지울 수 있습니다.",
+  DEVICE_IN_USE: "렌탈 이력이 있는 기기는 지울 수 없습니다. 폐기로 바꿔 주세요.",
+  DEVICE_MODEL_IN_USE: "이 기종으로 등록된 기기가 있어 지울 수 없습니다. 기기를 먼저 지워 주세요.",
   BOOTH_CODE_INVALID: "부스 코드가 맞지 않습니다.",
   BOOTH_CODE_EXPIRED: "부스 코드가 만료됐거나 이미 쓰였습니다. 새로 발급하세요.",
   CAPTURE_FACES_MISSING: "빠진 면이 있습니다.",

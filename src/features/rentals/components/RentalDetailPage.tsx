@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, RefreshCw } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { CheckpointType, Rental } from "../../../shared/api/types";
 import { ApiError } from "../../../shared/api/problem";
 import { messageFor } from "../../../shared/api/errorMessages";
@@ -15,7 +15,8 @@ import { isArchived } from "../../../shared/config/features";
 import { Button } from "../../../shared/ui/Button";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
-import { useCloseRental, useRental, useStartCheckpoint } from "../api/rentals";
+import { useCloseRental, useDeleteTestRental, useRental, useStartCheckpoint } from "../api/rentals";
+import { DeleteButton } from "../../../shared/ui/DeleteButton";
 import { useRentalLive, type LiveState } from "../api/useRentalLive";
 import { nextAction } from "../nextAction";
 import { BoothIdsPanel } from "./BoothIdsPanel";
@@ -141,6 +142,22 @@ function LiveBadge({ state }: { state: LiveState }) {
   );
 }
 
+/** 시험 렌탈 지우기. 지우면 목록으로 돌아간다 */
+function DeleteTestRental({ rentalId }: { rentalId: string }) {
+  const remove = useDeleteTestRental(rentalId);
+  const navigate = useNavigate();
+  return (
+    <div className="mt-6 border-t pt-4">
+      <DeleteButton
+        label="시험 렌탈 지우기"
+        confirm="이 시험 렌탈을 지울까요? 출고·수령·반납 시점과 검사 사진·기록·리포트가 모두 함께 지워지고 되돌릴 수 없습니다. 이 기기의 마지막 렌탈이면 기기도 함께 지워집니다."
+        busy={remove.isPending}
+        onDelete={() => remove.mutateAsync().then(() => navigate("/admin/rentals", { replace: true }))}
+      />
+    </div>
+  );
+}
+
 export function RentalDetailPage() {
   const { rentalId = "" } = useParams();
   const hint = (useLocation().state as { serial?: string } | null)?.serial;
@@ -250,6 +267,8 @@ export function RentalDetailPage() {
           )}
         </div>
       )}
+      {/* 시험 렌탈 지우기(11/10 민서 요청). 실제 렌탈은 검사 기록·봉인 증거라 지우지 않고, 시리얼 TEST- 기기만 보인다 */}
+      {serial?.startsWith("TEST-") && <DeleteTestRental rentalId={data.rentalId} />}
       {asking && (
         <ConfirmDialog
           message="이 렌탈을 종료할까요? 종료한 렌탈은 다시 열 수 없습니다."

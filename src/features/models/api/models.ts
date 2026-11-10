@@ -26,3 +26,12 @@ export function useUpsertDeviceModel() {
     },
   });
 }
+
+/** 기종 지우기(11/10). 이 기종으로 등록된 기기가 있으면 409 DEVICE_MODEL_IN_USE */
+export function useDeleteDeviceModel() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (modelCode: string) => unwrap(api.DELETE("/api/v1/device-models/{modelCode}", { params: { path: { modelCode } } })),
+    onSuccess: () => void client.invalidateQueries({ queryKey: MODELS }),
+  });
+}

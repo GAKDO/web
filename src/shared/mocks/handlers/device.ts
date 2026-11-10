@@ -73,6 +73,32 @@ export const deviceHandlers = [
     return HttpResponse.json(device);
   }),
 
+  // 기기 지우기(11/10): 시험 기기(TEST-)는 렌탈까지 함께, 실제 기기는 렌탈 이력이 없을 때만
+  http.delete("*/api/v1/devices/:deviceId", ({ request, params }) => {
+    const no = denied(request);
+    if (no) return no;
+    const device = db.devices.find((d) => d.deviceId === params.deviceId);
+    if (!device) return problem(404, "NOT_FOUND", "기기가 없습니다");
+    const used = db.rentals.some((r) => r.deviceId === device.deviceId);
+    if (used && !device.serial.startsWith("TEST-")) {
+      return problem(409, "DEVICE_IN_USE", "이력이 있는 기기는 지울 수 없습니다", "렌탈 이력이 있는 기기는 지울 수 없습니다. 폐기로 바꿔 주세요.");
+    }
+    db.rentals = db.rentals.filter((r) => r.deviceId !== device.deviceId);
+    db.devices = db.devices.filter((d) => d.deviceId !== device.deviceId);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.delete("*/api/v1/device-models/:modelCode", ({ request, params }) => {
+    const no = denied(request);
+    if (no) return no;
+    const modelCode = String(params.modelCode);
+    if (!db.models.some((m) => m.modelCode === modelCode)) return problem(404, "NOT_FOUND", "기종이 없습니다");
+    const count = db.devices.filter((d) => d.modelCode === modelCode).length;
+    if (count > 0) return problem(409, "DEVICE_MODEL_IN_USE", "기기가 등록된 기종은 지울 수 없습니다", `이 기종으로 등록된 기기 ${count}대를 먼저 지워 주세요.`);
+    db.models = db.models.filter((m) => m.modelCode !== modelCode);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.get("*/api/v1/device-models", ({ request }) => {
     const no = denied(request);
     if (no) return no;

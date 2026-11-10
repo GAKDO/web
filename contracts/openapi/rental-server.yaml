@@ -843,6 +843,43 @@ paths:
                     status: 409
                     code: DEVICE_STATUS_TRANSITION_INVALID
                     detail: 수리 중으로 바꿔 점검한 뒤 사용 가능으로 바꿔 주세요.
+    delete:
+      tags: [기기]
+      operationId: deleteDevice
+      summary: 기기 지우기
+      description: >-
+        잘못 등록했거나 시험용으로 만든 기기를 지운다(11/10 민서 요청). 렌탈·파일럿 참가 이력이 없는 기기만 지운다.
+        시리얼이 `TEST-`로 시작하는 시험 기기는 그 기기의 렌탈도 시험 렌탈 지우기(deleteTestRental)와 같은 방식으로
+        함께 지운다(시점마다 trace.checkpoint.purged). 실제 기기에 렌탈 이력이 있으면 검사 기록·봉인 증거가 그 렌탈에
+        묶여 있으므로 지우지 않고 409 DEVICE_IN_USE를 돌려준다(폐기로 바꿔 두면 된다).
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RNT-01]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      responses:
+        '204':
+          description: 지움
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '409':
+          description: 렌탈·파일럿 참가 이력이 있는 기기
+          x-trace-error-codes: [DEVICE_IN_USE]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 이력이 있는 기기는 지울 수 없습니다
+                status: 409
+                code: DEVICE_IN_USE
+                detail: 렌탈 이력이 있는 기기는 지울 수 없습니다. 폐기로 바꿔 주세요.
   /api/v1/device-models:
     get:
       tags: [기종]
@@ -998,6 +1035,41 @@ paths:
           $ref: './components/common.yaml#/components/responses/Unauthorized'
         '403':
           $ref: './components/common.yaml#/components/responses/Forbidden'
+    delete:
+      tags: [기종]
+      operationId: deleteDeviceModel
+      summary: 기종 지우기
+      description: >-
+        잘못 등록했거나 시험용으로 만든 기종을 지운다(11/10 민서 요청). 이 기종으로 등록된 기기가 하나라도 있으면
+        409 DEVICE_MODEL_IN_USE(기기를 먼저 지우거나 다른 기종으로 옮긴다). (FR-RNT-03)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RNT-03]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      responses:
+        '204':
+          description: 지움
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '409':
+          description: 이 기종으로 등록된 기기가 있음
+          x-trace-error-codes: [DEVICE_MODEL_IN_USE]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 기기가 등록된 기종은 지울 수 없습니다
+                status: 409
+                code: DEVICE_MODEL_IN_USE
+                detail: 이 기종으로 등록된 기기 1대를 먼저 지워 주세요.
   /api/v1/pilot/participants:
     post:
       tags: [파일럿]

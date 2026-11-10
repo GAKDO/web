@@ -173,6 +173,18 @@ export const rentalHandlers = [
     );
   }),
 
+  http.delete("*/api/v1/rentals/:rentalId", ({ request, params }) => {
+    const no = denied(request);
+    if (no) return no;
+    const rental = db.rentals.find((r) => r.rentalId === params.rentalId);
+    if (!rental) return problem(404, "NOT_FOUND", "렌탈이 없습니다");
+    const device = db.devices.find((d) => d.deviceId === rental.deviceId);
+    if (!device?.serial.startsWith("TEST-")) return problem(409, "NOT_TEST_DATA", "시험 데이터만 지울 수 있습니다");
+    db.rentals = db.rentals.filter((r) => r.rentalId !== rental.rentalId);
+    if (!db.rentals.some((r) => r.deviceId === device.deviceId)) db.devices = db.devices.filter((d) => d.deviceId !== device.deviceId);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.post("*/api/v1/rentals/:rentalId/close", ({ request, params }) => {
     const no = denied(request);
     if (no) return no;

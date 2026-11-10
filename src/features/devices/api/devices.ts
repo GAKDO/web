@@ -67,3 +67,15 @@ export function useCreateDevice() {
     onSuccess: () => client.invalidateQueries({ queryKey: DEVICES }),
   });
 }
+
+/** 기기 지우기(11/10). 이력 없는 기기·TEST- 시험 기기만 지워지고, 아니면 409 DEVICE_IN_USE */
+export function useDeleteDevice() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (deviceId: string) => unwrap(api.DELETE("/api/v1/devices/{deviceId}", { params: { path: { deviceId } } })),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: DEVICES });
+      void client.invalidateQueries({ queryKey: ["rentals"] });
+    },
+  });
+}
