@@ -2,6 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { renderApp, renderAsAdmin, renderAsCustomer } from "../../test/renderApp";
+import { MOCK_ADMIN } from "../../shared/mocks/db";
 
 async function openChat() {
   await userEvent.click(await screen.findByRole("button", { name: "TRACE 도우미 열기" }));
@@ -75,4 +76,22 @@ test("관리자 화면에는 도우미 버튼을 띄우지 않는다", async () 
   renderAsAdmin("/admin/devices");
   expect(await screen.findByRole("heading", { level: 1 })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "TRACE 도우미 열기" })).not.toBeInTheDocument();
+});
+
+test("로그아웃 없이 다른 계정으로 로그인해도 앞 계정의 대화를 지운다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "phoneCapture,diagnostics,report,pilot");
+  const { router } = renderAsCustomer("/guide");
+  const dialog = await openChat();
+  await userEvent.type(within(dialog).getByLabelText("질문"), "내 렌탈{Enter}");
+  expect(await within(dialog).findByText(/\[로그인\] 대화 1개/)).toBeInTheDocument();
+  await userEvent.click(within(dialog).getByRole("button", { name: "도우미 닫기" }));
+  await router.navigate("/admin/login");
+  await userEvent.type(await screen.findByLabelText("이메일"), MOCK_ADMIN.email);
+  await userEvent.type(screen.getByLabelText("비밀번호"), MOCK_ADMIN.password);
+  await userEvent.click(screen.getByRole("button", { name: "로그인" }));
+  await vi.waitFor(() => expect(router.state.location.pathname).toBe("/admin/devices"));
+  await router.navigate("/guide");
+  const reopened = await openChat();
+  expect(within(reopened).queryByText(/\[로그인\]/)).not.toBeInTheDocument();
+  vi.unstubAllEnvs();
 });

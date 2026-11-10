@@ -36,10 +36,10 @@ export function ChatWidget() {
   const input = useRef<HTMLTextAreaElement>(null);
   const opener = useRef<HTMLButtonElement>(null);
 
-  // 로그인·로그아웃으로 세션이 바뀌면 대화를 비운다. 앞 계정의 내 렌탈 답이 다음 사람에게 보이거나
-  // 다음 요청에 섞여 가지 않게 하고, 바뀌기 전에 보낸 요청의 답은 세대 번호로 버린다
-  const { status } = useAuth();
-  const session = status === "unknown" ? null : status;
+  // 로그인·로그아웃으로 세션이 바뀌면(로그아웃 없이 다른 계정으로 로그인해도) 대화를 비운다. 앞 계정의 내 렌탈 답이
+  // 다음 사람에게 보이거나 다음 요청에 섞여 가지 않게 하고, 바뀌기 전에 보낸 요청의 답은 세대 번호로 버린다
+  const { status, sessionId } = useAuth();
+  const session = status === "unknown" ? null : `${status}:${sessionId}`;
   const lastSession = useRef(session);
   const generation = useRef(0);
 

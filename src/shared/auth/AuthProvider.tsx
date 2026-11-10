@@ -17,6 +17,8 @@ const isSessionRole = (role: TokenRole | undefined): role is SessionRole => !!ro
 interface AuthValue {
   status: AuthStatus;
   role: SessionRole | null;
+  /** 로그인·로그아웃 때마다 1씩 오른다(토큰 다시 받기로는 바뀌지 않음). 로그아웃 없이 다른 계정으로 바꿔도 화면이 알아챈다 */
+  sessionId: number;
   notice: AuthNotice;
   /** expected와 다른 역할이면 로그아웃하고 notice로 알린다. 기본은 관리자(WE1). "ANY"면 관리자·고객 모두 받는다(통합 로그인) */
   login(email: string, password: string, expected?: SessionRole | "ANY"): Promise<void>;
@@ -33,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("unknown");
   const [role, setRole] = useState<SessionRole | null>(null);
   const [notice, setNotice] = useState<AuthNotice>(null);
+  const [sessionId, setSessionId] = useState(0);
 
   const endSession = useCallback(
     (next: AuthNotice) => {
@@ -42,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.clear();
       setNotice(next);
       setRole(null);
+      setSessionId((n) => n + 1);
       setStatus("anonymous");
     },
     [queryClient],
@@ -97,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setNotice(null);
       setRole(token.role);
+      setSessionId((n) => n + 1);
       setStatus("authenticated");
     },
     [logout, queryClient],
@@ -104,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearSession = useCallback(() => endSession(null), [endSession]);
 
-  const value = useMemo(() => ({ status, role, notice, login, logout, clearSession }), [status, role, notice, login, logout, clearSession]);
+  const value = useMemo(() => ({ status, role, sessionId, notice, login, logout, clearSession }), [status, role, sessionId, notice, login, logout, clearSession]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
