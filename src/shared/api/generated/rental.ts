@@ -333,7 +333,7 @@ export interface components {
             dueAt?: components["schemas"]["DueDate"] | null;
             note?: components["schemas"]["RentalNote"] | null;
         };
-        /** @description 고객(대여자) 이름 또는 고객사 이름(11/10 추가, 선택). 개인정보라 관리자·본인에게만 보인다. 앞뒤 공백은 서버가 지운다 */
+        /** @description 고객(대여자) 이름 또는 고객사 이름(11/10 추가, 선택). 개인정보다. 목록(RentalSummary)은 ADMIN에게만, 상세(Rental)는 ADMIN과 본인에게 보인다. 앞뒤 공백은 서버가 지운다 */
         CustomerName: string;
         /**
          * Format: date
