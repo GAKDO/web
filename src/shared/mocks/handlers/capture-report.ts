@@ -15,7 +15,7 @@ export const captureReportHandlers = [
     const graded = db.report.inspections.get(checkpointId)?.grade;
     const base = { checkpointId, checkpointType: "RET", ruleVersion: "settlement-rules-v1", currency: "KRW", cap: 300000 } as const;
     const body: Settlement = graded
-      ? { ...base, status: "READY", grade: graded, subtotal: 30000, total: 30000, notes: ["위치 비교 대신 면·종류별 흠집 수가 앞 시점보다 늘어난 만큼만 신규로 계산"],
+      ? { ...base, status: "READY", grade: graded, subtotal: 30000, total: 30000, notes: ["위치 비교 대신 면·종류별 흠집 수가 앞 시점보다 늘어난 만큼만, 그 면·종류에서 작은 흠집부터 신규로 계산"],
           lines: [{ defectId: `${checkpointId}-d1`, face: "TOP", class: "dent", lengthMm: 3.2, areaMm2: 6.1, amount: 30000, rule: "찍힘 5mm 미만" }] }
       : { ...base, status: "PENDING", grade: null, lines: [], subtotal: 0, total: 0, notes: ["검수·등급이 끝나면 계산됩니다"] };
     return HttpResponse.json(body);
