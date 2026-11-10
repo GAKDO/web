@@ -109,7 +109,15 @@ function Table({ rows, sort, dir, onSort }: { rows: CatalogRow[]; sort: SortKey;
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.device.deviceId} onClick={() => navigate(`/devices/${row.device.deviceId}`)} className="cursor-pointer border-b last:border-b-0 hover:bg-muted/40">
+            <tr
+              key={row.device.deviceId}
+              onClick={(e) => {
+                // 이름 링크를 누른 경우(⌘·Ctrl 새 탭 열기 포함)는 링크가 처리한다. 두 번 이동해 기록이 겹치지 않게
+                if ((e.target as HTMLElement).closest("a,button")) return;
+                navigate(`/devices/${row.device.deviceId}`);
+              }}
+              className="cursor-pointer border-b last:border-b-0 hover:bg-muted/40"
+            >
               <td className="px-3 py-2.5">
                 <DeviceName row={row} />
               </td>
