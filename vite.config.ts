@@ -15,8 +15,8 @@ export default defineConfig({
     proxy: {
       "/api": process.env.VITE_DEV_API ?? "http://localhost:8080",
       // 진단 에이전트 설치 스크립트(nginx.conf의 /agent.sh·/agent.ps1과 같은 GitHub 원본)
-      "/agent.sh": { target: "https://raw.githubusercontent.com", changeOrigin: true, rewrite: () => "/GAKDO/agent/develop/install/agent.sh" },
-      "/agent.ps1": { target: "https://raw.githubusercontent.com", changeOrigin: true, rewrite: () => "/GAKDO/agent/develop/install/agent.ps1" },
+      "/agent.sh": { target: "https://raw.githubusercontent.com", changeOrigin: true, rewrite: () => "/GAKDO/agent/v0.2.0/install/agent.sh" },
+      "/agent.ps1": { target: "https://raw.githubusercontent.com", changeOrigin: true, rewrite: () => "/GAKDO/agent/v0.2.0/install/agent.ps1" },
     },
   },
   test: {
