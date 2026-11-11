@@ -31,6 +31,18 @@ export function profileFor(modelCode: string | null | undefined): LaptopProfile 
 }
 
 const OPEN_DEG = 110;
+/** 화면 판과 덮개 안쪽 면 사이(mm). 눈에 띄지 않을 만큼 얇되 깊이 버퍼가 구분할 만큼은 띄운다 */
+const SCREEN_GAP = 0.35;
+/** 키보드 바닥판·트랙패드를 본체 윗면에서 띄우는 거리(mm). 같은 이유로 0.03~0.04mm에서 키웠다 */
+const SURFACE_GAP = 0.15;
+
+/**
+ * 3D 카메라의 가까운 면(near). 1mm로 두면 수백 mm 밖에서 깊이 정밀도가 크게 떨어져 겹친 면이 깨져 보인다.
+ * OrbitControls minDistance(큰 변의 0.55배)로 옆에서 가장 가까이 다가가도 옆면까지 약 15mm 남아 잘리지 않는다
+ */
+export function cameraNear(sizeMm: number): number {
+  return Math.max(1, sizeMm * 0.02);
+}
 
 /** 둥근 사각형(가운데가 원점) 윤곽 */
 function roundedRect(w: number, h: number, r: number): THREE.Shape {
@@ -238,7 +250,7 @@ export function LaptopModel({ dimensions: d, color, profile, lidOpen = true, sha
       let z = kbZ0 + (k.row + 0.5) * pitchZ;
       if (k.half === "up") z -= full / 4 + gap / 8;
       if (k.half === "down") z += full / 4 + gap / 8;
-      return { geo: geoFor(w, h), position: [x, bh / 2 + keyH / 2 + 0.05, z] as [number, number, number] };
+      return { geo: geoFor(w, h), position: [x, bh / 2 + keyH / 2 + 0.2, z] as [number, number, number] };
     });
     const well = new THREE.ShapeGeometry(roundedRect(kbW + gap * 1.6, pitchZ * 6 + gap * 1.6, 2.2));
     well.rotateX(-Math.PI / 2);
@@ -277,11 +289,11 @@ export function LaptopModel({ dimensions: d, color, profile, lidOpen = true, sha
       <StudioEnvironment />
       {/* 본체 */}
       <mesh geometry={parts.base} material={parts.metal} />
-      <mesh geometry={parts.well} material={parts.dark} position={[0, bh / 2 + 0.03, parts.wellZ]} />
+      <mesh geometry={parts.well} material={parts.dark} position={[0, bh / 2 + SURFACE_GAP, parts.wellZ]} />
       {parts.keys.map((k, i) => (
         <mesh key={i} geometry={k.geo} material={parts.keyMat} position={k.position} />
       ))}
-      <mesh geometry={parts.padGeo} material={parts.pad} position={[0, bh / 2 + 0.04, parts.padZ]} />
+      <mesh geometry={parts.padGeo} material={parts.pad} position={[0, bh / 2 + SURFACE_GAP, parts.padZ]} />
       {/* 옆면 포트: 왼쪽 USB-C 2개·충전 단자, 오른쪽 이어폰 단자 */}
       {[
         { z: 16, w: 8.4, h: 2.6 },
@@ -315,9 +327,12 @@ export function LaptopModel({ dimensions: d, color, profile, lidOpen = true, sha
       {/* 덮개: 경첩에서 돈다 */}
       <group ref={lid} position={[0, bh / 2, -D / 2]}>
         <mesh geometry={parts.lid} material={parts.metal} />
-        <mesh position={[0, -0.04, D / 2]} rotation={[Math.PI / 2, 0, 0]}>
+        {/* 화면 판은 덮개 안쪽 면에서 SCREEN_GAP만큼 띄우고 polygonOffset으로 한 번 더 앞으로 당긴다.
+            예전처럼 0.04mm만 띄우면 멀리서(확대를 줄였을 때) 깊이 버퍼 정밀도보다 간격이 작아져
+            덮개 금속면과 화면이 번갈아 그려지는 줄무늬(z-fighting)가 생겼다(11/11 민서 스크린샷) */}
+        <mesh position={[0, -SCREEN_GAP, D / 2]} rotation={[Math.PI / 2, 0, 0]} renderOrder={1}>
           <planeGeometry args={[W - 1.6, D - 1.6]} />
-          <meshStandardMaterial map={screen ?? undefined} color={screen ? "#ffffff" : "#0b0d12"} emissiveMap={screen ?? undefined} emissive="#ffffff" emissiveIntensity={0.3} roughness={0.5} metalness={0} envMapIntensity={0.04} />
+          <meshStandardMaterial map={screen ?? undefined} color={screen ? "#ffffff" : "#0b0d12"} emissiveMap={screen ?? undefined} emissive="#ffffff" emissiveIntensity={0.3} roughness={0.5} metalness={0} envMapIntensity={0.04} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-4} />
         </mesh>
         <DefectShapes part="lid" dimensions={d} shapes={shapes} />
         {lidChildren}

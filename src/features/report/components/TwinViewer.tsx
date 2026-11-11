@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, type ElementRef } from "react";
 import * as THREE from "three";
 import type { Pin } from "../../../shared/api/types";
 import { placeOnLaptop, type Size, type Vec3 } from "../../../shared/laptop3d/faces";
-import { LaptopModel, profileFor } from "../../../shared/laptop3d/LaptopModel";
+import { cameraNear, LaptopModel, profileFor } from "../../../shared/laptop3d/LaptopModel";
 import { standardFaceSize, type FaceShape } from "../../../shared/laptop3d/shapes";
 import { prefersReducedMotion } from "../../../shared/motion/usePlayback";
 import { SHAPE_KNOWN, SHAPE_NEW } from "../model/twinShapes";
@@ -46,7 +46,7 @@ export default function TwinViewer({ dimensions: d, modelCode, sizes, shapes, pi
 
   return (
     <div className="twin-canvas">
-      <Canvas camera={{ position: [size * 0.15, size * 0.6, size * 1.3], fov: 38, near: 1, far: size * 20 }} dpr={[1, 2]}>
+      <Canvas camera={{ position: [size * 0.15, size * 0.6, size * 1.3], fov: 38, near: cameraNear(size), far: size * 20 }} dpr={[1, 2]}>
         <ambientLight intensity={0.35} />
         <directionalLight position={[size, size * 2, size]} intensity={1.1} />
         <directionalLight position={[-size, size * 0.6, -size]} intensity={0.35} />
@@ -61,7 +61,7 @@ export default function TwinViewer({ dimensions: d, modelCode, sizes, shapes, pi
           />
           <ContactShadows position={[0, -d.baseHMm / 2 - 0.6, 0]} scale={size * 1.35} blur={2.8} opacity={0.32} far={size * 0.25} />
         </group>
-        <OrbitControls ref={controls} makeDefault enablePan={false} minDistance={size * 0.45} maxDistance={size * 3.5} />
+        <OrbitControls ref={controls} makeDefault enablePan={false} minDistance={size * 0.55} maxDistance={size * 3.5} />
         <FaceCamera face={pins.find((p) => p.defectId === selected)?.face ?? null} size={size} controls={controls} />
       </Canvas>
       <button type="button" className="twin-reset" onClick={() => controls.current?.reset()}>
