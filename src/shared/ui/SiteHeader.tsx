@@ -77,7 +77,7 @@ function useScrolled(threshold = 8): boolean {
 }
 
 const LINK =
-  "relative inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] font-medium whitespace-nowrap text-zinc-400 no-underline transition-colors duration-200 hover:text-white";
+  "relative inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[0.9375rem] font-medium whitespace-nowrap text-zinc-400 no-underline transition-colors duration-200 hover:text-white";
 // 밑줄은 링크 안쪽 맨 아래(after:bottom-0)에 그린다. 링크 밖으로 내보내면 메뉴 칸(overflow-x-auto)이 넘쳐 가로·세로 스크롤바가 생긴다
 const LINK_ACTIVE = "text-white after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-white";
 /** 넓은 화면 메뉴의 링크. 헤더 높이를 꽉 채워 밑줄이 헤더 아래 선에 붙는다 */
@@ -157,7 +157,7 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
             로그인
           </Link>
         )}
-        <Link to="/signup" className={cn(buttonVariants({ size: "sm" }), "h-8 rounded-full px-4 text-[0.8125rem]")}>
+        <Link to="/signup" className={cn(buttonVariants({ size: "sm" }), "h-8 rounded-full px-4 text-[0.9375rem]")}>
           회원가입
         </Link>
       </>
