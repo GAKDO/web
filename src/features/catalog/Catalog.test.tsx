@@ -7,6 +7,7 @@ import { db } from "../../shared/mocks/db";
 import type { CatalogDevice, CatalogDiagnostics, CatalogInspectionSummary, CatalogPhotoDefect, ModelDimensions } from "../../shared/api/types";
 import { filterRows, mergeCatalog, sortRows } from "./model/catalog";
 import { FRAME, faceRatio, laptopPins, placeOnLaptop } from "./model/laptop3d";
+import { firstSeenOf, type InspectionSpots } from "./model/firstSeen";
 
 const DIMS: ModelDimensions = { widthMm: 300, depthMm: 200, baseHMm: 10, lidHMm: 6 };
 
@@ -231,5 +232,75 @@ describe("보유 노트북 화면", () => {
     const list = await screen.findByRole("complementary", { name: "흠집 목록" });
     expect(within(list).getByRole("heading", { name: "검사 전" })).toBeInTheDocument();
     expect(within(list).queryByText("흠집 기록을 불러오지 못했습니다")).not.toBeInTheDocument();
+  });
+});
+
+describe("흠집별 처음 발견 검사", () => {
+  const spots = (checkpointId: string, type: InspectionSpots["type"], list: [string, InspectionSpots["spots"][number]["face"], number, number][]): InspectionSpots => ({
+    checkpointId,
+    type,
+    gradedAt: "2026-11-03T10:00:00+09:00",
+    spots: list.map(([groupId, face, u, v]) => ({ groupId, face, ratio: { u, v } })),
+  });
+
+  test("이전 검사의 같은 면·가까운 위치 흠집은 가장 오래된 검사부터 있던 흠집으로, 없던 흠집은 새 흠집으로 본다", () => {
+    const ret = spots("ret", "RET", [["a", "BOT", 0.3, 0.3], ["b", "TOP", 0.7, 0.5]]);
+    const rcv = spots("rcv", "RCV", []); // 중간 검사에서 놓쳐도
+    const out = spots("out", "OUT", [["x", "BOT", 0.33, 0.28], ["y", "TOP", 0.2, 0.5]]);
+    const seen = firstSeenOf(ret, [rcv, out]);
+    expect(seen.get("a")).toMatchObject({ checkpointId: "out", type: "OUT", isNew: false });
+    expect(seen.get("b")).toMatchObject({ checkpointId: "ret", isNew: true });
+  });
+
+  test("다른 면의 같은 자리는 같은 흠집이 아니고, 이전 검사가 없으면 새 흠집이라 하지 않는다", () => {
+    const ret = spots("ret", "RET", [["a", "BOT", 0.3, 0.3]]);
+    expect(firstSeenOf(ret, [spots("out", "OUT", [["x", "TOP", 0.3, 0.3]])]).get("a")?.isNew).toBe(true);
+    expect(firstSeenOf(ret, []).get("a")).toMatchObject({ checkpointId: "ret", isNew: false });
+  });
+});
+
+describe("기기 상세의 처음 발견 표시", () => {
+  test("흠집 목록에 처음 발견된 검사를 보이고, 이번 검사에서 생긴 흠집은 새 흠집으로 표시한다", async () => {
+    const user = userEvent.setup();
+    const dev = device("hist", "Air H", ["ret-h", "out-h"]);
+    dev.checkpoints = [
+      { checkpointId: "ret-h", type: "RET", status: "SEALED", occurredAt: "2026-11-09T17:00:00+09:00" },
+      { checkpointId: "out-h", type: "OUT", status: "SEALED", occurredAt: "2026-11-03T10:00:00+09:00" },
+    ];
+    const pd = (id: string, face: CatalogPhotoDefect["face"], cls: CatalogPhotoDefect["class"], x: number, y: number): CatalogPhotoDefect => ({
+      defectId: id.padEnd(21, "d"),
+      face,
+      light: "L1",
+      camera: "CAM1",
+      class: cls,
+      polygon: [[x, y], [x + 10, y], [x + 10, y + 10]],
+      groupId: id.padEnd(21, "d"),
+    });
+    const detail = {
+      "ret-h": { gradedAt: "2026-11-09T17:48:00+09:00", defects: [pd("r1", "BOT", "scratch", 800, 500), pd("r2", "TOP", "dent", 1300, 400)] },
+      "out-h": { gradedAt: "2026-11-03T10:30:00+09:00", defects: [pd("o1", "BOT", "scratch", 805, 505)] },
+    } as const;
+    server.use(
+      http.get("*/api/v1/catalog/devices", () => HttpResponse.json({ items: [dev] })),
+      http.get("*/api/v1/captures/catalog", () => HttpResponse.json({ items: [summary("ret-h", 2, "C"), summary("out-h", 1, "B")] })),
+      http.get("*/api/v1/captures/catalog/checkpoints/:id", ({ params }) => {
+        const d = detail[String(params.id) as keyof typeof detail];
+        return HttpResponse.json({
+          ...summary(String(params.id), d.defects.length, "C"),
+          gradedAt: d.gradedAt,
+          expiresAt: "2026-11-11T18:00:00+09:00",
+          photos: d.defects.map((x) => ({ face: x.face, light: x.light, camera: x.camera, url: `https://example.test/${x.defectId}.jpg` })),
+          photoDefects: d.defects,
+        });
+      }),
+    );
+    renderApp(`/devices/${dev.deviceId}`);
+    const list = await screen.findByRole("complementary", { name: "흠집 목록" });
+    expect(await within(list).findByText("출고 검사(2026. 11. 3.)부터 있던 흠집")).toBeInTheDocument();
+    expect(within(list).getByText("이번 반납 검사(2026. 11. 9.)에서 새로 발견")).toBeInTheDocument();
+    expect(within(list).getByText("새 흠집")).toBeInTheDocument();
+    expect(within(list).getByText(/이전 검사부터 있던 흠집 1 · 이번에 새로 발견 1/)).toBeInTheDocument();
+    await user.click(within(list).getByRole("button", { name: /찍힘/ }));
+    expect(within(list).getByText("처음 발견: 이번 반납 검사(2026. 11. 9.)에서 새로 발견")).toBeInTheDocument();
   });
 });

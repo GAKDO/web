@@ -15,6 +15,8 @@ export interface LaptopPin {
   camera: CaptureCamera;
   defectClass: DefectClass;
   placement: LocalPlacement;
+  /** 면 비율 좌표(0~1). 이전 검사와 같은 흠집인지 견줄 때 쓴다 */
+  ratio: { u: number; v: number };
   /** 이 흠집이 찍힌 사진들의 흠집(사진 보기에서 쓴다) */
   members: CatalogPhotoDefect[];
   /** 대표 흠집의 실제 폴리곤을 면 좌표로 옮긴 모양(3D 모델 위에 그린다) */
@@ -40,7 +42,7 @@ export function laptopPins(defects: CatalogPhotoDefect[], d: ModelDimensions, si
     const size = sizeOf(head) ?? DEFAULT_PHOTO_SIZE;
     const ratio = faceRatio(head.face, head.camera, centroid(head.polygon), size);
     const shape = photoShapePoints(head.face, head.camera, head.polygon, size);
-    return { groupId, face: head.face, camera: head.camera, defectClass: worst, placement: placeOnLaptop(head.face, ratio, d), members, shape };
+    return { groupId, face: head.face, camera: head.camera, defectClass: worst, placement: placeOnLaptop(head.face, ratio, d), ratio, members, shape };
   });
 }
 
