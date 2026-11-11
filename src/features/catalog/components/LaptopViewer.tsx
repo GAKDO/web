@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, type ElementRef } from "react";
 import * as THREE from "three";
 import type { ModelDimensions } from "../../../shared/api/types";
-import { LaptopModel, profileFor } from "../../../shared/laptop3d/LaptopModel";
+import { cameraNear, LaptopModel, profileFor } from "../../../shared/laptop3d/LaptopModel";
 import type { FaceShape } from "../../../shared/laptop3d/shapes";
 import { bodyColor, PIN_COLOR, type LaptopPin } from "../model/laptop3d";
 
@@ -95,7 +95,7 @@ export default function LaptopViewer({ dimensions: d, modelCode, color, pins, se
 
   return (
     <Canvas
-      camera={{ position: [size * 0.15, size * 0.55, size * 1.3], fov: 38, near: 1, far: size * 20 }}
+      camera={{ position: [size * 0.15, size * 0.55, size * 1.3], fov: 38, near: cameraNear(size), far: size * 20 }}
       dpr={[1, 2]}
       onCreated={({ gl }) => {
         gl.domElement.addEventListener("webglcontextlost", (e) => {
