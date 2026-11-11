@@ -19,7 +19,7 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-11 px-4 md:h-10",
-        sm: "h-10 rounded-md px-3 text-sm md:h-9",
+        sm: "tap-target h-10 rounded-md px-3 text-sm md:h-9",
         lg: "h-12 rounded-md px-6",
         icon: "size-11 md:size-10",
       },

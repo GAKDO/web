@@ -10,6 +10,7 @@ import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { useMe } from "../../account/api";
 import { MY_RENTALS_PAGE_SIZE, useMyRentals } from "../api/report";
 import { MyDeviceCard } from "./MyDeviceCard";
+import { LoadingRows } from "../../../shared/ui/LoadingRows";
 
 const FLOW = [
   { title: "출고 검사", text: "노트북을 내보내기 전에 부스에서 윗면·바닥을 찍고 흠집을 찾아 둡니다." },
@@ -117,7 +118,7 @@ export function MyRentalsPage() {
         </h2>
         <p className="m-0 mt-1 text-sm text-muted-foreground">빌린 노트북의 사양과 출고·수령·반납 검사 결과입니다.</p>
         <div className="mt-4">
-          {rentals.isPending && <p role="status">불러오는 중…</p>}
+          {rentals.isPending && <LoadingRows label="내 렌탈을 불러오는 중…" count={2} />}
           {rentals.isError && (
             <ErrorBanner
               message={rentals.error instanceof ApiError ? messageFor(rentals.error) : "목록을 불러오지 못했습니다."}

@@ -139,6 +139,19 @@ export async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** 찍기 전 안내용 작은 회색조 프레임(긴 변 longSide px). 영상이 아직 없거나 캔버스를 못 쓰면 null */
+export function sampleFrame(video: HTMLVideoElement, longSide = 64): Gray | null {
+  const { videoWidth: w, videoHeight: h } = video;
+  if (!w || !h) return null;
+  try {
+    const small = draw(video, w, h, longSide, viewfinderCrop(w, h));
+    const pixels = small.getContext("2d")?.getImageData(0, 0, small.width, small.height);
+    return pixels ? toGray(pixels) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** 지금 화면을 JPEG로 찍고, 검사용 회색조와 해시를 함께 만든다 */
 export async function captureShot(video: HTMLVideoElement): Promise<Shot> {
   // 첫 프레임 전(videoWidth 0)이면 빈 사진이 되므로 실패로 돌려 다시 찍게 한다

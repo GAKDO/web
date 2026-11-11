@@ -15,6 +15,8 @@ import { REVIEWS } from "../api/reviews";
 import { VerdictBadge } from "./VerdictBadge";
 import { VerdictSummary } from "./VerdictSummary";
 import { ReviewQueue } from "./ReviewQueue";
+import { AiScorecard } from "./AiScorecard";
+import { LoadingRows } from "../../../shared/ui/LoadingRows";
 import { DataActions, DataCells, DataRow, DataTable } from "../../../shared/ui/DataTable";
 import { PageHeader } from "../../../shared/ui/PageHeader";
 import { Pager, usePaged } from "../../../shared/ui/Pager";
@@ -103,8 +105,9 @@ export function InspectionListPage() {
         />
       )}
       <ReviewQueue backTo={listBack} />
+      <AiScorecard />
       <ProblemFilter value={problemOnly} onChange={setProblemOnly} />
-      {rentals.isPending && <p className="text-muted-foreground">불러오는 중…</p>}
+      {rentals.isPending && <LoadingRows label="검사 목록을 불러오는 중…" />}
       {items.length > 0 && <VerdictSummary items={items} hasMore={paged.canNext} total={totalOf(rentals)} />}
       {rentals.isSuccess && items.length === 0 && (
         <p className="text-muted-foreground">

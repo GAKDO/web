@@ -19,6 +19,7 @@ import { Pager, usePaged } from "../../../shared/ui/Pager";
 import { formatDate } from "../../../shared/ui/format";
 import { TotalCount } from "../../../shared/ui/TotalCount";
 import { dueState } from "../dueDate";
+import { LoadingRows } from "../../../shared/ui/LoadingRows";
 
 export { formatDate };
 
@@ -118,7 +119,7 @@ export function RentalListPage() {
           onRetry={() => void rentals.refetch()}
         />
       )}
-      {rentals.isPending && <p className="text-muted-foreground">불러오는 중…</p>}
+      {rentals.isPending && <LoadingRows label="렌탈 목록을 불러오는 중…" />}
       {rentals.isSuccess && items.length === 0 && (
         <p className="text-muted-foreground">{problemOnly ? "지금 문제 있는 렌탈이 없습니다. 지금 시점 등급이 B·C·D인 렌탈만 여기에 보입니다." : "렌탈이 없습니다."}</p>
       )}

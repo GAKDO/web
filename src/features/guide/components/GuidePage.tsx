@@ -73,7 +73,7 @@ export function GuidePage() {
                 <li key={id}>
                   <Link
                     to={{ hash: id }}
-                    className="inline-flex h-9 items-center rounded-full border border-white/15 px-4 text-sm text-zinc-300 no-underline transition-colors hover:border-white/40 hover:text-white"
+                    className="tap-target inline-flex h-9 items-center rounded-full border border-white/15 px-4 text-sm text-zinc-300 no-underline transition-colors hover:border-white/40 hover:text-white"
                   >
                     {label}
                   </Link>

@@ -16,7 +16,7 @@ export function MaskedSerial({ serial, className }: { serial: string; className?
       </span>
       <button
         type="button"
-        className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+        className="tap-target inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
         aria-label={shown ? "시리얼 가리기" : "시리얼 보기"}
         aria-pressed={shown}
         onClick={() => setShown((v) => !v)}

@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { CAPTURE_FACE_LABEL } from "../../../shared/codes/labels";
 import { Button } from "../../../shared/ui/Button";
-import { attachStream, CameraError, captureShot, openCamera, stopCamera, type CameraFailure, type Shot } from "../camera";
+import { attachStream, CameraError, captureShot, openCamera, sampleFrame, stopCamera, type CameraFailure, type Shot } from "../camera";
 import type { FaceGuide } from "../faces";
-import { checkQuality, type QualityReason, type QualityResult } from "../quality";
+import { checkQuality, liveHint, type Gray, type LiveHint, type QualityReason, type QualityResult } from "../quality";
 import { CameraHelp } from "./CameraHelp";
 
 export interface Accepted {
@@ -12,9 +12,45 @@ export interface Accepted {
 }
 
 const REASON: Record<QualityReason, string> = {
+  DARK: "사진이 너무 어둡습니다. 불을 켜거나 밝은 곳으로 옮겨 다시 찍어 주세요.",
   BLUR: "사진이 흔들렸습니다. 폰을 고정하고 다시 찍어 주세요.",
   GLARE: "빛이 반사됩니다. 각도를 바꿔 다시 찍어 주세요.",
 };
+
+/** 찍기 전 안내 문장. OK일 때만 초록 */
+const HINT: Record<LiveHint, string> = {
+  DARK: "어두워요. 불을 켜거나 밝은 곳으로 옮겨 주세요",
+  GLARE: "빛이 반사돼요. 폰 각도를 조금 바꿔 주세요",
+  MOVING: "폰을 잠깐 멈춰 주세요",
+  OK: "좋아요, 그대로 찍으세요",
+};
+
+/** 미리보기 프레임을 읽는 간격(ms). 작은 64px 프레임이라 폰에서도 가볍다 */
+export const LIVE_HINT_MS = 600;
+
+/**
+ * 찍기 전 실시간 안내(11/11, 4팀의 구도·밝기 말 안내에서 아이디어). 영상이 보이는 동안만 읽고, 자동으로 찍지는 않는다.
+ * 같은 안내가 이어지면 다시 그리지 않아 화면 읽기 프로그램이 같은 말을 반복하지 않는다
+ */
+function useLiveHint(video: RefObject<HTMLVideoElement>, face: FaceGuide["face"], active: boolean): LiveHint | null {
+  const [hint, setHint] = useState<LiveHint | null>(null);
+  useEffect(() => {
+    if (!active) {
+      setHint(null);
+      return;
+    }
+    let prev: Gray | null = null;
+    const id = setInterval(() => {
+      const el = video.current;
+      const frame = el ? sampleFrame(el) : null;
+      if (!frame) return;
+      setHint(liveHint(frame, prev, face));
+      prev = frame;
+    }, LIVE_HINT_MS);
+    return () => clearInterval(id);
+  }, [video, face, active]);
+  return hint;
+}
 
 /** 면 윤곽선(viewBox 100×75 안에서 가로·세로 비율을 지킨 사각형)과 위쪽·왼쪽 방향 표시.
  * 옆면은 아주 얇아(약 27:1) 선이 겹치지 않게 높이를 3 이상으로 둔다 */
@@ -53,6 +89,7 @@ export function FaceShooter({ guide, onAccept, onCancel }: Props) {
   const [review, setReview] = useState<Accepted | null>(null);
   const [busy, setBusy] = useState(false);
   const label = CAPTURE_FACE_LABEL[guide.face];
+  const hint = useLiveHint(video, guide.face, phase === "live" && review === null);
 
   // 쓰지 않은 사진의 미리보기 URL은 이 화면을 떠날 때 해제한다(쓴 사진은 CapturePage가 맡는다)
   // 찍는 중에 화면을 떠나면 늦게 만들어진 URL도 바로 해제한다
@@ -116,6 +153,17 @@ export function FaceShooter({ guide, onAccept, onCancel }: Props) {
       <div className="viewfinder" hidden={failed || review !== null}>
         <video ref={video} playsInline muted />
         <Outline guide={guide} />
+        {hint && (
+          <p
+            role="status"
+            className={
+              "absolute inset-x-3 bottom-3 m-0 rounded-full px-3 py-1.5 text-center text-sm font-semibold shadow-sm transition-colors duration-200 " +
+              (hint === "OK" ? "bg-success text-white" : "bg-white/95 text-foreground")
+            }
+          >
+            {HINT[hint]}
+          </p>
+        )}
       </div>
       {review && (
         <div className="review">

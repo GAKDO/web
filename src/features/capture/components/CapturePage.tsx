@@ -10,6 +10,7 @@ import { useFaceGuides } from "../api/model";
 import { FaceShooter, type Accepted } from "./FaceShooter";
 import { SubmitPanel } from "./SubmitPanel";
 import { isArchived } from "../../../shared/config/features";
+import { useOnline } from "../../../shared/ui/useOnline";
 
 export type Shots = Partial<Record<CaptureFace, Accepted>>;
 
@@ -61,6 +62,7 @@ export function CapturePage({ grant, linked = false }: { grant: CaptureGrant; li
   const requiredCount = faces.filter((f) => f.required).length;
   const guide = faces.find((f) => f.face === active);
   const expired = minutesLeft <= 0;
+  const online = useOnline();
 
   // 페이지를 떠날 때 남은 미리보기 URL을 한 번 해제한다
   const latest = useRef(shots);
@@ -110,6 +112,11 @@ export function CapturePage({ grant, linked = false }: { grant: CaptureGrant; li
         <p role="status" className="m-0 mb-3 flex items-center gap-2 rounded-lg bg-success-soft px-3 py-2 text-sm text-success">
           <CircleCheck aria-hidden="true" className="size-4 shrink-0" />
           이 렌탈이 내 계정에 연결되었습니다{isArchived("report") ? "." : ". 내 렌탈에서 출고 기록도 볼 수 있습니다."}
+        </p>
+      )}
+      {!online && (
+        <p role="alert" className="sticky top-2 z-10 m-0 mb-3 animate-enter rounded-lg shadow-sm border border-warning/40 bg-warning-soft px-3 py-2 text-sm font-semibold">
+          인터넷 연결이 끊겼습니다. 찍은 사진은 이 화면에 그대로 있으니 촬영 시간({minutesLeft}분 남음) 안에 연결되면 이어서 제출해 주세요. 시간이 지나면 새 QR이 필요합니다.
         </p>
       )}
       <p className="notice">촬영이 끝날 때까지 새로 고치거나 창을 닫지 마세요. 찍은 사진이 사라지고 QR을 다시 받아야 합니다.</p>

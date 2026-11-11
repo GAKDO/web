@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { PHONE_FACES, PHONE_REQUIRED_FACES } from "./faces";
-import { checkQuality, toGray } from "./quality";
-import { blurredGray, glareGray, sharpGray } from "./testing";
+import { checkQuality, liveHint, toGray } from "./quality";
+import { blurredGray, darkGray, glareGray, sharpGray } from "./testing";
 
 test("폰 필수 면은 contracts codes.yaml capture.face_required.PHONE과 같고 키보드는 찍지 않는다", () => {
   const yaml = readFileSync("contracts/codes.yaml", "utf8");
@@ -33,4 +33,18 @@ test("흰 화면(SCR1)은 밝아도 반사로 거르지 않는다", () => {
 test("RGBA를 밝기로 바꾼다", () => {
   const g = toGray({ width: 2, height: 1, data: new Uint8ClampedArray([255, 255, 255, 255, 0, 0, 0, 255]) });
   expect([...g.data]).toEqual([255, 0]);
+});
+
+test("불을 끈 것처럼 어두운 사진은 흔들림보다 먼저 어두움으로 걸러진다", () => {
+  expect(checkQuality(darkGray(), "TOP")).toMatchObject({ ok: false, reason: "DARK" });
+  expect(checkQuality(darkGray(), "SCR1").reason).toBe("DARK");
+});
+
+test("찍기 전 안내는 어두움, 반사, 움직임 순으로 알리고 괜찮으면 OK다", () => {
+  expect(liveHint(darkGray(), null, "TOP")).toBe("DARK");
+  expect(liveHint(glareGray(), null, "TOP")).toBe("GLARE");
+  expect(liveHint(glareGray(), null, "SCR1")).toBe("OK");
+  expect(liveHint(sharpGray(1), sharpGray(2), "TOP")).toBe("MOVING");
+  expect(liveHint(sharpGray(1), sharpGray(1), "TOP")).toBe("OK");
+  expect(liveHint(sharpGray(1), null, "BOT")).toBe("OK");
 });

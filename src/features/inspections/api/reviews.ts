@@ -10,11 +10,11 @@ export const REVIEWS = ["reviews"] as const;
 export const REVIEW_QUEUE_POLL_MS = 5000;
 
 /** 검수 대기(PENDING, 오래 기다린 것부터) 또는 검수 완료(CONFIRMED, 최근 것부터) 시점 */
-export function useReviewQueue(status: "PENDING" | "CONFIRMED" = "PENDING", limit = 20) {
+export function useReviewQueue(status: "PENDING" | "CONFIRMED" = "PENDING", limit = 20, pollMs: number | false = REVIEW_QUEUE_POLL_MS) {
   return useQuery({
     queryKey: [...REVIEWS, status, limit],
     queryFn: () => unwrap(api.GET("/api/v1/captures/reviews", { params: { query: { status, limit } } })),
-    refetchInterval: REVIEW_QUEUE_POLL_MS,
+    refetchInterval: pollMs,
   });
 }
 

@@ -189,7 +189,7 @@ export function CatalogDetailPage() {
           </>
         )}
         {action && (
-          <button type="button" onClick={action.run} className="mx-auto mt-3 flex h-9 cursor-pointer items-center gap-1.5 rounded-full border bg-background px-4 text-sm text-foreground hover:bg-muted">
+          <button type="button" onClick={action.run} className="tap-target mx-auto mt-3 flex h-9 cursor-pointer items-center gap-1.5 rounded-full border bg-background px-4 text-sm text-foreground hover:bg-muted">
             <RotateCcw aria-hidden="true" className="size-4" />
             {action.label}
           </button>
@@ -284,12 +284,12 @@ export function CatalogDetailPage() {
                       setLidOpen(v.lidOpen);
                       setViewNonce((n) => n + 1);
                     }}
-                    className={cn("h-9 cursor-pointer rounded-full border px-3 text-sm", view === v.view ? "border-foreground bg-foreground text-background" : "bg-background hover:bg-muted")}
+                    className={cn("tap-target h-9 cursor-pointer rounded-full border px-3 text-sm", view === v.view ? "border-foreground bg-foreground text-background" : "bg-background hover:bg-muted")}
                   >
                     {v.label}
                   </button>
                 ))}
-                <button type="button" onClick={() => setLidOpen((o) => !o)} className="h-9 cursor-pointer rounded-full border bg-background px-3 text-sm hover:bg-muted">
+                <button type="button" onClick={() => setLidOpen((o) => !o)} className="tap-target h-9 cursor-pointer rounded-full border bg-background px-3 text-sm hover:bg-muted">
                   {lidOpen ? "덮개 닫기" : "덮개 열기"}
                 </button>
               </div>
@@ -303,7 +303,7 @@ export function CatalogDetailPage() {
               summaryFailed ? (
               <>
                 <h3 className="m-0 text-base font-semibold">흠집 기록을 불러오지 못했습니다</h3>
-                <button type="button" onClick={() => void catalog.refetch()} className="mt-2 h-9 cursor-pointer rounded-full border bg-background px-3 text-sm hover:bg-muted">
+                <button type="button" onClick={() => void catalog.refetch()} className="tap-target mt-2 h-9 cursor-pointer rounded-full border bg-background px-3 text-sm hover:bg-muted">
                   다시 시도
                 </button>
               </>
