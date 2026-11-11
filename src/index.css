@@ -1,0 +1,298 @@
+/* 화면 스타일 시작점: Tailwind CSS 4 + shadcn/ui 디자인 변수.
+   디자인 방향은 ui-ux-pro-max(디자인 도구)의 업무용 관리 화면 추천을 따랐다:
+   Minimalism & Swiss + Data-Dense Dashboard, 글꼴 Inter(숫자·영문) + Pretendard(한글), 어두운 왼쪽 메뉴, 브랜드 빨강은 포인트만.
+   층 순서: 보관 화면용 옛 CSS(legacy)는 Tailwind 기본(base) 뒤, 부품·유틸리티 앞이라 새 부품 모양을 덮지 않는다 */
+@layer theme, base, legacy, components, utilities;
+@import "tailwindcss";
+@import "./legacy.css" layer(legacy);
+/* 설명용 모션·상태 반응(11/8) */
+@import "./shared/motion/motion.css" layer(components);
+
+/* 목록 표 모양은 왼쪽 메뉴(220px)를 빼고도 6칸이 들어가는 1100px부터(768px에서는 한 글자씩 줄이 바뀜) */
+@custom-variant table (@media (width >= 1100px));
+/* dark: 클래스는 시스템 다크 모드가 아니라 .dark를 붙였을 때만 켠다(11/10). 사이트에 어두운 테마가 없어
+   맥 다크 모드에서 등급 배지 글자만 밝게 바뀌어 흰 바탕에서 안 보이던 문제(C등급)를 막는다 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* 이 사이트는 밝은 화면 하나만 만든다. 맥·폰이 다크 모드여도 입력칸·스크롤바가 어둡게 바뀌지 않게 고정한다(11/10) */
+  color-scheme: light;
+  --radius: 0.625rem;
+  /* 브랜드 빨강(목업) */
+  --brand: #c8161d;
+  --brand-hover: #a51218;
+  --brand-soft: #fdeced;
+  --background: #f7f7f8;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+  --primary: var(--brand);
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #5b6270;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #b42318;
+  --destructive-soft: #fdecea;
+  --success: #1a7f37;
+  --success-soft: #e7f6ec;
+  --warning: #b54708;
+  --warning-soft: #fff4d6;
+  --info: #1d4ed8;
+  --info-soft: #e8efff;
+  --border: #e4e4e7;
+  --input: #d4d4d8;
+  --ring: var(--brand);
+  /* 어두운 왼쪽 메뉴 */
+  --sidebar: #0b0b0f;
+  --sidebar-foreground: #a1a1aa;
+  --sidebar-active: #ffffff;
+  --sidebar-border: #1f1f26;
+  --sidebar-width: 15rem;
+  /* 폰 아래 탭 메뉴 높이(아이폰 홈 막대 칸은 따로 더함) */
+  --tabbar-height: 4rem;
+}
+
+@theme inline {
+  /* 11/8: 한글·영문 모두 Pretendard 한 가족으로(영문 글자도 Pretendard 것). Inter는 없을 때만 대신 쓴다 */
+  --font-sans: "Pretendard Variable", Pretendard, "Inter Variable", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-border: var(--sidebar-border);
+
+  /* 글자 크기 단계(11/8). 큰 제목은 화면 너비에 따라 자라고(clamp), 클수록 자간을 좁혀 한 덩어리로 읽힌다.
+     display = 첫 화면 큰 문장, headline = 구역 제목, title = 칸 제목, lead = 제목 아래 설명 */
+  --text-display: clamp(2.375rem, 1.55rem + 4.3vw, 4.25rem);
+  --text-display--line-height: 1.04;
+  --text-display--letter-spacing: -0.045em;
+  --text-headline: clamp(1.875rem, 1.35rem + 2.3vw, 3.25rem);
+  --text-headline--line-height: 1.12;
+  --text-headline--letter-spacing: -0.035em;
+  --text-title: clamp(1.125rem, 1.02rem + 0.45vw, 1.375rem);
+  --text-title--line-height: 1.35;
+  --text-title--letter-spacing: -0.02em;
+  --text-lead: clamp(1rem, 0.94rem + 0.3vw, 1.1875rem);
+  --text-lead--line-height: 1.6;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* 움직임: 짧고(150~400ms) 한 방향. 화면 들어올 때 아래에서 살짝, 패널은 옆에서, 설명용 모션은 shared/motion/motion.css */
+  --animate-enter: enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade: fade 200ms ease-out both;
+  --animate-sheet-right: sheet-right 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-sheet-up: sheet-up 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes sheet-right {
+    from { transform: translateX(100%); }
+    to { transform: none; }
+  }
+  @keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to { transform: none; }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans antialiased;
+    line-height: 1.5;
+    /* Inter 숫자를 같은 폭으로(표의 시각·시리얼이 줄마다 맞음) */
+    font-feature-settings: "cv11", "ss01";
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.005em;
+    /* 한국어는 단어(어절) 중간에서 줄을 바꾸지 않는다. 긴 ID·주소는 넘치지 않게 어디서든 끊는다 */
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+  /* 넓은 모니터(1920·2560)에서는 글자·간격을 함께 키운다(rem 기준이라 화면 전체가 같은 비율로 커짐) */
+  @media (min-width: 1880px) {
+    html { font-size: 112.5%; }
+  }
+  @media (min-width: 2400px) {
+    html { font-size: 125%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      /* 무한 반복(검사 막대 등)도 한 번만 돌고 멈춘다 */
+      animation-iteration-count: 1 !important;
+    }
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  /* 제목은 줄 길이를 고르게, 본문은 마지막 줄에 한 글자만 남지 않게 */
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+  p, li, dd {
+    text-wrap: pretty;
+  }
+  /* 순서대로 나타나기: style="--i: 2"처럼 순번을 주면 60ms씩 늦게 */
+  .stagger {
+    animation-delay: calc(var(--i, 0) * 60ms);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  /* 어두운 바탕 위 유리 카드(로그인): 이 안에서만 글자·칸 색 변수를 어두운 값으로 바꾼다 */
+  .surface-dark {
+    --background: rgb(255 255 255 / 0.04);
+    --foreground: #f4f4f5;
+    --card: rgb(24 24 30 / 0.72);
+    --card-foreground: #f4f4f5;
+    --muted-foreground: #a1a1aa;
+    --border: rgb(255 255 255 / 0.12);
+    --input: rgb(255 255 255 / 0.16);
+    --destructive: #ff6b66;
+    --warning: #fbbf24;
+    --ring: #ff5a5f;
+    color-scheme: dark;
+  }
+}
+
+/* ── 11/8 고정 헤더 · 스크롤 등장 ─────────────────────────────── */
+@layer components {
+  /* 위에 붙은 헤더: 꽉 찬 바탕. 스크롤하면 아래 선만 생긴다.
+     반투명(0.78)으로 두면 같은 색의 검은 카드가 헤더 밑을 지날 때 카드 모양이 그대로 비쳐
+     헤더 위로 튀어나온 것처럼 보였다(11/8) */
+  .site-header {
+    background: rgb(11 11 15);
+    box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0);
+    transition: box-shadow 300ms ease;
+  }
+  .site-header[data-scrolled="true"] {
+    box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.08);
+  }
+  /* 폰 메뉴는 뒤 화면이 비치지 않게 꽉 찬 바탕(겹친 흐림 효과는 일부 브라우저에서 투명하게 그려진다) */
+  .site-menu {
+    background: rgb(11 11 15);
+  }
+
+  /* 스크롤해서 들어올 때 살짝 나타난다(Reveal). 11/10: 흐림·큰 이동·긴 지연이 "만든 티"가 난다는 피드백으로 짧고 작게 줄였다 */
+  .reveal {
+    opacity: 0;
+    transform: translateY(0.5rem);
+    transition:
+      opacity 360ms ease-out,
+      transform 360ms ease-out;
+    transition-delay: calc(min(var(--i, 0), 3) * 40ms);
+  }
+  .reveal[data-visible="true"] {
+    opacity: 1;
+    transform: none;
+  }
+  /* 11/10: 첫 화면 그림이 물러나는 효과·큰 문장이 흐리게 시작하는 효과는 뺐다(글이 처음에 흐려 읽기 어렵다는 피드백).
+     클래스(hero-recede·scrub-line)는 남겨 두지만 아무 효과가 없다 */
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal {
+      opacity: 1;
+      transform: none;
+      filter: none;
+      transition: none;
+    }
+  }
+}
+
+/* 손가락 누름 영역 44px(11/11, 5팀처럼 터치 영역 점검). 보이는 크기는 그대로 두고 투명한 영역만 44×44로 넓힌다.
+   ::after를 쓰므로 ::after로 밑줄 등을 그리는 요소에는 붙이지 않는다.
+   absolute·fixed로 놓인 요소는 유틸리티 층이 position을 이기므로 그대로 그 자리에 있다 */
+@layer components {
+  .tap-target {
+    position: relative;
+  }
+  /* 손가락으로 쓰는 기기에서만 넓힌다(마우스 화면의 가로 스크롤 칸에 스크롤바가 생기지 않게) */
+  @media (pointer: coarse) {
+    .tap-target::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+    /* 모서리에 붙은 손잡이(챗봇 크기 조절): 잘리지 않게 안쪽(오른쪽 아래)으로만 넓힌다 */
+    .tap-inward::after {
+      left: 0;
+      top: 0;
+      transform: none;
+    }
+  }
+}
+
+/* 불러오는 동안의 회색 자리(LoadingRows). 밝은 회색 위로 옅은 빛이 왼쪽→오른쪽으로 지나간다 */
+@layer components {
+  .skeleton {
+    background: linear-gradient(90deg, var(--muted) 25%, color-mix(in oklab, var(--muted) 45%, white) 50%, var(--muted) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shine 1.4s linear infinite;
+  }
+  @keyframes skeleton-shine {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton { animation: none; }
+  }
+}
+
+/* 계층 밖에 두어 animate-* 단축 속성의 지연 0보다 앞선다 */
+/* 목록 줄(DataTable): 처음 8줄만 40ms씩 늦게 나타나고 나머지는 함께(긴 목록이 늦게 뜨지 않게) */
+.data-rows > li:nth-child(2) { animation-delay: 40ms; }
+.data-rows > li:nth-child(3) { animation-delay: 80ms; }
+.data-rows > li:nth-child(4) { animation-delay: 120ms; }
+.data-rows > li:nth-child(5) { animation-delay: 160ms; }
+.data-rows > li:nth-child(6) { animation-delay: 200ms; }
+.data-rows > li:nth-child(7) { animation-delay: 240ms; }
+.data-rows > li:nth-child(n + 8) { animation-delay: 280ms; }

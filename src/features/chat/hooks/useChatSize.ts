@@ -1,0 +1,74 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+
+export const DEFAULT_PANEL = { width: 384, height: 576 } as const;
+export const MIN_PANEL = { width: 320, height: 360 } as const;
+/** 화면 가장자리에서 띄울 여백(왼쪽·위 16px씩 + 오른쪽·아래 16px씩) */
+const EDGE = 32;
+
+export interface ChatSize {
+  width: number;
+  height: number;
+}
+
+const KEY = "trace.chat.size";
+const DEFAULT: ChatSize = { ...DEFAULT_PANEL };
+
+function viewport() {
+  // 테스트(jsdom)처럼 창 크기를 모르면 넉넉하게 본다
+  const w = typeof window !== "undefined" && window.innerWidth > 0 ? window.innerWidth : 1280;
+  const h = typeof window !== "undefined" && window.innerHeight > 0 ? window.innerHeight : 800;
+  return { w, h };
+}
+
+/** 최소 크기 이상, 화면 안쪽으로 맞춘다. 화면이 최소보다 작으면 최소를 지킨다(CSS max가 다시 줄임) */
+export function clampPanel(width: number, height: number): { width: number; height: number } {
+  const { w, h } = viewport();
+  const clamp = (v: number, min: number, max: number) => Math.round(Math.min(Math.max(v, min), Math.max(min, max)));
+  return { width: clamp(width, MIN_PANEL.width, w - EDGE), height: clamp(height, MIN_PANEL.height, h - EDGE) };
+}
+
+function read(): ChatSize {
+  // 토큰이 아닌 화면 취향만 저장한다. 사생활 모드 등에서 막히면 기본값으로
+  try {
+    const raw = window.localStorage.getItem(KEY);
+    if (!raw) return DEFAULT;
+    const v = JSON.parse(raw) as Partial<ChatSize>;
+    // 손으로 고쳤거나 깨진 값은 기본값으로, 최소보다 작은 값은 최소로. 큰 값은 CSS가 화면에 맞게 줄인다
+    const valid = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
+    const width = valid(v.width) ? Math.max(MIN_PANEL.width, v.width) : DEFAULT.width;
+    const height = valid(v.height) ? Math.max(MIN_PANEL.height, v.height) : DEFAULT.height;
+    return { width, height };
+  } catch {
+    return DEFAULT;
+  }
+}
+
+function write(size: ChatSize) {
+  try {
+    window.localStorage.setItem(KEY, JSON.stringify(size));
+  } catch {
+    // 저장하지 못해도 이번 화면에서는 그대로 쓴다
+  }
+}
+
+/**
+ * 도우미 창 크기. 사용자가 바꿀 때만 이 브라우저에 기억해 다음에 열어도 그대로다
+ * (바꾸지 않은 사람의 저장소에는 아무것도 쓰지 않는다)
+ */
+export function useChatSize() {
+  const [size, setSize] = useState<ChatSize>(read);
+  const changed = useRef(false);
+
+  useEffect(() => {
+    if (changed.current) write(size);
+  }, [size]);
+
+  const update = useCallback((patch: Partial<ChatSize>) => {
+    changed.current = true;
+    setSize((s) => ({ ...s, ...patch }));
+  }, []);
+  const setPanel = useCallback((width: number, height: number) => update(clampPanel(width, height)), [update]);
+  const resetPanel = useCallback(() => update({ ...DEFAULT_PANEL }), [update]);
+
+  return { size, setPanel, resetPanel };
+}

@@ -75,8 +75,10 @@ jobs:
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ github.ref == 'refs/heads/main' && format('{0}:latest', env.IMAGE) || '' }}
             ${{ github.ref == 'refs/heads/develop' && format('{0}:develop', env.IMAGE) || '' }}
+          # 파일럿 추이 Grafana 주소(FR-PIL-02). 레포 변수 PILOT_DASHBOARD_URL이 비면 관리 메뉴의 링크만 숨겨진다
           build-args: |
             APP_COMMIT=${{ github.sha }}
+            VITE_PILOT_DASHBOARD_URL=${{ vars.PILOT_DASHBOARD_URL }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha

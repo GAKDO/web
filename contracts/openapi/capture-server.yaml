@@ -1,0 +1,1848 @@
+openapi: 3.1.0
+info:
+  title: TRACE capture-server
+  version: 1.0.0
+  description: |
+    촬영 세트·사전 서명 업로드 URL·부스 탐지 결과·검사 결과·사진 보기 URL. 원본은 GAKDO/docs design/rest-api-v0.md "capture-server" 표.
+
+    - 사진 본문은 서버를 거치지 않고 응답의 사전 서명 URL로 MinIO에 직접 PUT한다(10분).
+    - 오류는 모두 `application/problem+json`(Problem, `code`는 codes.yaml `error_code`).
+    - `x-trace-access`: roles(codes.yaml `auth.token_role`), scope(NONE·OWN_RENTAL·CHECKPOINT·BOOTH),
+      captureToken(고객 촬영 JWT = CUSTOMER + scope=checkpointId 허용 여부).
+servers:
+  - url: https://{gateway}
+    description: gateway(8314) 뒤
+    variables:
+      gateway:
+        default: localhost:8314
+tags:
+  - name: 촬영
+    description: 촬영 세트와 업로드
+  - name: 검사
+    description: 탐지·검사 결과·사진 보기
+  - name: 운영
+    description: ping
+paths:
+  /api/v1/captures/ping:
+    get:
+      tags: [운영]
+      operationId: capturePing
+      summary: 배포 확인
+      description: 로그인 없이 연다.
+      security: []
+      responses:
+        '200':
+          description: 정상
+          content:
+            application/json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/PingResponse'
+              example:
+                service: capture-server
+                version: 0.1.0
+                commit: fd69858
+  /api/v1/captures/sets:
+    post:
+      tags: [촬영]
+      operationId: createCaptureSet
+      summary: 촬영 세트 생성 + 업로드 URL
+      description: |
+        사진마다 면·조명·카메라·SHA-256을 먼저 알리고, 사진별 사전 서명 PUT URL(10분)을 받는다. (FR-CAP-01·05)
+        - BOOTH: source=BOOTH, 자기 부스(scope=boothId)로만.
+        - 고객 촬영 JWT: source=PHONE, 토큰의 checkpointId·rentalId와 같은 시점·렌탈만. 다르면 403 OUT_OF_SCOPE.
+        - `rentalId`는 이벤트 봉투(trace.capture.uploaded 등)에 들어간다. 부스는 관리자 화면이 고른 렌탈·시점을 그대로 보낸다.
+        같은 세트 안에서 (face, light, camera)는 겹치지 않는다(부스는 같은 면·조명을 CAM1·CAM2로 두 장).
+        URL이 만료되면 세트를 새로 만들지 않고 `POST /api/v1/captures/sets/{setId}/uploads`로 남은 사진의 URL만 다시 받는다.
+        응답 `uploads`는 요청 `photos`와 같은 순서·같은 개수로 돌려준다(i번째 업로드 = i번째 사진).
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-CAP-01, FR-CAP-05]
+      x-trace-access:
+        roles: [BOOTH, CUSTOMER]
+        scope: CHECKPOINT
+        captureToken: true
+        note: BOOTH는 scope=BOOTH(자기 부스), CUSTOMER는 촬영 JWT만(scope=CHECKPOINT)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptureSetCreateRequest'
+            example:
+              rentalId: Ws0HLv6QRbDILPWOcz5I2
+              checkpointId: IPv6mcQOlTkKj6mOecAQt
+              source: PHONE
+              device:
+                modelCode: MBA13-M2
+                dimensions:
+                  widthMm: 304.1
+                  depthMm: 215.0
+                  baseHMm: 7.0
+                  lidHMm: 4.0
+              photos:
+                - face: TOP
+                  light: ROOM
+                  camera: PHONE
+                  sha256: 9f2c4e0b7a1d3c5e8f0a2b4c6d8e0f1a3b5c7d9e1f2a4b6c8d0e2f4a6b8c0d2e
+                  contentType: image/jpeg
+                  takenAt: '2026-11-12T13:05:00+09:00'
+      responses:
+        '201':
+          description: 생성됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureSetCreateResponse'
+              example:
+                captureSetId: U4aNk9bKxZfIZRBgSN2Uj
+                uploads:
+                  - face: TOP
+                    light: ROOM
+                    camera: PHONE
+                    method: PUT
+                    url: https://minio.example.com/trace-captures/U4aNk9bKxZfIZRBgSN2Uj/TOP-ROOM.jpg?X-Amz-Signature=example
+                    headers:
+                      Content-Type: image/jpeg
+                    expiresAt: '2026-11-12T10:20:00+09:00'
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          description: 역할 없음 또는 범위 밖 시점
+          x-trace-error-codes: [FORBIDDEN, OUT_OF_SCOPE]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 이 시점의 촬영 권한이 없습니다
+                status: 403
+                code: OUT_OF_SCOPE
+  /api/v1/captures/sets/{setId}/uploads:
+    parameters:
+      - $ref: '#/components/parameters/SetId'
+    post:
+      tags: [촬영]
+      operationId: reissueUploadUrls
+      summary: 업로드 URL 다시 받기
+      description: |
+        아직 올라가지 않은 사진의 사전 서명 PUT URL(10분)을 새로 받는다. 업로드가 끊겨 URL이 만료됐을 때 쓴다. (FR-CAP-05, 11/2 결정)
+        - 본문을 비우거나 `photos`를 빼면 아직 안 올라간 사진 전부, `photos`를 주면 그 사진만.
+        - 이미 올라간 사진은 다시 주지 않는다(응답에서 빠진다). 세트에 없는 (face, light, camera)는 400 VALIDATION_FAILED.
+        - 완료된 세트는 409 CAPTURE_SET_CLOSED. 권한은 세트 생성과 같다(BOOTH는 자기 부스, 고객 촬영 JWT는 같은 시점).
+        응답 `uploads`는 세트 생성 응답과 같은 형식이다.
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-CAP-05]
+      x-trace-access:
+        roles: [BOOTH, CUSTOMER]
+        scope: CHECKPOINT
+        captureToken: true
+        note: BOOTH는 scope=BOOTH(자기 부스), CUSTOMER는 촬영 JWT만(scope=CHECKPOINT)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadReissueRequest'
+            example:
+              photos:
+                - face: SL
+                  light: L2
+                  camera: CAM2
+      responses:
+        '200':
+          description: 새 URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadReissueResponse'
+              example:
+                uploads:
+                  - face: SL
+                    light: L2
+                    camera: CAM2
+                    method: PUT
+                    url: https://minio.example/trace-captures/U4aNk9bKxZfIZRBgSN2Uj/SL_L2_CAM2.jpg?X-Amz-Signature=...
+                    headers:
+                      Content-Type: image/jpeg
+                    expiresAt: '2026-11-10T10:20:00+09:00'
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '409':
+          description: 이미 완료된 세트
+          x-trace-error-codes: [CAPTURE_SET_CLOSED]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 이미 완료된 촬영 세트입니다
+                status: 409
+                code: CAPTURE_SET_CLOSED
+  /api/v1/captures/sets/{setId}/complete:
+    parameters:
+      - $ref: '#/components/parameters/SetId'
+    post:
+      tags: [촬영]
+      operationId: completeCaptureSet
+      summary: 촬영 완료
+      description: |
+        올라간 사진의 해시를 확인하고 capture.uploaded 이벤트를 발행한다(검사 시작). (FR-CAP-01·02)
+        - 필수 면은 세트 source별 codes.yaml `capture.face_required`(BOOTH 8면, PHONE 7면·KB 제외). 하나라도 없으면
+          409 CAPTURE_FACES_MISSING(Problem `missingFaces`에 빠진 면).
+        - profile=QUICK 세트(부스 빠른 검사)는 `capture.face_required_quick`(BOOTH: TOP·BOT)로 검사한다. 두 카메라가 면의 앞·뒤 반을
+          나눠 찍으므로 필수 면마다 CAM1·CAM2 사진이 모두 올라가야 있는 것으로 보고, 하나라도 없으면 그 면을 `missingFaces`에 넣어 409.
+          완료 뒤 부스 탐지(`POST /api/v1/captures/sets/{setId}/detections`)가 오면 inspect-worker 정합을 기다리지 않고 바로 등급을
+          매긴다(11/3 MVP). 탐지가 완료보다 먼저 와도 완료할 때 등급을 매긴다. 앞 시점과 비교하지 않으므로 trace.checkpoint.graded는
+          `compared: false`, 핀은 빈 배열이다. 흠집은 검사 결과의 `photoDefects`(원본 사진 px)로 돌려준다.
+        - 필수가 아닌 면(예: SCR1)을 찍지 못했으면 본문 `skippedFaces`에 면 → 사유로 적는다. 필수 면을 넣으면 400 VALIDATION_FAILED.
+        - 해시가 다르면 409 CAPTURE_HASH_MISMATCH.
+        `Idempotency-Key`로 한 번만 처리하고, 같은 키로 다시 보내면 처음 응답을 돌려준다.
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-CAP-01, FR-CAP-02]
+      x-trace-access:
+        roles: [BOOTH, CUSTOMER]
+        scope: CHECKPOINT
+        captureToken: true
+        note: BOOTH는 scope=BOOTH(자기 부스), CUSTOMER는 촬영 JWT만(scope=CHECKPOINT)
+      parameters:
+        - $ref: './components/common.yaml#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        description: 건너뛴 면이 없으면 본문을 비우거나 `{}`를 보낸다.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptureSetCompleteRequest'
+            example:
+              skippedFaces:
+                SCR1: 화면이 켜지지 않음
+      responses:
+        '202':
+          description: 접수됨(검사 대기)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureSet'
+              example:
+                captureSetId: U4aNk9bKxZfIZRBgSN2Uj
+                checkpointId: IPv6mcQOlTkKj6mOecAQt
+                source: PHONE
+                boothId: null
+                status: UPLOADED
+                quality: OK
+                photos:
+                  - face: TOP
+                    light: ROOM
+                    camera: PHONE
+                    sha256: 9f2c4e0b7a1d3c5e8f0a2b4c6d8e0f1a3b5c7d9e1f2a4b6c8d0e2f4a6b8c0d2e
+                    uploaded: true
+                    qualityOk: true
+        '400':
+          description: 형식 오류 또는 필수 면을 skippedFaces에 넣음
+          x-trace-error-codes: [VALIDATION_FAILED]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 필수 면은 건너뛸 수 없습니다
+                status: 400
+                code: VALIDATION_FAILED
+                errors:
+                  - field: skippedFaces.KB
+                    message: 부스 촬영에서 KB는 필수 면입니다
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '409':
+          description: 빠진 면, 해시 불일치, 이미 완료된 세트
+          x-trace-error-codes: [CAPTURE_FACES_MISSING, CAPTURE_HASH_MISMATCH, CAPTURE_SET_CLOSED]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              examples:
+                facesMissing:
+                  summary: 빠진 면
+                  value:
+                    title: 촬영하지 않은 면이 있습니다
+                    status: 409
+                    code: CAPTURE_FACES_MISSING
+                    detail: 'KB, SCR0 면을 올려 주세요.'
+                    missingFaces: [KB, SCR0]
+                hashMismatch:
+                  summary: 해시 불일치
+                  value:
+                    title: 올린 사진이 처음 알린 사진과 다릅니다
+                    status: 409
+                    code: CAPTURE_HASH_MISMATCH
+        '422':
+          description: 같은 Idempotency-Key에 다른 요청
+          x-trace-error-codes: [IDEMPOTENCY_KEY_CONFLICT]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 같은 요청 키로 다른 요청을 보냈습니다
+                status: 422
+                code: IDEMPOTENCY_KEY_CONFLICT
+  /api/v1/captures/sets/{setId}/detections:
+    parameters:
+      - $ref: '#/components/parameters/SetId'
+    post:
+      tags: [검사]
+      operationId: saveBoothDetections
+      summary: 부스 탐지 결과 저장
+      description: |
+        Jetson이 촬영 직후 탐지한 결과를 올린다(부스 1차 탐지). 자기 부스 세트만. (FR-INS-01)
+        탐지마다 (face, light, camera)로 세트의 사진 한 장을 가리키고, polygon은 그 사진의 원본 px 좌표다.
+        표준 좌표(펼친 면, contracts/capture/faces.md)로 바꾸는 일은 inspect-worker가 trace.inspect.completed의
+        alignments(사진별 호모그래피)를 준 뒤 capture-server가 한다. 세트에 없는 (face, light, camera)면 400. (11/2 결정)
+        같은 세트에 다시 보내면 그 세트의 부스 탐지를 **통째로 바꾼다**(마지막 요청이 남는다. modelVersion이 달라도 같다).
+        그래서 같은 요청을 다시 보내도 중복이 생기지 않고 Idempotency-Key는 받지 않는다. 등급이 매겨진 세트는 409 CAPTURE_SET_CLOSED. (11/2 결정)
+        빠른 검사(QUICK) 세트는 `analyzedPhotos`에 TOP·BOT 세트 사진을 모두 담아야 한다(빠지면 400, 일부만 분석한 결과로 등급을 내지 않음). (11/3)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-INS-01]
+      x-trace-access:
+        roles: [BOOTH]
+        scope: BOOTH
+        captureToken: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectionBatchRequest'
+            example:
+              modelVersion: yolo11s-seg-v001-trt-fp16
+              detections:
+                - face: TOP
+                  light: L2
+                  camera: CAM1
+                  class: scratch
+                  polygon: [[1520.5, 980.0], [1680.0, 982.5], [1679.0, 1010.0], [1521.0, 1008.0]]
+                  confidence: 0.87
+      responses:
+        '201':
+          description: 저장됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionBatchResponse'
+              example:
+                accepted: 1
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '409':
+          description: 이미 검사가 끝난 세트
+          x-trace-error-codes: [CAPTURE_SET_CLOSED]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 이미 검사가 끝난 촬영 세트입니다
+                status: 409
+                code: CAPTURE_SET_CLOSED
+  /api/v1/captures/sets/{setId}:
+    parameters:
+      - $ref: '#/components/parameters/SetId'
+    get:
+      tags: [촬영]
+      operationId: getCaptureSet
+      summary: 촬영 세트 상태
+      description: 어떤 사진이 올라갔는지와 세트 상태. 고객 촬영 JWT는 자기 시점 세트만. (FR-CAP-01)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-CAP-01]
+      x-trace-access:
+        roles: [ADMIN, CUSTOMER]
+        scope: CHECKPOINT
+        captureToken: true
+        note: CUSTOMER는 촬영 JWT로만(scope=CHECKPOINT), ADMIN은 제한 없음
+      responses:
+        '200':
+          description: 세트
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureSet'
+              example:
+                captureSetId: U4aNk9bKxZfIZRBgSN2Uj
+                checkpointId: IPv6mcQOlTkKj6mOecAQt
+                source: PHONE
+                boothId: null
+                status: UPLOADING
+                quality: OK
+                photos:
+                  - face: TOP
+                    light: ROOM
+                    camera: PHONE
+                    sha256: 9f2c4e0b7a1d3c5e8f0a2b4c6d8e0f1a3b5c7d9e1f2a4b6c8d0e2f4a6b8c0d2e
+                    uploaded: false
+                    qualityOk: true
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+  /api/v1/captures/checkpoints/{checkpointId}/inspection:
+    parameters:
+      - $ref: '#/components/parameters/CheckpointId'
+    get:
+      tags: [검사]
+      operationId: getCheckpointInspection
+      summary: 흠집·신규 판정·등급
+      description: |
+        시점의 흠집 목록(표준 좌표), 이전 시점과의 매칭(NEW·EXISTING), 등급과 규칙 버전. 아직 등급 전이면 grade는 null. (FR-INS-03·04)
+        사람 검수(11/8): AI 후보가 있는 세트는 관리자가 검수를 완료해야 등급이 매겨진다. ADMIN에게는 기각(DISMISSED) 후보까지 모두 보내고,
+        CUSTOMER에게는 기각 후보를 빼고 보낸다.
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-INS-03, FR-INS-04]
+      x-trace-access:
+        roles: [ADMIN, CUSTOMER]
+        scope: OWN_RENTAL
+        captureToken: false
+      responses:
+        '200':
+          description: 검사 결과
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inspection'
+              example:
+                checkpointId: h40b9AN9xMQhXRHrOyJWB
+                grade: B
+                ruleVersion: grade-rules-v1
+                reasons: [신규 긁힘 1개(12mm)]
+                defects:
+                  - defectId: wcMFSsKlYBJ0vrxTlC8t5
+                    face: TOP
+                    class: scratch
+                    polygon: [[120.5, 80.0], [180.0, 82.5], [179.0, 90.0], [121.0, 88.0]]
+                    lengthMm: 12.0
+                    areaMm2: 3.1
+                    confidence: 0.91
+                    modelVersion: yolo11s-seg-v001
+                    source: AUTO
+                    match:
+                      status: NEW
+                      prevDefectId: null
+                      distanceMm: null
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+  /api/v1/captures/checkpoints/{checkpointId}/settlement:
+    parameters:
+      - $ref: '#/components/parameters/CheckpointId'
+    get:
+      tags: [검사]
+      operationId: getCheckpointSettlement
+      summary: 반납 정산서(신규 흠집 차감액)
+      description: |
+        반납(RET) 시점의 신규(NEW) 흠집을 공개 규칙표(ruleVersion)에 넣어 흠집별 차감액과 합계를 계산한다(11/10 민서 결정, 반납 정산 자동화).
+        기각(DISMISSED) 흠집과 이전 시점에 있던(EXISTING) 흠집은 넣지 않는다. 수령(RCV) 때 새로 생긴 흠집은 배송 중 손상이라 고객 책임이 아니므로
+        반납 시점 비교의 기존 흠집으로 빠진다. 같은 검사 결과와 ruleVersion이면 누구나 같은 금액이 나온다(저장하지 않고 읽을 때 계산).
+        검수·등급 전이면 status PENDING(lines 빈 배열), 반납이 아니면 NOT_APPLICABLE.
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-INS-04]
+      x-trace-access:
+        roles: [ADMIN, CUSTOMER]
+        scope: OWN_RENTAL
+        captureToken: false
+      responses:
+        '200':
+          description: 정산서
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settlement'
+              example:
+                checkpointId: h40b9AN9xMQhXRHrOyJWB
+                checkpointType: RET
+                status: READY
+                ruleVersion: settlement-rules-v1
+                currency: KRW
+                grade: C
+                lines:
+                  - defectId: wcMFSsKlYBJ0vrxTlC8t5
+                    face: TOP
+                    class: dent
+                    lengthMm: 6.2
+                    areaMm2: 18.0
+                    amount: 80000
+                    rule: 찍힘 5mm 이상
+                  - defectId: Q1nJ0c4xQx3a9lH2pPq7r
+                    face: BOT
+                    class: scratch
+                    lengthMm: 7.5
+                    areaMm2: 1.1
+                    amount: 0
+                    rule: 긁힘 10mm 미만(생활 마모)
+                subtotal: 80000
+                cap: 300000
+                total: 80000
+                notes: [이전 시점에 있던 흠집 2개는 빼고 계산]
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+  /api/v1/captures/reviews:
+    get:
+      tags: [검사]
+      operationId: listDefectReviews
+      summary: 검수 대기 시점 목록
+      description: |
+        AI가 잡은 흠집 후보를 사람이 확인해야 하는 시점 목록(11/8 추가, 사람 검수). 오래 기다린 시점부터.
+        `status=PENDING`(기본)은 검수 완료 전이고 후보가 하나 이상인 시점, `status=CONFIRMED`는 검수 완료한 시점(최근 완료부터)이다.
+        시점마다 후보 수(`pending`·`confirmed`·`dismissed`)와 세트 정보를 준다. 시험 데이터 지우기로 지운 세트는 나오지 않는다.
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-INS-03, FR-INS-04]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: PENDING(검수 대기, 기본) 또는 CONFIRMED(검수 완료). DISMISSED는 400
+          schema:
+            $ref: './components/codes.gen.yaml#/components/schemas/InspectionReviewStatus'
+        - $ref: './components/common.yaml#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 검수 대기(또는 완료) 시점
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefectReviewQueue'
+              example:
+                items:
+                  - checkpointId: h40b9AN9xMQhXRHrOyJWB
+                    rentalId: 3fJx0aV7mQ2LrTnB9cYdE
+                    captureSetId: U4aNk9bKxZfIZRBgSN2Uj
+                    source: BOOTH
+                    profile: QUICK
+                    modelVersion: yolo11m-aihub-aug-v002-20261108T074500Z-trt-fp16
+                    pending: 3
+                    confirmed: 1
+                    dismissed: 2
+                    completedAt: '2026-11-09T14:03:05+09:00'
+                    reviewCompletedAt: null
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+  /api/v1/captures/checkpoints/{checkpointId}/reviews:
+    parameters:
+      - $ref: '#/components/parameters/CheckpointId'
+    post:
+      tags: [검사]
+      operationId: saveDefectReviews
+      summary: 흠집 후보 확정·기각
+      description: |
+        관리자가 AI 흠집 후보마다 흠집 맞음(CONFIRMED)·흠집 아님(DISMISSED)·되돌리기(PENDING)를 정한다(11/8 추가, 사람 검수).
+        같은 흠집이 조명만 다른 사진마다 따로 있으므로 여러 개를 한 번에 보낼 수 있다(`photoDefects[].groupId`가 같은 것끼리 묶으면 편하다).
+        DISMISSED에는 `reason`(먼지·스티커·반사·부품·기타)을 주고, 다른 결정에는 주지 않는다. 결과로 갱신된 검사 결과를 돌려준다.
+        - 검수 완료(`.../reviews/complete`) 뒤에는 409 REVIEW_CLOSED. 한 요청 안에서 모르는 `defectId`가 하나라도 있으면 아무것도 바꾸지 않고 404.
+        - 저장만 하고 등급은 아직 매기지 않는다. 등급은 검수 완료 때 기각을 뺀 흠집으로 매긴다.
+        - 사람이 직접 더한 흠집(`source=HUMAN`, 11/9)은 결정 대상이 아니다(모르는 defectId로 404). 지우려면 `.../reviews/additions/{defectId}` DELETE.
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-INS-03, FR-INS-04]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DefectReviewRequest'
+            example:
+              items:
+                - defectId: wcMFSsKlYBJ0vrxTlC8t5
+                  decision: CONFIRMED
+                - defectId: Q2b8nT0xYk4LmA9cVd3Ef
+                  decision: DISMISSED
+                  reason: TAPE
+      responses:
+        '200':
+          description: 갱신된 검사 결과
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inspection'
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '409':
+          description: 이미 검수 완료한 시점
+          x-trace-error-codes: [REVIEW_CLOSED]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 검수가 이미 끝난 시점입니다
+                status: 409
+                code: REVIEW_CLOSED
+  /api/v1/captures/checkpoints/{checkpointId}/reviews/complete:
+    parameters:
+      - $ref: '#/components/parameters/CheckpointId'
+    post:
+      tags: [검사]
+      operationId: completeDefectReview
+      summary: 검수 완료(등급 매기기)
+      description: |
+        후보를 모두 확정·기각한 뒤 부른다(11/8 추가, 사람 검수). 기각(DISMISSED)을 뺀 흠집으로 등급을 매기고
+        trace.checkpoint.graded를 발행한다(이벤트 `review`에 검수자·시각·건수). 그 뒤로 결정은 바꿀 수 없다.
+        - AI 후보가 하나도 없던 세트도 기본(서버 설정 `REVIEW_HOLD_EMPTY=true`, 11/9)으로는 검수를 기다린다. 관리자가 사진을 보고 놓친 흠집을
+          더하거나(`.../reviews/additions`) 그대로 완료하면 등급을 매긴다(`review.open`이 true). 이 설정을 끄면 예전처럼 탐지 직후 바로 등급을 매기고,
+          이 경로를 부르면 409 REVIEW_CLOSED.
+        - PENDING이 남아 있으면 409 REVIEW_PENDING_REMAINS(Problem `pending`에 남은 후보 수, 1 이상).
+        - 촬영 완료·부스 탐지·정합 결과가 아직 다 오지 않았으면 409 REVIEW_NOT_READY(후보가 더 생기거나 바뀔 수 있으니 조금 뒤 다시).
+        `Idempotency-Key`로 한 번만 처리한다.
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-INS-03, FR-INS-04]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      parameters:
+        - $ref: './components/common.yaml#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 등급이 매겨진 검사 결과
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inspection'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '409':
+          description: 검수하지 않은 후보가 남음, 탐지·정합 결과가 아직 오지 않음, 또는 이미 검수 완료
+          x-trace-error-codes: [REVIEW_PENDING_REMAINS, REVIEW_NOT_READY, REVIEW_CLOSED]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 검수하지 않은 후보가 남았습니다
+                status: 409
+                code: REVIEW_PENDING_REMAINS
+                pending: 2
+  /api/v1/captures/checkpoints/{checkpointId}/reviews/additions:
+    parameters:
+      - $ref: '#/components/parameters/CheckpointId'
+    post:
+      tags: [검사]
+      operationId: addHumanDefect
+      summary: AI가 놓친 흠집 직접 추가
+      description: |
+        관리자가 원본 사진 한 장 위에 AI가 놓친 흠집을 직접 그려 더한다(11/9 민서 요청, 사람 검수). 점으로 찍었으면 화면이 작은 다각형으로 바꿔 보낸다.
+        더한 흠집은 `source=HUMAN`, `confidence=1`, `modelVersion=human`, 검수 상태 CONFIRMED(검수자=요청한 관리자)로 저장되고,
+        AI 후보와 똑같이 등급·비교·핀·고객 리포트에 쓰인다. 검수 후보 수(`pending`·`confirmed`·`dismissed`)에는 세지 않고 `review.added`로 센다.
+        - 빠른 검사(QUICK)는 원본 px 그대로 센다. 전체 검사(FULL)는 그 사진의 정합 결과로 표준 좌표·길이를 구하므로 정합 결과가 와 있어야 하고
+          (아니면 409 REVIEW_NOT_READY), 정합하지 못한 사진·판정 불가 면이면 400이다(등급에 쓸 수 없는 위치).
+        - 세트에 없는 사진, 올라가지 않았거나 건너뛴 면의 사진이면 400. 검수 완료·등급 뒤에는 409 REVIEW_CLOSED.
+        - 부스가 탐지를 다시 보내도(통째로 바꾸기) 사람이 더한 흠집은 남는다.
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-INS-03, FR-INS-04]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HumanDefectRequest'
+            example:
+              face: TOP
+              light: L1
+              camera: CAM1
+              class: scratch
+              polygon: [[812, 604], [868, 611], [866, 622], [810, 615]]
+      responses:
+        '201':
+          description: 갱신된 검사 결과(더한 흠집은 `photoDefects`, FULL이면 `defects`에도)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inspection'
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '409':
+          description: 이미 검수 완료·등급, 또는 전체 검사의 정합 결과가 아직 오지 않음
+          x-trace-error-codes: [REVIEW_CLOSED, REVIEW_NOT_READY]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 검수가 이미 끝난 시점입니다
+                status: 409
+                code: REVIEW_CLOSED
+  /api/v1/captures/checkpoints/{checkpointId}/reviews/additions/{defectId}:
+    parameters:
+      - $ref: '#/components/parameters/CheckpointId'
+      - name: defectId
+        in: path
+        required: true
+        schema:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+    delete:
+      tags: [검사]
+      operationId: deleteHumanDefect
+      summary: 직접 추가한 흠집 지우기
+      description: |
+        잘못 그린 흠집을 지운다(11/9 추가). 사람이 더한(`source=HUMAN`) 흠집만 지울 수 있고, AI 후보는 404(기각으로 정한다).
+        검수 완료·등급 뒤에는 409 REVIEW_CLOSED.
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-INS-03, FR-INS-04]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      responses:
+        '200':
+          description: 갱신된 검사 결과
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inspection'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '409':
+          description: 이미 검수 완료한 시점
+          x-trace-error-codes: [REVIEW_CLOSED]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 검수가 이미 끝난 시점입니다
+                status: 409
+                code: REVIEW_CLOSED
+  /api/v1/captures/checkpoints/{checkpointId}/media:
+    parameters:
+      - $ref: '#/components/parameters/CheckpointId'
+    get:
+      tags: [검사]
+      operationId: getCheckpointMedia
+      summary: 텍스처·크롭 보기 URL
+      description: 3D 트윈에 입힐 면별 텍스처와 흠집 크롭의 사전 서명 GET URL(10분). (FR-RPT-01)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RPT-01]
+      x-trace-access:
+        roles: [ADMIN, CUSTOMER]
+        scope: OWN_RENTAL
+        captureToken: false
+      responses:
+        '200':
+          description: 보기 URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckpointMedia'
+              example:
+                checkpointId: h40b9AN9xMQhXRHrOyJWB
+                expiresAt: '2026-11-12T14:10:00+09:00'
+                textures:
+                  - face: TOP
+                    url: https://minio.example.com/trace-captures/rectified/TOP.jpg?X-Amz-Signature=example
+                crops:
+                  - defectId: wcMFSsKlYBJ0vrxTlC8t5
+                    url: https://minio.example.com/trace-captures/crops/0701.jpg?X-Amz-Signature=example
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+  /api/v1/captures/catalog:
+    get:
+      tags: [검사]
+      operationId: listCatalogInspections
+      summary: 공개 기기 목록의 흠집 요약
+      description: >-
+        로그인 없이 시점별 등급과 흠집 수를 본다(11/8 민서 요청, 공개 보유 기기 목록). checkpointId는 rental-server
+        `GET /api/v1/catalog/devices`의 `checkpoints`에서 온다. 부스(BOOTH)에서 찍고 등급이 난 세트만 답하고, 나머지 시점은 목록에서 빠진다.
+        흠집 수는 사람이 확정(CONFIRMED)한 흠집만, 조명·카메라만 다른 같은 흠집은 하나로 센다(등급 계산의 묶기와 같다).
+      security: []
+      x-trace-requirements: [FR-INS-04]
+      parameters:
+        - name: checkpointIds
+          in: query
+          required: true
+          description: 쉼표로 이은 시점 ID(최대 100개)
+          style: form
+          explode: false
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 100
+            items:
+              $ref: './components/common.yaml#/components/schemas/PublicId'
+      responses:
+        '200':
+          description: 요약 목록(요청 순서와 상관없음)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogInspectionList'
+              example:
+                items:
+                  - checkpointId: Q2xxYv8oP0aLkM3nB7cDe
+                    grade: B
+                    gradedAt: '2026-11-12T18:05:00+09:00'
+                    defectCount: 2
+                    defectsByClass:
+                      scratch: 1
+                      dent: 1
+                      crack: 0
+                      stain: 0
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '429':
+          $ref: './components/common.yaml#/components/responses/CatalogTooManyRequests'
+  /api/v1/captures/catalog/checkpoints/{checkpointId}:
+    parameters:
+      - $ref: '#/components/parameters/CheckpointId'
+    get:
+      tags: [검사]
+      operationId: getCatalogInspection
+      summary: 공개 기기 상세의 사진과 흠집
+      description: >-
+        로그인 없이 시점의 부스 사진(보기 URL)과 사람이 확정한 흠집(원본 사진 px)을 본다. 기기 상세의 3D 흠집 핀·사진 보기용(11/8 민서 요청).
+        부스에서 찍고 등급이 난 세트만 답하고, 그 밖(폰 촬영·검사 중·없는 시점)은 404다. 기각·검수 기록·신뢰도·대여자 정보는 싣지 않는다.
+      security: []
+      x-trace-requirements: [FR-INS-04, FR-RPT-01]
+      responses:
+        '200':
+          description: 사진과 흠집
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogInspection'
+              example:
+                checkpointId: Q2xxYv8oP0aLkM3nB7cDe
+                grade: B
+                gradedAt: '2026-11-12T18:05:00+09:00'
+                defectCount: 1
+                defectsByClass:
+                  scratch: 1
+                  dent: 0
+                  crack: 0
+                  stain: 0
+                expiresAt: '2026-11-12T18:15:00+09:00'
+                photos:
+                  - face: TOP
+                    light: L3
+                    camera: CAM1
+                    url: https://storage.example/trace-captures/a.jpg?X-Amz-Signature=abc
+                photoDefects:
+                  - defectId: Z1aB2cD3eF4gH5iJ6kL7m
+                    face: TOP
+                    light: L3
+                    camera: CAM1
+                    class: scratch
+                    polygon: [[812, 420], [860, 424], [858, 431], [810, 428]]
+                    groupId: Z1aB2cD3eF4gH5iJ6kL7m
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './components/common.yaml#/components/responses/CatalogTooManyRequests'
+  /api/v1/captures/benchmarks:
+    get:
+      tags: [검사]
+      operationId: listCaptureBenchmarks
+      summary: 세트별 처리 시간(성능 그래프)
+      description: |
+        관리자 화면 성능 그래프용. 최근 촬영 세트부터 세트마다 걸린 시간을 돌려준다(11/6 추가, C 요청).
+        `inferenceMs`는 부스가 탐지 결과와 함께 보낸 Jetson 탐지 시간이고, 보내지 않았거나 폰 세트면 null이다.
+        `completedToGradedMs`는 촬영 완료 요청부터 등급까지(탐지·업로드 대기·비교 포함), 아직 등급이 없거나 11/6 전 세트면 null.
+        `boothTotalMs`는 부스 촬영 시작 버튼부터 부스 화면 판정까지(부스가 보낸 값), `models`는 모델별 mAP(학습 뒤 설정한 숫자)다.
+        세트별 시각은 `createdAt`(세트 생성)·`completedAt`·`detectionsReceivedAt`(탐지 받음)·`gradedAt`(등급)이다.
+        시험 데이터 지우기(trace.checkpoint.purged)로 지운 세트는 나오지 않는다. (FR-INS-01)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-INS-01]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      parameters:
+        - name: source
+          in: query
+          required: false
+          description: 이 촬영 출처의 세트만
+          schema:
+            $ref: './components/codes.gen.yaml#/components/schemas/CaptureSource'
+        - $ref: './components/common.yaml#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 최근 세트부터
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureBenchmarkList'
+              example:
+                items:
+                  - captureSetId: U4aNk9bKxZfIZRBgSN2Uj
+                    checkpointId: h40b9AN9xMQhXRHrOyJWB
+                    source: BOOTH
+                    profile: QUICK
+                    boothId: booth-01
+                    modelVersion: yolo11s-seg-v001-trt-fp16
+                    photoCount: 12
+                    inferenceMs: 28400
+                    createdAt: '2026-11-09T14:02:10+09:00'
+                    completedAt: '2026-11-09T14:03:05+09:00'
+                    detectionsReceivedAt: '2026-11-09T14:03:36+09:00'
+                    gradedAt: '2026-11-09T14:03:37+09:00'
+                    completedToGradedMs: 32000
+                    boothTotalMs: 91500
+                models:
+                  - modelVersion: yolo11s-seg-v001-trt-fp16
+                    map50: 0.71
+                    map50To95: 0.48
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+components:
+  securitySchemes:
+    bearerJwt:
+      $ref: './components/common.yaml#/components/securitySchemes/bearerJwt'
+  parameters:
+    SetId:
+      name: setId
+      in: path
+      required: true
+      description: 촬영 세트 ID(captureSetId)
+      schema:
+        $ref: './components/common.yaml#/components/schemas/PublicId'
+    CheckpointId:
+      name: checkpointId
+      in: path
+      required: true
+      schema:
+        $ref: './components/common.yaml#/components/schemas/PublicId'
+  schemas:
+    PhotoPolygon:
+      type: array
+      description: 원본 사진 px 좌표 [[x, y], …]. 탐지한 그 사진 기준(원점 왼쪽 위)
+      minItems: 3
+      items:
+        type: array
+        minItems: 2
+        maxItems: 2
+        items:
+          type: number
+    Polygon:
+      type: array
+      description: 표준 좌표(펼친 면 이미지 px, contracts/capture/faces.md) [[x, y], …]
+      minItems: 3
+      items:
+        type: array
+        minItems: 2
+        maxItems: 2
+        items:
+          type: number
+    PhotoSpec:
+      type: object
+      additionalProperties: false
+      required: [face, light, camera, sha256, contentType, takenAt]
+      properties:
+        face:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+        light:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+        camera:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
+        sha256:
+          $ref: './components/common.yaml#/components/schemas/Sha256'
+        contentType:
+          type: string
+          enum: [image/jpeg, image/png]
+        takenAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+    CaptureSetCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [rentalId, checkpointId, source, photos]
+      properties:
+        rentalId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+          description: 시점이 속한 렌탈. capture-server가 이벤트 봉투의 rentalId로 쓴다(서비스끼리 REST를 부르지 않으므로)
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        source:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureSource'
+        photos:
+          type: array
+          minItems: 1
+          maxItems: 80
+          description: 사진 목록. (face, light, camera)는 겹치지 않는다. 부스 촬영 목록은 한 대 29장(패스 1 18장 + 패스 2 10장 + SCR1), 80은 여유를 둔 상한
+          items:
+            $ref: '#/components/schemas/PhotoSpec'
+        device:
+          $ref: '#/components/schemas/CaptureDevice'
+        profile:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureProfile'
+          description: >-
+            세트 범위(11/3 MVP, 선택). 빼면 FULL. QUICK은 부스 빠른 검사(위·아래 2면)로 source=BOOTH만 허용(PHONE이면 400 VALIDATION_FAILED).
+            QUICK 세트는 codes.yaml capture.face_required_quick로 완료를 검사하고, inspect-worker 정합 없이 부스 탐지만으로 등급을 매긴다
+    CaptureDevice:
+      type: object
+      additionalProperties: false
+      required: [modelCode, dimensions]
+      description: >-
+        찍는 기기의 기종과 치수(rental-server device_model 값). 서비스끼리 REST를 부르지 않으므로 rentalId와 같은 방식으로 클라이언트가 옮긴다.
+        폰(고객 촬영 JWT)은 렌탈 기종으로 rental-server `GET /api/v1/device-models/{modelCode}`(CUSTOMER 허용)를 읽어 싣고,
+        부스는 rentalId·checkpointId처럼 관리자 화면(ADMIN)이 고른 기종·치수를 그대로 받아 싣는다(부스는 rental-server를 부르지 않는다).
+        capture-server는 저장했다가 이벤트 trace.capture.uploaded의 device로 싣고, inspect-worker가 이 치수로 표준 좌표(1 px = 0.25 mm)를 만든다.
+        빼면 worker 기본 기종으로 펼치므로 여러 기종을 쓰면 꼭 보낸다. 범위는 이벤트 $defs/DeviceModel과 같다
+      properties:
+        modelCode:
+          $ref: './rental-server.yaml#/components/schemas/ModelCode'
+        dimensions:
+          $ref: '#/components/schemas/CaptureDeviceDimensions'
+    CaptureDeviceDimensions:
+      type: object
+      additionalProperties: false
+      required: [widthMm, depthMm, baseHMm, lidHMm]
+      description: 기종 치수(mm). rental-server ModelDimensions와 같은 뜻이고, 이벤트 $defs/DeviceModel.dimensions와 같은 범위
+      properties:
+        widthMm:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 1000
+        depthMm:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 1000
+        baseHMm:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 100
+        lidHMm:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 100
+    UploadTarget:
+      type: object
+      required: [face, light, camera, method, url, expiresAt]
+      properties:
+        face:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+        light:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+        camera:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
+        method:
+          type: string
+          const: PUT
+        url:
+          type: string
+          format: uri
+          description: 사전 서명 URL. 로그에 남기지 않는다.
+        headers:
+          type: object
+          description: PUT에 그대로 실어야 하는 헤더
+          additionalProperties:
+            type: string
+        expiresAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+    UploadReissueRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        photos:
+          type: array
+          minItems: 1
+          description: 다시 받을 사진. 빼면 아직 안 올라간 사진 전부
+          items:
+            type: object
+            additionalProperties: false
+            required: [face, light, camera]
+            properties:
+              face:
+                $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+              light:
+                $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+              camera:
+                $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
+    UploadReissueResponse:
+      type: object
+      required: [uploads]
+      properties:
+        uploads:
+          type: array
+          description: 아직 안 올라간 사진만. 모두 올라갔으면 빈 배열
+          items:
+            $ref: '#/components/schemas/UploadTarget'
+    CaptureSetCreateResponse:
+      type: object
+      required: [captureSetId, uploads]
+      properties:
+        captureSetId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        uploads:
+          type: array
+          description: 요청 photos와 같은 순서·같은 개수
+          items:
+            $ref: '#/components/schemas/UploadTarget'
+    CaptureSetCompleteRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        skippedFaces:
+          type: object
+          description: >-
+            찍지 못한 선택 면 → 사유. 키는 codes.yaml capture.face. profile=FULL이면 세트 source의 face_required에 없는 면만,
+            profile=QUICK이면 capture.face_required_quick.BOOTH(TOP·BOT)에 없는 면만.
+          propertyNames:
+            $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+          additionalProperties:
+            type: string
+            minLength: 1
+            maxLength: 200
+    CaptureSetPhoto:
+      type: object
+      required: [face, light, camera, sha256, uploaded, qualityOk]
+      properties:
+        face:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+        light:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+        camera:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
+        sha256:
+          $ref: './components/common.yaml#/components/schemas/Sha256'
+        uploaded:
+          type: boolean
+        qualityOk:
+          type: boolean
+          description: 블러·반사 검사 통과 여부
+    CaptureSet:
+      type: object
+      required: [captureSetId, checkpointId, source, boothId, status, quality, photos]
+      properties:
+        captureSetId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        source:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureSource'
+        profile:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureProfile'
+          description: 세트 범위(선택 필드, 11/3 추가). 없으면 FULL로 본다
+        boothId:
+          type: [string, 'null']
+        status:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureSetStatus'
+        quality:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureQuality'
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaptureSetPhoto'
+    Detection:
+      type: object
+      additionalProperties: false
+      required: [face, light, camera, class, polygon, confidence]
+      properties:
+        face:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+        light:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+        camera:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
+        class:
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionDefectClass'
+        polygon:
+          $ref: '#/components/schemas/PhotoPolygon'
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+    DetectionBatchRequest:
+      type: object
+      additionalProperties: false
+      required: [modelVersion, detections]
+      properties:
+        modelVersion:
+          type: string
+          maxLength: 64
+        detections:
+          type: array
+          items:
+            $ref: '#/components/schemas/Detection'
+        analyzedPhotos:
+          type: array
+          maxItems: 80
+          description: >-
+            이 요청으로 분석을 마친 사진(선택 필드, 11/3 추가). 빠른 검사(QUICK) 세트는 필수이고, 필수 면(TOP·BOT)의 세트 사진을 모두 담아야
+            한다. 빠지면 400 VALIDATION_FAILED(field analyzedPhotos). 흠집이 없는 사진은 여기에만 넣고 detections에는 넣지 않는다.
+            그래서 받은 요청은 늘 세트 전체의 결과이고, 일부만 분석한 요청으로 등급이 나지 않는다
+          items:
+            $ref: '#/components/schemas/PhotoRef'
+        inferenceMs:
+          type: integer
+          minimum: 0
+          maximum: 600000
+          description: >-
+            이 요청의 탐지에 걸린 시간 ms(선택 필드, 11/6 추가). 엔진을 올린 뒤 세트 사진 전체를 탐지한 시간이고 업로드·엔진 올리기는 뺀다.
+            성능 그래프(GET /api/v1/captures/benchmarks)에 그대로 나온다
+        boothTotalMs:
+          type: integer
+          minimum: 0
+          maximum: 3600000
+          description: >-
+            부스에서 촬영 시작 버튼부터 화면에 판정(문제 있음/없음)이 나올 때까지 ms(선택 필드, 11/6 추가, C 요청).
+            촬영·탐지를 모두 포함하고 서버 업로드는 뺀다. 성능 그래프에 그대로 나온다
+    CaptureBenchmarkList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaptureBenchmark'
+        models:
+          type: array
+          maxItems: 50
+          description: >-
+            탐지 모델별 평가 점수(선택 필드, 11/6 추가, C 요청). 학습이 끝난 뒤 검증 데이터로 잰 숫자를 서버 설정에 넣으면 나온다.
+            설정이 없으면 빈 배열이다. 서버는 항상 보낸다
+          items:
+            $ref: '#/components/schemas/ModelMetric'
+    ModelMetric:
+      type: object
+      required: [modelVersion, map50, map50To95]
+      properties:
+        modelVersion:
+          type: string
+          maxLength: 64
+          description: CaptureBenchmark.modelVersion과 같은 값
+        map50:
+          type: [number, 'null']
+          minimum: 0
+          maximum: 1
+          description: 검증 데이터 mAP@0.5(마스크). 아직 없으면 null
+        map50To95:
+          type: [number, 'null']
+          minimum: 0
+          maximum: 1
+          description: 검증 데이터 mAP@0.5:0.95(마스크). 아직 없으면 null
+    CaptureBenchmark:
+      type: object
+      required: [captureSetId, checkpointId, source, profile, boothId, modelVersion, photoCount, inferenceMs, createdAt,
+                 completedAt, detectionsReceivedAt, gradedAt, completedToGradedMs]
+      properties:
+        captureSetId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        source:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureSource'
+        profile:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureProfile'
+        boothId:
+          type: [string, 'null']
+        modelVersion:
+          type: [string, 'null']
+          description: 부스 탐지 모델 버전. 탐지가 아직 없으면 null
+        photoCount:
+          type: integer
+          minimum: 0
+          description: 올라간 사진 수
+        inferenceMs:
+          type: [integer, 'null']
+          minimum: 0
+          description: 부스가 보낸 탐지 시간 ms. 안 보냈으면 null
+        createdAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+        completedAt:
+          description: 촬영 완료 요청 시각. 아직이거나 11/6 전 세트면 null
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+        detectionsReceivedAt:
+          description: 부스 탐지를 받은 시각. 없으면 null
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+        gradedAt:
+          description: 등급을 매긴 시각. 없으면 null
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+        completedToGradedMs:
+          type: [integer, 'null']
+          minimum: 0
+          description: completedAt부터 gradedAt까지 ms. 둘 중 하나라도 없으면 null
+        boothTotalMs:
+          type: [integer, 'null']
+          minimum: 0
+          description: 부스가 보낸 촬영 시작 버튼→판정 ms(선택 필드, 11/6 추가, 서버는 항상 보냄). 안 보냈거나 폰 세트면 null
+    PhotoRef:
+      type: object
+      additionalProperties: false
+      required: [face, light, camera]
+      properties:
+        face:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+        light:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+        camera:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
+    DetectionBatchResponse:
+      type: object
+      required: [accepted]
+      properties:
+        accepted:
+          type: integer
+          minimum: 0
+    DefectMatch:
+      type: object
+      required: [status, prevDefectId, distanceMm]
+      properties:
+        status:
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionMatchStatus'
+        prevDefectId:
+          description: null이면 신규
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/PublicId'
+            - type: 'null'
+        distanceMm:
+          type: [number, 'null']
+    Defect:
+      type: object
+      required: [defectId, face, class, polygon, lengthMm, areaMm2, confidence, modelVersion, source, match]
+      properties:
+        defectId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        face:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+        class:
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionDefectClass'
+        polygon:
+          $ref: '#/components/schemas/Polygon'
+        lengthMm:
+          type: [number, 'null']
+        areaMm2:
+          type: [number, 'null']
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        modelVersion:
+          type: string
+        source:
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionDefectSource'
+        match:
+          oneOf:
+            - $ref: '#/components/schemas/DefectMatch'
+            - type: 'null'
+        review:
+          description: 사람 검수 상태(선택 필드, 11/8 추가. 서버는 항상 보낸다)
+          $ref: '#/components/schemas/DefectReview'
+    Settlement:
+      type: object
+      description: 반납 정산서(11/10 추가). 금액은 원(KRW) 정수
+      required: [checkpointId, checkpointType, status, ruleVersion, currency, grade, lines, subtotal, cap, total, notes]
+      properties:
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        checkpointType:
+          $ref: './components/codes.gen.yaml#/components/schemas/RentalCheckpointType'
+        status:
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionSettlementStatus'
+        ruleVersion:
+          type: string
+          description: 정산 규칙표 버전(금액이 바뀌면 버전도 바뀐다)
+        currency:
+          type: string
+          enum: [KRW]
+        grade:
+          oneOf:
+            - $ref: './components/codes.gen.yaml#/components/schemas/InspectionGrade'
+            - type: 'null'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/SettlementLine'
+        subtotal:
+          type: integer
+          minimum: 0
+          description: lines 금액 합
+        cap:
+          type: integer
+          minimum: 0
+          description: 한 번 반납에 차감하는 상한(보증금)
+        total:
+          type: integer
+          minimum: 0
+          description: min(subtotal, cap)
+        notes:
+          type: array
+          description: 사람이 읽는 참고 문장(뺀 흠집, 상한 적용 등)
+          items:
+            type: string
+    SettlementLine:
+      type: object
+      required: [defectId, face, class, lengthMm, areaMm2, amount, rule]
+      properties:
+        defectId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        face:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+        class:
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionDefectClass'
+        lengthMm:
+          type: [number, 'null']
+        areaMm2:
+          type: [number, 'null']
+        amount:
+          type: integer
+          minimum: 0
+        rule:
+          type: string
+          description: 적용한 규칙 한 줄(예 "찍힘 5mm 이상")
+    Inspection:
+      type: object
+      required: [checkpointId, grade, ruleVersion, reasons, defects]
+      properties:
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        grade:
+          oneOf:
+            - $ref: './components/codes.gen.yaml#/components/schemas/InspectionGrade'
+            - type: 'null'
+        ruleVersion:
+          type: [string, 'null']
+        reasons:
+          type: array
+          description: 등급 근거(사람이 읽는 문장)
+          items:
+            type: string
+        defects:
+          type: array
+          items:
+            $ref: '#/components/schemas/Defect'
+        photoDefects:
+          type: array
+          description: >-
+            원본 사진 px 흠집(선택 필드, 11/3 추가). 정합 없이 판정한 부스 빠른 검사(QUICK) 세트는 흠집이 여기에만 있고 `defects`는 빈 배열이다
+            (`defects[].polygon`은 늘 표준 좌표). 11/9부터 전체 검사(FULL) 세트도 원본 사진 px를 아는 흠집(부스 탐지 전부, 정합한 사진의
+            worker 탐지)을 여기에 함께 싣는다. 이때 `defects`에는 표준 좌표가 있는(정합에 성공한) 흠집만 있고, 같은 흠집은 두 목록에서
+            defectId가 같다(정합에 실패해 판정 불가인 면의 흠집은 `photoDefects`에만 있다. 등급에는 쓰지 않음). 흠집 수는 `profile`이
+            FULL이면 `defects`로, QUICK이면 `photoDefects`로 센다. 조명만 다른 사진의 같은 흠집도 사진마다 따로 있으며, 관리자 화면은
+            camera·light로 그 사진(`CheckpointMedia.photos`)을 찾아 겹쳐 그린다
+          items:
+            $ref: '#/components/schemas/PhotoDefect'
+        review:
+          description: >-
+            검수 요약(선택 필드, 11/8 추가. 서버는 항상 보낸다). 후보가 있으면 검수 완료 전까지 grade는 null이고,
+            `defects`·`photoDefects`에는 기각(DISMISSED)도 들어 있다(화면은 review.status로 거른다)
+          $ref: '#/components/schemas/InspectionReview'
+        profile:
+          description: >-
+            보여 주는 세트의 검사 범위(선택 필드, 11/9 추가. 서버는 항상 보낸다). 화면이 흠집을 `defects`와 `photoDefects` 중 어디서 셀지 정한다
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureProfile'
+        unjudgeableFaces:
+          type: array
+          description: >-
+            판정 불가 면과 사유(선택 필드, 11/9 추가. 서버는 항상 보낸다, 없으면 빈 배열). 등급 전에도 지금까지 받은 정합 결과로 계산해 싣는다.
+            건너뛴 면, 정합에 실패했거나 품질 미달인 카메라가 있는 면이다. 이 면의 흠집은 등급에 쓰지 않으므로 화면은 "일부 면 판정 불가"를
+            눈에 띄게 보인다. 사유는 사람이 읽는 문장(정합 실패면 worker가 보낸 실패 사유 포함)
+          items:
+            type: object
+            required: [face, reason]
+            properties:
+              face:
+                $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+              reason:
+                type: string
+                maxLength: 500
+    PhotoDefect:
+      type: object
+      required: [defectId, face, light, camera, class, polygon, confidence, modelVersion]
+      properties:
+        defectId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        face:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+        light:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+        camera:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
+        class:
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionDefectClass'
+        polygon:
+          $ref: '#/components/schemas/PhotoPolygon'
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        modelVersion:
+          type: string
+        source:
+          description: >-
+            흠집을 낸 쪽(선택 필드, 11/9 추가. 서버는 항상 보낸다). AUTO는 모델, HUMAN은 관리자가 검수 화면에서 직접 더한 흠집
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionDefectSource'
+        groupId:
+          description: >-
+            같은 면에서 겹치는 흠집 묶음의 대표 defectId(선택 필드, 11/8 추가). 조명만 다른 사진의 같은 흠집과,
+            11/9부터 CAM1·CAM2 두 카메라 사진에 함께 찍힌 같은 흠집(부스 보정 모서리로 옮긴 면 위 자리가 가까운 것)을 묶는다.
+            등급은 판정할 수 있는 면의 기각(DISMISSED)되지 않은 흠집을 이렇게 묶은 수로 센다(전체 검사의 판정 불가 면 흠집은 등급에 쓰지 않음).
+            검수 화면이 묶음 하나를 한 번에 정할 때 쓴다
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        review:
+          description: 사람 검수 상태(선택 필드, 11/8 추가. 서버는 항상 보낸다)
+          $ref: '#/components/schemas/DefectReview'
+    DefectReview:
+      type: object
+      description: 사람 검수 상태(11/8 추가). AI 후보는 PENDING으로 시작하고, 관리자가 CONFIRMED·DISMISSED로 바꾼다
+      required: [status, reason, reviewedBy, reviewedAt]
+      properties:
+        status:
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionReviewStatus'
+        reason:
+          description: DISMISSED일 때 기각 사유, 그 밖에는 null
+          oneOf:
+            - $ref: './components/codes.gen.yaml#/components/schemas/InspectionDismissReason'
+            - type: 'null'
+        reviewedBy:
+          description: 마지막으로 정한 관리자 계정 ID. PENDING이면 null
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/PublicId'
+            - type: 'null'
+        reviewedAt:
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+    InspectionReview:
+      type: object
+      description: 시점의 검수 요약(11/8 추가). 후보가 없던 세트는 모두 0이고 completedAt은 등급 시각
+      required: [pending, confirmed, dismissed, completedAt]
+      properties:
+        added:
+          type: integer
+          minimum: 0
+          description: 관리자가 직접 더한 흠집 수(선택 필드, 11/9 추가. 서버는 항상 보낸다). pending·confirmed·dismissed(AI 후보)와 따로 센다
+        open:
+          type: boolean
+          description: >-
+            지금 검수할 수 있음(선택 필드, 11/9 추가. 서버는 항상 보낸다). true면 화면이 검수 칸(후보 결정·놓친 흠집 추가·완료)을 연다.
+            AI 후보가 없어도 검수를 기다리는 세트(서버 REVIEW_HOLD_EMPTY)면 true다. 검수 완료·등급 뒤, 다시 찍어야 하는 세트,
+            전체 검사의 정합 결과가 아직 없을 때는 false
+        pending:
+          type: integer
+          minimum: 0
+        confirmed:
+          type: integer
+          minimum: 0
+        dismissed:
+          type: integer
+          minimum: 0
+        completedAt:
+          description: 검수 완료(등급 발행) 시각. 아직이면 null
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+    DefectReviewRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            type: object
+            additionalProperties: false
+            required: [defectId, decision]
+            properties:
+              defectId:
+                $ref: './components/common.yaml#/components/schemas/PublicId'
+              decision:
+                $ref: './components/codes.gen.yaml#/components/schemas/InspectionReviewStatus'
+              reason:
+                description: decision=DISMISSED일 때만(필수). 다른 결정에 주면 400
+                $ref: './components/codes.gen.yaml#/components/schemas/InspectionDismissReason'
+    HumanDefectRequest:
+      type: object
+      additionalProperties: false
+      required: [face, light, camera, class, polygon]
+      description: 관리자가 원본 사진 한 장 위에 그린 흠집(11/9 추가). 어느 사진인지는 face·light·camera로 정한다(`CheckpointMedia.photos`와 같다)
+      properties:
+        face:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+        light:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+        camera:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
+        class:
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionDefectClass'
+        polygon:
+          description: 그 사진의 원본 px 꼭짓점(3~200개). 점 표시는 화면이 작은 다각형으로 바꿔 보낸다
+          type: array
+          minItems: 3
+          maxItems: 200
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            items:
+              type: number
+              minimum: 0
+    DefectReviewQueue:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DefectReviewQueueItem'
+    DefectReviewQueueItem:
+      type: object
+      required: [checkpointId, rentalId, captureSetId, source, profile, modelVersion, pending, confirmed, dismissed,
+                 completedAt, reviewCompletedAt]
+      properties:
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        rentalId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        captureSetId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        source:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureSource'
+        profile:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureProfile'
+        modelVersion:
+          description: 후보를 낸 모델. 여럿이면 첫 번째
+          type: [string, 'null']
+        pending:
+          type: integer
+          minimum: 0
+        confirmed:
+          type: integer
+          minimum: 0
+        dismissed:
+          type: integer
+          minimum: 0
+        completedAt:
+          description: 촬영 완료 시각
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+        reviewCompletedAt:
+          oneOf:
+            - $ref: './components/common.yaml#/components/schemas/DateTime'
+            - type: 'null'
+    CatalogInspectionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CatalogInspectionSummary'
+    CatalogInspectionSummary:
+      type: object
+      required: [checkpointId, grade, gradedAt, defectCount, defectsByClass]
+      description: 공개 흠집 요약. 사람이 확정한 흠집만 센다
+      properties:
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        grade:
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionGrade'
+        gradedAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+        defectCount:
+          type: integer
+          minimum: 0
+          description: 확정 흠집 수(같은 면·카메라에서 겹치는 흠집은 하나)
+        defectsByClass:
+          type: object
+          additionalProperties: false
+          required: [scratch, dent, crack, stain]
+          description: 종류별 확정 흠집 수(묶음의 가장 심한 종류로 센다)
+          properties:
+            scratch:
+              type: integer
+              minimum: 0
+            dent:
+              type: integer
+              minimum: 0
+            crack:
+              type: integer
+              minimum: 0
+            stain:
+              type: integer
+              minimum: 0
+    CatalogInspection:
+      description: 공개 기기 상세의 사진과 확정 흠집
+      allOf:
+        - $ref: '#/components/schemas/CatalogInspectionSummary'
+        - type: object
+          required: [expiresAt, photos, photoDefects]
+          properties:
+            expiresAt:
+              $ref: './components/common.yaml#/components/schemas/DateTime'
+            photos:
+              type: array
+              description: 완료 때 올라간 부스 사진 보기 URL(건너뛴 면 제외). 만료는 expiresAt
+              items:
+                type: object
+                required: [face, light, camera, url]
+                properties:
+                  face:
+                    $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+                  light:
+                    $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+                  camera:
+                    $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
+                  url:
+                    type: string
+                    format: uri
+            photoDefects:
+              type: array
+              description: 사람이 확정한 흠집(원본 사진 px). 모든 항목의 face·light·camera와 같은 사진이 photos에 있다
+              items:
+                $ref: '#/components/schemas/CatalogPhotoDefect'
+    CatalogPhotoDefect:
+      type: object
+      required: [defectId, face, light, camera, class, polygon, groupId]
+      properties:
+        defectId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        face:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+        light:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+        camera:
+          $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
+        class:
+          $ref: './components/codes.gen.yaml#/components/schemas/InspectionDefectClass'
+        polygon:
+          $ref: '#/components/schemas/PhotoPolygon'
+        groupId:
+          description: 같은 흠집 묶음의 대표 defectId. 3D 핀은 묶음마다 하나를 찍는다
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+    CheckpointMedia:
+      type: object
+      required: [checkpointId, expiresAt, textures, crops]
+      properties:
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        expiresAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+        textures:
+          type: array
+          items:
+            type: object
+            required: [face, url]
+            properties:
+              face:
+                $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+              url:
+                type: string
+                format: uri
+        crops:
+          type: array
+          items:
+            type: object
+            required: [defectId, url]
+            properties:
+              defectId:
+                $ref: './components/common.yaml#/components/schemas/PublicId'
+              url:
+                type: string
+                format: uri
+        photos:
+          type: array
+          description: >-
+            원본 사진 보기 URL(선택 필드, 11/3 추가). 정합 텍스처가 없는 QUICK 세트도 관리자 화면에서 사진과 `photoDefects`를 겹쳐 보이게.
+            QUICK 세트는 반드시 싣는다. 완료 때 올라간 사진을 모두 넣으므로, 모든 `photoDefects[]`의 face·light·camera와 같은 항목이
+            여기 하나씩 있다(관리자 화면은 이 세 값으로 짝을 짓는다). 만료는 expiresAt과 같다
+          items:
+            type: object
+            required: [face, light, camera, url]
+            properties:
+              face:
+                $ref: './components/codes.gen.yaml#/components/schemas/CaptureFace'
+              light:
+                $ref: './components/codes.gen.yaml#/components/schemas/CaptureLight'
+              camera:
+                $ref: './components/codes.gen.yaml#/components/schemas/CaptureCamera'
+              url:
+                type: string
+                format: uri

@@ -1,0 +1,38 @@
+# 파일럿 추이 Grafana (FR-PIL-02). 노트북에서 `docker compose up -d` 한 번으로 띄운다.
+# 학교 클러스터에는 올리지 않는다(NFR-05). 데이터 소스와 대시보드는 provisioning 파일에서 자동으로 등록된다.
+# 토큰·비밀번호는 같은 폴더의 .env에만 둔다(.env.example 복사, 커밋 금지).
+name: trace-grafana
+services:
+  grafana:
+    image: grafana/grafana:12.1.1
+    container_name: trace-grafana
+    restart: unless-stopped
+    ports:
+      # 이 노트북에서만 연다. 같은 와이파이의 다른 기기는 닿지 않는다
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?.env에 GRAFANA_ADMIN_PASSWORD를 넣으세요}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # 로그인 없이 보기. 화면에는 deviceId와 배터리·벤치마크 숫자만 있다
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_ANONYMOUS_HIDE_VERSION: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      # 처음 켤 때 데이터 소스 저장과 다른 초기화가 겹쳐 sqlite가 잠기는 일을 막는다(WAL 모드)
+      GF_DATABASE_WAL: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/trace/pilot-trend.dashboard.json
+      # provisioning/datasources/trace-pilot.yaml이 읽는다. 학교 서버로 붙을 땐 .env에 INFLUX_ORG·INFLUX_READ_TOKEN이 꼭 있어야 한다
+      # (비어 있으면 데이터 소스 Test가 실패한다). 로컬 InfluxDB(docker-compose.local.yml)를 쓸 땐 비워 둬도 된다
+      INFLUX_URL: ${INFLUX_URL:-http://influx.java21.net}
+      INFLUX_ORG: ${INFLUX_ORG:-}
+      INFLUX_BUCKET: ${INFLUX_BUCKET:-trace-pilot}
+      INFLUX_READ_TOKEN: ${INFLUX_READ_TOKEN:-}
+    volumes:
+      - ./provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./pilot-trend.dashboard.json:/etc/grafana/dashboards/trace/pilot-trend.dashboard.json:ro
+      - grafana-data:/var/lib/grafana
+volumes:
+  grafana-data:

@@ -1,9 +1,139 @@
-// 화면 뼈대. 관리자 화면·고객 폰 촬영·3D 리포트·검증 페이지는 이 아래에 라우트로 더한다(REST API v0의 화면별 API 표 참고)
-export function App() {
+// 화면 라우트. 관리자 화면(WE1)은 /admin 아래, 고객 폰 촬영·3D 리포트·검증 페이지는 이 아래에 더한다
+import { Navigate, Outlet, ScrollRestoration, type RouteObject } from "react-router-dom";
+import { HomePage } from "./features/home/components/HomePage";
+import { GuidePage } from "./features/guide/components/GuidePage";
+import { BoothPage } from "./features/booth/components/BoothPage";
+import { PasswordResetPage } from "./features/account/components/PasswordResetPage";
+import { WithdrawnPage, WithdrawPage } from "./features/account/components/WithdrawPage";
+import { MyAccountPage } from "./features/account/components/MyAccountPage";
+import { LoginPage } from "./features/auth/components/LoginPage";
+import { SignupPage } from "./features/signup/components/SignupPage";
+import { VerifyEmailPage } from "./features/signup/components/VerifyEmailPage";
+import { CaptureEntryPage } from "./features/capture/components/CaptureEntryPage";
+import { CustomerLoginPage } from "./features/customer-auth/components/CustomerLoginPage";
+import { DeviceCreatePage } from "./features/devices/components/DeviceCreatePage";
+import { DeviceDetailPage } from "./features/devices/components/DeviceDetailPage";
+import { DeviceListPage } from "./features/devices/components/DeviceListPage";
+import { InspectionDetailPage } from "./features/inspections/components/InspectionDetailPage";
+import { InspectionListPage } from "./features/inspections/components/InspectionListPage";
+import { ModelEditPage } from "./features/models/components/ModelEditPage";
+import { ModelListPage } from "./features/models/components/ModelListPage";
+import { RentalCreatePage } from "./features/rentals/components/RentalCreatePage";
+import { RentalDetailPage } from "./features/rentals/components/RentalDetailPage";
+import { RentalListPage } from "./features/rentals/components/RentalListPage";
+import { MyRentalsPage } from "./features/report/components/MyRentalsPage";
+import { ReportPage } from "./features/report/components/ReportPage";
+import { ClaimRentalPage } from "./features/report/components/ClaimRentalPage";
+import { VerifyPage } from "./features/verify/components/VerifyPage";
+import { CatalogPage } from "./features/catalog/components/CatalogPage";
+import { CatalogDetailPage } from "./features/catalog/components/CatalogDetailPage";
+import { PrivacyPage, TermsPage } from "./features/legal/components/LegalPages";
+import { SiteHeader } from "./shared/ui/SiteHeader";
+import { RequireAdmin } from "./shared/auth/RequireAdmin";
+import { RequireCustomer } from "./shared/auth/RequireCustomer";
+import { DeviceDiagnosticsPage } from "./features/benchmark/components/DeviceDiagnosticsPage";
+import { ArchivedRoute } from "./shared/config/ArchivedRoute";
+import { isArchived } from "./shared/config/features";
+import { ChatWidget } from "./features/chat/components/ChatWidget";
+
+/** 수령 QR 주소. 폰 촬영을 숨긴 배포에서는 렌탈을 계정에 연결만 한다(내 렌탈이 보일 때) */
+function CaptureOrClaim() {
+  return isArchived("phoneCapture") ? <ClaimRentalPage /> : <CaptureEntryPage />;
+}
+
+
+/**
+ * 모든 화면을 감싸는 틀. 화면을 옮길 때(링크·버튼) 새 화면은 맨 위에서 열고, 뒤로 가기는 보던 자리로 돌아간다.
+ * 주소에 #앵커가 있으면 그 구역으로 내린다. 없으면 앞 화면의 스크롤 위치가 그대로 남아
+ * 첫 화면 아래쪽의 "이용 안내 자세히 보기"를 누르면 이용 안내가 자주 묻는 질문쯤에서 열렸다(11/8)
+ */
+function RootLayout() {
   return (
-    <main>
-      <h1>TRACE</h1>
-      <p>노트북 렌탈 상태 기록</p>
-    </main>
+    <>
+      <ScrollRestoration />
+      <Outlet />
+      {/* 사이트 도우미 챗봇(11/10): 관리자·부스·폰 촬영 화면에서는 스스로 숨는다 */}
+      <ChatWidget />
+    </>
   );
+}
+
+/** 로그인 없이 여는 공개 화면의 틀(위 고정 헤더 + 화면) */
+function PublicLayout() {
+  return (
+    <div className="min-h-svh bg-background">
+      <SiteHeader />
+      <Outlet />
+    </div>
+  );
+}
+
+export const routes: RouteObject[] = [
+  { path: "/", element: <HomePage /> },
+  {
+    // 공개 보유 노트북 목록·상세(11/8 민서 요청): 로그인 없이 흠집·진단·벤치마크를 비교하고 3D로 흠집 위치를 본다
+    element: <PublicLayout />,
+    children: [
+      { path: "/devices", element: <CatalogPage /> },
+      { path: "/devices/:deviceId", element: <CatalogDetailPage /> },
+      // 개인정보처리방침·이용약관(11/10): 소셜 로그인 제공자 앱 게시에 공개 주소가 필요하다
+      { path: "/privacy", element: <PrivacyPage /> },
+      { path: "/terms", element: <TermsPage /> },
+    ],
+  },
+  // 고객 이용 안내(11/6): 대여는 창구, 고객은 QR로 렌탈을 계정에 연결. 로그인 없이 연다.
+  // 안내하는 QR 연결·검증·내 렌탈이 모두 report가 보일 때만 열리므로 report를 보관하면 안내도 숨긴다
+  { path: "/guide", element: <ArchivedRoute features={["report"]}><GuidePage /></ArchivedRoute> },
+  { path: "/admin/login", element: <LoginPage /> },
+  // 부스 옆 태블릿 화면(11/6 강사님 피드백 3번). 관리자 틀(메뉴) 없이 화면 전체를 쓴다
+  { path: "/booth", element: <BoothPage /> },
+  { path: "/verify/:verifyToken", element: <ArchivedRoute features={["report"]}><VerifyPage /></ArchivedRoute> },
+  { path: "/login", element: <ArchivedRoute features={["phoneCapture", "report", "account"]}><CustomerLoginPage /></ArchivedRoute> },
+  { path: "/password/reset", element: <ArchivedRoute features={["account"]}><PasswordResetPage /></ArchivedRoute> },
+  { path: "/account/withdrawn", element: <ArchivedRoute features={["account"]}><WithdrawnPage /></ArchivedRoute> },
+  { path: "/signup", element: <ArchivedRoute features={["account"]}><SignupPage /></ArchivedRoute> },
+  { path: "/signup/verify", element: <ArchivedRoute features={["account"]}><VerifyEmailPage /></ArchivedRoute> },
+  { path: "/capture", element: <ArchivedRoute features={["phoneCapture", "report"]}><RequireCustomer /></ArchivedRoute>, children: [{ index: true, element: <CaptureOrClaim /> }] },
+  {
+    // 고객 화면(WE3): 고객·관리자 모두 연다. 보관 검사를 로그인 검사보다 먼저 한다(보관된 주소는 로그인 화면이 아니라 첫 화면으로)
+    element: <ArchivedRoute features={["report"]}><RequireCustomer /></ArchivedRoute>,
+    children: [
+      { path: "/my/rentals", element: <MyRentalsPage /> },
+      { path: "/my/rentals/:rentalId", element: <ReportPage /> },
+    ],
+  },
+  {
+    element: <ArchivedRoute features={["account"]}><RequireCustomer customerOnly /></ArchivedRoute>,
+    children: [
+      { path: "/my/account", element: <MyAccountPage /> },
+      { path: "/my/account/withdraw", element: <WithdrawPage /> },
+    ],
+  },
+  {
+    path: "/admin",
+    element: <RequireAdmin />,
+    children: [
+      { index: true, element: <Navigate to="devices" replace /> },
+      { path: "devices", element: <DeviceListPage /> },
+      { path: "devices/new", element: <DeviceCreatePage /> },
+      // 기기 상세 + 기기별 렌탈 이력(11/6)
+      { path: "devices/:deviceId", element: <DeviceDetailPage /> },
+      { path: "models", element: <ModelListPage /> },
+      { path: "models/new", element: <ModelEditPage /> },
+      { path: "models/:modelCode/edit", element: <ModelEditPage /> },
+      { path: "rentals", element: <RentalListPage /> },
+      { path: "rentals/new", element: <RentalCreatePage /> },
+      { path: "rentals/:rentalId", element: <RentalDetailPage /> },
+      // MVP(11/3): 부스 검사 결과 조회
+      { path: "inspections", element: <InspectionListPage /> },
+      { path: "inspections/:rentalId/:checkpointId", element: <InspectionDetailPage /> },
+      // 11/6: Grafana 대신 검사 결과 통계 그래프
+      { path: "benchmark", element: <DeviceDiagnosticsPage /> },
+    ],
+  },
+];
+
+/** 실제 앱 라우터에 넣는 라우트: 위 화면들을 스크롤 위치 관리 틀로 감싼다. 테스트에서 화면 하나만 바꿔 끼울 때는 routes를 쓴다 */
+export function withRoot(children: RouteObject[]): RouteObject[] {
+  return [{ element: <RootLayout />, children }];
 }

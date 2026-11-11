@@ -1,0 +1,120 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { api, refreshSession, setSessionExpiredHandler, unwrap, waitForRefresh, withRefreshExclusive } from "../api/client";
+import type { TokenRole } from "../api/types";
+import { captureTokenStore } from "./captureTokenStore";
+import { tokenStore } from "./tokenStore";
+
+export type AuthStatus = "unknown" | "authenticated" | "anonymous";
+/** 로그인 화면에 보일 안내 */
+export type AuthNotice = "expired" | "notAdmin" | "notCustomer" | null;
+/** 화면이 세션으로 받는 역할. 관리자 화면은 ADMIN, 고객 화면(WE2·WE3)은 CUSTOMER(관리자도 들어올 수 있음) */
+export type SessionRole = Extract<TokenRole, "ADMIN" | "CUSTOMER">;
+
+const SESSION_ROLES: readonly TokenRole[] = ["ADMIN", "CUSTOMER"];
+const isSessionRole = (role: TokenRole | undefined): role is SessionRole => !!role && SESSION_ROLES.includes(role);
+
+interface AuthValue {
+  status: AuthStatus;
+  role: SessionRole | null;
+  /** 로그인·로그아웃 때마다 1씩 오른다(토큰 다시 받기로는 바뀌지 않음). 로그아웃 없이 다른 계정으로 바꿔도 화면이 알아챈다 */
+  sessionId: number;
+  notice: AuthNotice;
+  /** expected와 다른 역할이면 로그아웃하고 notice로 알린다. 기본은 관리자(WE1). "ANY"면 관리자·고객 모두 받는다(통합 로그인) */
+  login(email: string, password: string, expected?: SessionRole | "ANY"): Promise<void>;
+  /** 이 화면의 세션은 항상 지운다. 서버가 로그아웃(리프레시 폐기)을 확인했으면 true */
+  logout(): Promise<boolean>;
+  /** 서버가 이미 세션을 끝냈을 때(탈퇴 등): 서버를 부르지 않고 이 화면의 세션만 지운다 */
+  clearSession(): void;
+}
+
+const AuthContext = createContext<AuthValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
+  const [status, setStatus] = useState<AuthStatus>("unknown");
+  const [role, setRole] = useState<SessionRole | null>(null);
+  const [notice, setNotice] = useState<AuthNotice>(null);
+  const [sessionId, setSessionId] = useState(0);
+
+  const endSession = useCallback(
+    (next: AuthNotice) => {
+      tokenStore.clear();
+      // 다른 계정이 이전 계정의 촬영 권한을 쓰지 않게 함께 지운다
+      captureTokenStore.clear();
+      queryClient.clear();
+      setNotice(next);
+      setRole(null);
+      setSessionId((n) => n + 1);
+      setStatus("anonymous");
+    },
+    [queryClient],
+  );
+
+  // 새로 고침·새 탭: 리프레시 쿠키로 세션을 되살린다(FR-003)
+  useEffect(() => {
+    setSessionExpiredHandler(() => endSession("expired"));
+    let alive = true;
+    void refreshSession().then((ok) => {
+      if (!alive) return;
+      const restored = tokenStore.get()?.role;
+      if (ok && isSessionRole(restored)) {
+        setRole(restored);
+        setStatus("authenticated");
+      } else {
+        // 처음 되살리기에 실패하면 지울 캐시가 없다. queryClient.clear()를 부르면
+        // 로그인 없이 여는 공개 화면의 진행 중 요청이 사라져 "불러오는 중"에 멈춘다(web#8과 같은 수정)
+        tokenStore.clear();
+        setRole(null);
+        setStatus("anonymous");
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [endSession]);
+
+  const logout = useCallback(async () => {
+    await waitForRefresh();
+    const confirmed = await unwrap(api.POST("/api/v1/auth/logout")).then(
+      () => true,
+      () => false,
+    );
+    endSession(null);
+    return confirmed;
+  }, [endSession]);
+
+  const login = useCallback(
+    async (email: string, password: string, expected: SessionRole | "ANY" = "ADMIN") => {
+      // 이미 다른 계정 세션이 있던 탭이면 그 계정의 캐시(내 렌탈 등)가 새 계정에 보이지 않게 지운다
+      const hadSession = tokenStore.get() !== null;
+      const token = await withRefreshExclusive(() => unwrap(api.POST("/api/v1/auth/login", { body: { email, password } })));
+      captureTokenStore.clear();
+      if (hadSession) queryClient.clear();
+      tokenStore.set(token);
+      // 고객 화면에는 관리자도 들어올 수 있다(시연 확인용). 관리자 화면에는 관리자만
+      const allowed = expected === "ADMIN" ? token.role === "ADMIN" : isSessionRole(token.role);
+      if (!allowed || !isSessionRole(token.role)) {
+        await logout();
+        setNotice(expected === "ADMIN" ? "notAdmin" : "notCustomer");
+        return;
+      }
+      setNotice(null);
+      setRole(token.role);
+      setSessionId((n) => n + 1);
+      setStatus("authenticated");
+    },
+    [logout, queryClient],
+  );
+
+  const clearSession = useCallback(() => endSession(null), [endSession]);
+
+  const value = useMemo(() => ({ status, role, sessionId, notice, login, logout, clearSession }), [status, role, sessionId, notice, login, logout, clearSession]);
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth(): AuthValue {
+  const value = useContext(AuthContext);
+  if (!value) throw new Error("AuthProvider 밖에서 useAuth를 불렀습니다");
+  return value;
+}

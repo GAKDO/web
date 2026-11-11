@@ -1,0 +1,162 @@
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
+import { ApiError } from "../../../shared/api/problem";
+import { messageFor } from "../../../shared/api/errorMessages";
+import { Button } from "../../../shared/ui/Button";
+import { Field } from "../../../shared/ui/Field";
+import { requestPasswordReset, resetPassword } from "../api";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { AuthHeading, AuthShell } from "../../../shared/ui/AuthShell";
+import { useAuth } from "../../../shared/auth/AuthProvider";
+
+type Step = "email" | "code" | "done";
+
+/** 실패 문장. 코드가 틀리면 남은 시도를, 다 쓰면 다시 받으라고 알린다 */
+function resetMessage(error: unknown): string {
+  if (!(error instanceof ApiError)) return "바꾸지 못했습니다. 잠시 뒤 다시 시도해 주세요.";
+  if (error.code === "CODE_INVALID" && error.remainingAttempts !== null) {
+    return error.remainingAttempts > 0
+      ? `재설정 코드가 맞지 않습니다. ${error.remainingAttempts}번 더 시도할 수 있습니다.`
+      : "시도 횟수를 다 썼습니다. 코드를 다시 받아 주세요.";
+  }
+  if (error.code === "CODE_INVALID") return "재설정 코드가 맞지 않습니다.";
+  if (error.code === "CODE_EXPIRED") return "재설정 코드가 만료됐습니다. 코드를 다시 받아 주세요.";
+  return messageFor(error);
+}
+
+/** 비밀번호 재설정 `/password/reset`(FR-USR-06). 이메일 → 받은 6자리 코드와 새 비밀번호 → 완료 */
+export function PasswordResetPage() {
+  const { status, sessionId, clearSession } = useAuth();
+  // 지금 세션을 늘 최신으로 둔다. 재설정이 늦게 끝났을 때 그사이 새로 연 세션은 지우지 않으려고 쓴다
+  const currentSession = useRef(sessionId);
+  currentSession.current = sessionId;
+  // 화면을 떠난 뒤(로그인 화면으로 가서 새로 로그인 등) 끝난 요청은 세션을 건드리지 않는다
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const [step, setStep] = useState<Step>("email");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  /** 입력을 고치면 이전 오류 문장을 지운다 */
+  function edit(set: (value: string) => void, value: string) {
+    set(value);
+    setError(null);
+  }
+
+  async function sendCode(event?: FormEvent) {
+    event?.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await requestPasswordReset(email.trim());
+      setCode("");
+      setStep("code");
+    } catch (e) {
+      setError(e instanceof ApiError ? messageFor(e) : "코드를 보내지 못했습니다. 잠시 뒤 다시 시도해 주세요.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (password !== confirm) {
+      setError("새 비밀번호가 서로 다릅니다.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const startedSession = sessionId;
+      const wasAuthenticated = status === "authenticated";
+      await resetPassword(email.trim(), code, password);
+      // 로그인한 채(예: 소셜 가입자가 탈퇴 전에) 바꿨으면 이 화면 세션도 끝내, "새 비밀번호로 로그인"이 로그인 폼을 열게 한다.
+      // 요청 중에 세션이 바뀌었으면(다른 계정으로 로그인 등) 새 세션은 건드리지 않는다
+      if (wasAuthenticated && mounted.current && currentSession.current === startedSession) clearSession();
+      setStep("done");
+    } catch (e) {
+      setError(resetMessage(e));
+      setPassword("");
+      setConfirm("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AuthShell
+      topRight={
+        <Link to="/login" className="font-semibold text-white underline-offset-4 hover:underline">
+          로그인
+        </Link>
+      }
+    >
+      <AuthHeading title="비밀번호 재설정" />
+      {step === "email" && (
+        <form onSubmit={sendCode} noValidate>
+          <p className="m-0 mb-4 text-sm leading-relaxed text-zinc-300">가입한 이메일로 6자리 재설정 코드를 보내 드립니다.</p>
+          <Field label="이메일" type="email" autoComplete="username" required value={email} error={error} onChange={(e) => edit(setEmail, e.target.value)} />
+          <Button type="submit" size="lg" className="w-full" busy={busy} disabled={!email.trim()}>
+            코드 받기
+          </Button>
+        </form>
+      )}
+      {step === "code" && (
+        <form onSubmit={submit} noValidate>
+          {/* 계정이 있는지 드러내지 않도록 늘 같은 문장 */}
+          <p role="status" className="m-0 mb-4 text-sm leading-relaxed text-zinc-300">{email.trim()}이(가) 가입된 이메일이면 재설정 코드를 보냈습니다. 메일함과 스팸함을 확인해 주세요.</p>
+          <Field
+            label="재설정 코드(6자리)"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            required
+            value={code}
+            onChange={(e) => edit(setCode, e.target.value.replace(/\D/g, ""))}
+          />
+          <Field label="새 비밀번호" type="password" autoComplete="new-password" required value={password} onChange={(e) => edit(setPassword, e.target.value)} />
+          <Field
+            label="새 비밀번호 확인"
+            type="password"
+            autoComplete="new-password"
+            required
+            value={confirm}
+            error={error}
+            onChange={(e) => edit(setConfirm, e.target.value)}
+          />
+          <Button type="submit" size="lg" className="w-full" busy={busy} disabled={code.length !== 6 || !password || !confirm}>
+            비밀번호 바꾸기
+          </Button>
+          <Button type="button" variant="ghost" className="mt-2 w-full text-zinc-300" disabled={busy} onClick={() => void sendCode()}>
+            코드 다시 받기
+          </Button>
+        </form>
+      )}
+      {step === "done" && (
+        <>
+          <p role="status" className="m-0 mb-4 text-sm leading-relaxed text-zinc-300">비밀번호를 바꿨습니다. 다른 기기의 로그인도 모두 끝났습니다.</p>
+          <Link className={cn(buttonVariants({ size: "lg" }), "w-full")} to="/login">
+            새 비밀번호로 로그인
+          </Link>
+        </>
+      )}
+      {step !== "done" && (
+        <p className="m-0 mt-4 text-center text-sm">
+          <Link to="/login" className="text-zinc-300 underline-offset-4 hover:text-white hover:underline">
+            로그인으로 돌아가기
+          </Link>
+        </p>
+      )}
+    </AuthShell>
+  );
+}

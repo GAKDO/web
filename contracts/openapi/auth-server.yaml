@@ -1,0 +1,1097 @@
+openapi: 3.1.0
+info:
+  title: TRACE auth-server
+  version: 1.0.0
+  description: |
+    회원·로그인·자격 교환·QR 링크·페어링·JWKS. 원본은 GAKDO/docs design/rest-api-v0.md "auth-server" 표.
+
+    - 오류는 모두 `application/problem+json`(Problem, `code`는 codes.yaml `error_code`).
+    - `x-trace-access`: 허용 역할(roles, codes.yaml `auth.token_role`), 범위(scope: NONE·OWN_RENTAL·CHECKPOINT·BOOTH),
+      촬영 JWT 허용(captureToken). 인증 없는 경로는 `security: []`.
+    - `x-trace-error-codes`: 그 응답이 낼 수 있는 `code` 값.
+servers:
+  - url: https://{gateway}
+    description: gateway(8314) 뒤
+    variables:
+      gateway:
+        default: localhost:8314
+tags:
+  - name: 계정
+    description: 가입·인증·로그인·재설정·탈퇴
+  - name: 자격
+    description: QR 링크·부스·페어링 토큰
+  - name: 운영
+    description: ping·JWKS
+paths:
+  /api/v1/auth/ping:
+    get:
+      tags: [운영]
+      operationId: authPing
+      summary: 배포 확인
+      description: 로그인 없이 연다. 서비스 이름·버전·커밋을 돌려준다.
+      security: []
+      responses:
+        '200':
+          description: 정상
+          content:
+            application/json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/PingResponse'
+              example:
+                service: auth-server
+                version: 0.1.0
+                commit: fd69858
+  /api/v1/auth/signup:
+    post:
+      tags: [계정]
+      operationId: signup
+      summary: 고객 가입
+      description: 이메일·비밀번호·이름·동의로 PENDING 계정을 만들고 6자리 인증 코드를 메일로 보낸다. (FR-USR-01·05)
+      security: []
+      x-trace-requirements: [FR-USR-01, FR-USR-05]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+            example:
+              email: renter@example.com
+              password: example-pass-1234
+              name: 홍길동
+              privacyAgreed: true
+      responses:
+        '201':
+          description: 가입됨(인증 전)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignupResponse'
+              example:
+                accountId: 65J4mHFC6dDVq08sK77S3
+                status: PENDING
+        '400':
+          description: 형식 오류 또는 동의 없음
+          x-trace-error-codes: [VALIDATION_FAILED, CONSENT_REQUIRED]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 개인정보 수집에 동의해 주세요
+                status: 400
+                code: CONSENT_REQUIRED
+                instance: /api/v1/auth/signup
+        '409':
+          description: 이메일 중복
+          x-trace-error-codes: [EMAIL_ALREADY_EXISTS]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 이미 가입된 이메일입니다
+                status: 409
+                code: EMAIL_ALREADY_EXISTS
+                instance: /api/v1/auth/signup
+        '429':
+          $ref: './components/common.yaml#/components/responses/TooManyRequests'
+  /api/v1/auth/email/verify:
+    post:
+      tags: [계정]
+      operationId: verifyEmail
+      summary: 이메일 인증 코드 확인
+      description: 6자리 코드가 맞으면 계정을 ACTIVE로 바꾼다. 5번 틀리면 코드가 폐기된다. (FR-USR-05)
+      security: []
+      x-trace-requirements: [FR-USR-05]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerifyRequest'
+            example:
+              email: renter@example.com
+              code: '123456'
+      responses:
+        '204':
+          description: 인증됨(ACTIVE)
+        '400':
+          description: 코드 틀림(남은 횟수 포함) 또는 형식 오류
+          x-trace-error-codes: [VALIDATION_FAILED, CODE_INVALID]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 인증 코드가 맞지 않습니다
+                status: 400
+                code: CODE_INVALID
+                detail: 4번 더 시도할 수 있습니다.
+                remainingAttempts: 4
+        '410':
+          description: 코드 만료·폐기
+          x-trace-error-codes: [CODE_EXPIRED]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 인증 코드가 만료되었습니다
+                status: 410
+                code: CODE_EXPIRED
+                detail: 코드를 다시 받아 주세요.
+        '429':
+          $ref: './components/common.yaml#/components/responses/TooManyRequests'
+  /api/v1/auth/email/resend:
+    post:
+      tags: [계정]
+      operationId: resendEmailCode
+      summary: 인증 코드 재발송
+      description: 새 코드를 메일로 보낸다. 60초 안에 다시 요청하면 429. 계정 존재 여부는 드러내지 않는다. (FR-USR-05)
+      security: []
+      x-trace-requirements: [FR-USR-05]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailOnlyRequest'
+            example:
+              email: renter@example.com
+      responses:
+        '202':
+          description: 보냄(또는 보낼 대상 없음)
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '429':
+          description: 60초 안 재요청 또는 요청 제한
+          x-trace-error-codes: [RESEND_TOO_SOON, RATE_LIMITED]
+          headers:
+            Retry-After:
+              description: 다시 보낼 수 있을 때까지 초
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 잠시 후 다시 요청해 주세요
+                status: 429
+                code: RESEND_TOO_SOON
+  /api/v1/auth/login:
+    post:
+      tags: [계정]
+      operationId: login
+      summary: 로그인
+      description: 액세스 JWT(15분)를 본문으로, 리프레시 토큰(7일)을 HttpOnly 쿠키로 준다. (FR-AUTH-01)
+      security: []
+      x-trace-requirements: [FR-AUTH-01]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: admin@example.com
+              password: example-pass-1234
+      responses:
+        '200':
+          description: 로그인됨
+          headers:
+            Set-Cookie:
+              description: trace_refresh=...; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age=604800
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              example:
+                accessToken: eyJhbGciOiJSUzI1NiJ9.example.signature
+                tokenType: Bearer
+                expiresIn: 900
+                role: ADMIN
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          description: 이메일·비밀번호 틀림
+          x-trace-error-codes: [INVALID_CREDENTIALS]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 이메일 또는 비밀번호가 맞지 않습니다
+                status: 401
+                code: INVALID_CREDENTIALS
+        '403':
+          description: 이메일 인증 전
+          x-trace-error-codes: [EMAIL_NOT_VERIFIED]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 이메일 인증을 먼저 해 주세요
+                status: 403
+                code: EMAIL_NOT_VERIFIED
+        '429':
+          $ref: './components/common.yaml#/components/responses/TooManyRequests'
+  /api/v1/auth/oauth/providers:
+    get:
+      tags: [계정]
+      operationId: listSocialProviders
+      summary: 쓸 수 있는 소셜 로그인 제공자
+      description: |
+        서버에 client id·secret이 설정된 제공자만 돌려준다. 로그인 화면은 이 목록에 있는 버튼만 보인다.
+      security: []
+      responses:
+        '200':
+          description: 켜진 제공자 목록(없으면 빈 배열)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialProvidersResponse'
+              example:
+                providers: [GOOGLE, GITHUB]
+  /api/v1/auth/oauth/{provider}/start:
+    get:
+      tags: [계정]
+      operationId: startSocialLogin
+      summary: 소셜 로그인 시작
+      description: |
+        브라우저가 이 주소로 이동한다(fetch 아님). state를 만들어 10분 동안 저장하고, 같은 값을 `trace_oauth_state` 쿠키
+        (HttpOnly, SameSite=Lax, Path=/api/v1/auth/oauth)로 심은 뒤 제공자 인증 화면으로 302 보낸다.
+        이메일 권한을 함께 요청한다(Google `email`, GitHub `user:email`, 카카오 `account_email`, 네이버는 앱 설정의 이메일 필수 항목).
+        제공자가 꺼져 있으면 웹 `/login?socialError=UNAVAILABLE`로 302.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/SocialProviderPath'
+        - name: next
+          in: query
+          required: false
+          description: 로그인 뒤 돌아갈 사이트 안 경로("/"로 시작). 사이트 밖 주소는 버린다.
+          schema:
+            type: string
+            maxLength: 512
+      responses:
+        '302':
+          description: 제공자 인증 화면(또는 꺼져 있으면 웹 로그인 화면)으로 이동
+          headers:
+            Location:
+              schema:
+                type: string
+            Set-Cookie:
+              description: trace_oauth_state=...; HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth/oauth; Max-Age=600
+              schema:
+                type: string
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './components/common.yaml#/components/responses/TooManyRequests'
+  /api/v1/auth/oauth/{provider}/callback:
+    get:
+      tags: [계정]
+      operationId: socialLoginCallback
+      summary: 소셜 로그인 콜백
+      description: |
+        제공자 앱에 등록하는 주소: `{WEB_PUBLIC_URL}/api/v1/auth/oauth/{provider}/callback`.
+        state가 쿼리와 `trace_oauth_state` 쿠키에서 같고 저장소에 남아 있어야 한다(한 번만 씀).
+        code를 토큰으로 바꾸고 제공자가 **인증했다고 알려 준 이메일**을 받는다(GitHub은 `/user/emails`의 인증된 primary).
+        계정 찾기: (1) 이 제공자 사용자 번호로 연결된 계정 → (2) 같은 이메일 계정에 연결(메일 인증 전이면 인증 완료로 바꿈)
+        → (3) 없으면 ACTIVE 고객 계정을 새로 만든다(로그인 화면의 개인정보 수집·이용 안내를 동의로 본다).
+        성공하면 `/login`과 같은 `trace_refresh` 쿠키를 심고 웹 `/login?next=<next>`로 302 보낸다. 웹은 `/refresh`로 세션을 연다.
+        실패하면 쿠키 없이 웹 `/login?socialError=<codes.yaml auth.social_login_error>&next=<next>`로 302 보낸다.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/SocialProviderPath'
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          description: 사용자가 제공자 화면에서 취소하면 제공자가 붙인다(→ CANCELLED)
+          schema:
+            type: string
+      responses:
+        '302':
+          description: 웹 로그인 화면으로 이동(성공이면 리프레시 쿠키를 함께 심음)
+          headers:
+            Location:
+              description: 예) https://gakdo.site/login?next=/me 또는 https://gakdo.site/login?socialError=EMAIL_REQUIRED
+              schema:
+                type: string
+            Set-Cookie:
+              description: 성공이면 trace_refresh(로그인과 같음). 항상 trace_oauth_state를 지운다
+              schema:
+                type: string
+        '404':
+          $ref: './components/common.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './components/common.yaml#/components/responses/TooManyRequests'
+  /api/v1/auth/refresh:
+    post:
+      tags: [계정]
+      operationId: refreshToken
+      summary: 액세스 토큰 재발급
+      description: 리프레시 쿠키로 새 액세스 JWT를 주고 리프레시 토큰을 교체한다. (FR-AUTH-01)
+      security:
+        - refreshCookie: []
+      x-trace-requirements: [FR-AUTH-01]
+      x-trace-access:
+        roles: [ADMIN, CUSTOMER]
+        scope: NONE
+        captureToken: false
+        credential: refreshCookie
+      responses:
+        '200':
+          description: 재발급됨
+          headers:
+            Set-Cookie:
+              description: 교체된 trace_refresh 쿠키
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              example:
+                accessToken: eyJhbGciOiJSUzI1NiJ9.example.signature
+                tokenType: Bearer
+                expiresIn: 900
+                role: CUSTOMER
+        '401':
+          description: 쿠키 없음·만료·폐기
+          x-trace-error-codes: [REFRESH_INVALID]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 다시 로그인해 주세요
+                status: 401
+                code: REFRESH_INVALID
+  /api/v1/auth/logout:
+    post:
+      tags: [계정]
+      operationId: logout
+      summary: 로그아웃
+      description: 리프레시 토큰을 폐기하고 쿠키를 지운다. (FR-AUTH-01)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-AUTH-01]
+      x-trace-access:
+        roles: [ADMIN, CUSTOMER]
+        scope: NONE
+        captureToken: false
+      responses:
+        '204':
+          description: 로그아웃됨
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+  /api/v1/auth/password/reset-request:
+    post:
+      tags: [계정]
+      operationId: requestPasswordReset
+      summary: 비밀번호 재설정 코드 요청
+      description: 가입된 이메일이면 재설정 코드를 보낸다. 계정 존재 여부를 드러내지 않도록 항상 202. (FR-USR-06)
+      security: []
+      x-trace-requirements: [FR-USR-06]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailOnlyRequest'
+            example:
+              email: renter@example.com
+      responses:
+        '202':
+          description: 접수됨(항상)
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+  /api/v1/auth/password/reset:
+    post:
+      tags: [계정]
+      operationId: resetPassword
+      summary: 비밀번호 재설정
+      description: 코드 + 새 비밀번호. 성공하면 그 계정의 리프레시 토큰을 모두 폐기한다. (FR-USR-06)
+      security: []
+      x-trace-requirements: [FR-USR-06]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+            example:
+              email: renter@example.com
+              code: '654321'
+              newPassword: example-new-pass-5678
+      responses:
+        '204':
+          description: 바뀜
+        '400':
+          description: 코드 틀림 또는 형식 오류
+          x-trace-error-codes: [VALIDATION_FAILED, CODE_INVALID]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 재설정 코드가 맞지 않습니다
+                status: 400
+                code: CODE_INVALID
+                remainingAttempts: 2
+        '410':
+          description: 코드 만료·폐기
+          x-trace-error-codes: [CODE_EXPIRED]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 재설정 코드가 만료되었습니다
+                status: 410
+                code: CODE_EXPIRED
+  /api/v1/auth/me:
+    get:
+      tags: [계정]
+      operationId: getMe
+      summary: 내 정보
+      description: 내 계정과 연결된 렌탈 ID 목록. (FR-USR-03)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-USR-03]
+      x-trace-access:
+        roles: [ADMIN, CUSTOMER]
+        scope: NONE
+        captureToken: false
+      responses:
+        '200':
+          description: 내 정보
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+              example:
+                accountId: 65J4mHFC6dDVq08sK77S3
+                email: renter@example.com
+                name: 홍길동
+                role: CUSTOMER
+                status: ACTIVE
+                rentalIds: [Ws0HLv6QRbDILPWOcz5I2]
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+    delete:
+      tags: [계정]
+      operationId: withdraw
+      summary: 탈퇴
+      description: 비밀번호를 확인한 뒤 개인정보(이메일·이름·비밀번호)를 지우고 WITHDRAWN으로 바꾼다. 렌탈 기록은 남는다. (FR-USR-04)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-USR-04]
+      x-trace-access:
+        roles: [CUSTOMER]
+        scope: NONE
+        captureToken: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawRequest'
+            example:
+              password: example-pass-1234
+      responses:
+        '204':
+          description: 탈퇴됨
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          description: 토큰 없음 또는 비밀번호 틀림
+          x-trace-error-codes: [UNAUTHENTICATED, INVALID_CREDENTIALS]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 비밀번호가 맞지 않습니다
+                status: 401
+                code: INVALID_CREDENTIALS
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+  /api/v1/auth/capture-links:
+    post:
+      tags: [자격]
+      operationId: createCaptureLink
+      summary: 수령 QR 링크 발급
+      description: 고객이 수령 촬영에 쓸 1회용 링크(토큰은 해시만 저장). (FR-RNT-04)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-RNT-04]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptureLinkCreateRequest'
+            example:
+              rentalId: Ws0HLv6QRbDILPWOcz5I2
+              checkpointId: h40b9AN9xMQhXRHrOyJWB
+      responses:
+        '201':
+          description: 발급됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureLinkResponse'
+              example:
+                url: https://trace.example.com/capture?t=example-one-time-token
+                expiresAt: '2026-11-12T13:30:00+09:00'
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+  /api/v1/auth/capture-links/exchange:
+    post:
+      tags: [자격]
+      operationId: exchangeCaptureLink
+      summary: QR 토큰 → 촬영 JWT
+      description: |
+        로그인한 고객이 QR 토큰을 내면 그 시점 범위의 촬영 JWT(30분, role CUSTOMER, scope=checkpointId)를 주고
+        렌탈을 내 계정에 연결한다(이후 로그인 JWT의 rentals 클레임에 들어감). (FR-AUTH-02, FR-USR-02)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-AUTH-02, FR-USR-02]
+      x-trace-access:
+        roles: [CUSTOMER]
+        scope: NONE
+        captureToken: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptureLinkExchangeRequest'
+            example:
+              token: example-one-time-token
+      responses:
+        '200':
+          description: 교환됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureTokenResponse'
+              example:
+                accessToken: eyJhbGciOiJSUzI1NiJ9.capture.signature
+                tokenType: Bearer
+                expiresIn: 1800
+                rentalId: Ws0HLv6QRbDILPWOcz5I2
+                checkpointId: h40b9AN9xMQhXRHrOyJWB
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+        '409':
+          description: 렌탈이 다른 계정에 이미 연결됨
+          x-trace-error-codes: [RENTAL_LINKED_TO_OTHER]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 다른 계정에 연결된 렌탈입니다
+                status: 409
+                code: RENTAL_LINKED_TO_OTHER
+        '410':
+          description: QR 만료·이미 사용됨
+          x-trace-error-codes: [CAPTURE_LINK_INVALID]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 만료되었거나 이미 사용한 QR입니다
+                status: 410
+                code: CAPTURE_LINK_INVALID
+  /api/v1/auth/booth/token:
+    post:
+      tags: [자격]
+      operationId: issueBoothToken
+      summary: 부스 JWT 발급
+      description: |
+        부스(Jetson)가 client_id·secret으로 JWT(1시간, role BOOTH, scope=boothId)를 받는다. 만료 전에 다시 받는다.
+        비밀은 본문으로만 보내고 로그에 남기지 않는다. (FR-AUTH-02)
+      security: []
+      x-trace-requirements: [FR-AUTH-02]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BoothTokenRequest'
+            example:
+              clientId: booth-out
+              clientSecret: example-client-secret
+      responses:
+        '200':
+          description: 발급됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoothTokenResponse'
+              example:
+                accessToken: eyJhbGciOiJSUzI1NiJ9.booth.signature
+                tokenType: Bearer
+                expiresIn: 3600
+                boothId: booth-out
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          description: client_id·secret 틀림 또는 비활성
+          x-trace-error-codes: [CLIENT_CREDENTIALS_INVALID]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 부스 자격 증명이 맞지 않습니다
+                status: 401
+                code: CLIENT_CREDENTIALS_INVALID
+  /api/v1/auth/pairing-codes:
+    post:
+      tags: [자격]
+      operationId: createPairingCode
+      summary: 에이전트 페어링 코드 발급
+      description: 진단 에이전트가 시점 하나에 붙을 6자리 코드(5분, 해시만 저장). 렌탈·시점과 대여 기기의 시리얼(`deviceSerial`, 관리자가 기기 목록에서 고른 등록 시리얼)을 함께 정하고, 교환한 AGENT JWT에 셋 다 들어간다. diagnostics-server는 업로드한 진단 JSON의 `device.serial`을 이 클레임과 대조한다(다르면 422 DEVICE_SERIAL_MISMATCH). (FR-AUTH-02)
+      security:
+        - bearerJwt: []
+      x-trace-requirements: [FR-AUTH-02]
+      x-trace-access:
+        roles: [ADMIN]
+        scope: NONE
+        captureToken: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PairingCodeCreateRequest'
+            example:
+              rentalId: Ws0HLv6QRbDILPWOcz5I2
+              checkpointId: aJ3bYet82WYF8iVlHstT2
+              deviceSerial: C02XG2JHJGH5
+      responses:
+        '201':
+          description: 발급됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairingCodeResponse'
+              example:
+                code: '482913'
+                expiresAt: '2026-11-12T09:05:00+09:00'
+        '400':
+          $ref: './components/common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './components/common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './components/common.yaml#/components/responses/Forbidden'
+  /api/v1/auth/pairing-codes/exchange:
+    post:
+      tags: [자격]
+      operationId: exchangePairingCode
+      summary: 페어링 코드 → AGENT JWT
+      description: |
+        6자리 코드를 AGENT JWT(10분, role AGENT, scope=checkpointId, 클레임 rentalId·deviceSerial)로 바꾼다. 코드는 한 번만 쓸 수 있다.
+        diagnostics-server는 이벤트 봉투의 rentalId를 이 클레임에서 읽는다. (FR-AUTH-02)
+        - 대입 공격 방지: gateway의 IP당 제한(분당 10회) 위에 auth-server가 전역 실패 한도를 둔다.
+          모든 클라이언트를 합쳐 틀린 코드가 1분에 30번을 넘으면 다음 1분 동안 교환을 모두 429 RATE_LIMITED(Retry-After)로 막는다.
+      security: []
+      x-trace-requirements: [FR-AUTH-02]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PairingExchangeRequest'
+            example:
+              code: '482913'
+      responses:
+        '200':
+          description: 교환됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentTokenResponse'
+              example:
+                accessToken: eyJhbGciOiJSUzI1NiJ9.agent.signature
+                tokenType: Bearer
+                expiresIn: 600
+                rentalId: Ws0HLv6QRbDILPWOcz5I2
+                checkpointId: aJ3bYet82WYF8iVlHstT2
+                deviceSerial: C02XG2JHJGH5
+        '400':
+          description: 코드 틀림 또는 형식 오류
+          x-trace-error-codes: [VALIDATION_FAILED, PAIRING_CODE_INVALID]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 페어링 코드가 맞지 않습니다
+                status: 400
+                code: PAIRING_CODE_INVALID
+        '410':
+          description: 코드 만료·이미 사용됨
+          x-trace-error-codes: [PAIRING_CODE_EXPIRED]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 페어링 코드가 만료되었습니다
+                status: 410
+                code: PAIRING_CODE_EXPIRED
+        '429':
+          $ref: './components/common.yaml#/components/responses/TooManyRequests'
+  /.well-known/jwks.json:
+    get:
+      tags: [운영]
+      operationId: getJwks
+      summary: JWT 공개키 (내부)
+      description: gateway·서버가 JWT 서명을 검증할 공개키. 클러스터 안에서만 부르고 gateway 밖으로 열지 않는다. (FR-AUTH-03)
+      servers:
+        - url: http://auth-server:8080
+          description: 클러스터 내부
+      security: []
+      x-trace-requirements: [FR-AUTH-03]
+      x-trace-internal: true
+      responses:
+        '200':
+          description: 공개키 목록
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Jwks'
+              example:
+                keys:
+                  - kty: RSA
+                    kid: trace-2026-11
+                    use: sig
+                    alg: RS256
+                    n: example-modulus
+                    e: AQAB
+components:
+  securitySchemes:
+    bearerJwt:
+      $ref: './components/common.yaml#/components/securitySchemes/bearerJwt'
+    refreshCookie:
+      $ref: './components/common.yaml#/components/securitySchemes/refreshCookie'
+  parameters:
+    SocialProviderPath:
+      name: provider
+      in: path
+      required: true
+      description: codes.yaml auth.social_provider를 소문자로(google·github·kakao·naver). 모르는 값은 404
+      schema:
+        type: string
+        enum: [google, github, kakao, naver]
+  schemas:
+    Email:
+      type: string
+      format: email
+      maxLength: 254
+      description: 소문자로 저장한다
+    SignupRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password, name, privacyAgreed]
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+          writeOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+        privacyAgreed:
+          type: boolean
+          description: 개인정보 수집 동의. false면 400 CONSENT_REQUIRED.
+    SignupResponse:
+      type: object
+      required: [accountId, status]
+      properties:
+        accountId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        status:
+          $ref: './components/codes.gen.yaml#/components/schemas/AuthAccountStatus'
+    EmailVerifyRequest:
+      type: object
+      additionalProperties: false
+      required: [email, code]
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+        code:
+          $ref: '#/components/schemas/SixDigitCode'
+    SixDigitCode:
+      type: string
+      pattern: '^\d{6}$'
+    EmailOnlyRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+        password:
+          type: string
+          writeOnly: true
+    SocialLoginError:
+      description: 콜백이 웹 `/login?socialError=<값>`으로 실어 보내는 실패 사유(화면이 안내 문장을 고른다)
+      $ref: './components/codes.gen.yaml#/components/schemas/AuthSocialLoginError'
+    SocialProvidersResponse:
+      type: object
+      additionalProperties: false
+      required: [providers]
+      properties:
+        providers:
+          type: array
+          items:
+            $ref: './components/codes.gen.yaml#/components/schemas/AuthSocialProvider'
+    TokenResponse:
+      type: object
+      required: [accessToken, tokenType, expiresIn, role]
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          description: 초
+        role:
+          $ref: './components/codes.gen.yaml#/components/schemas/AuthTokenRole'
+    PasswordResetRequest:
+      type: object
+      additionalProperties: false
+      required: [email, code, newPassword]
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+        code:
+          $ref: '#/components/schemas/SixDigitCode'
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 72
+          writeOnly: true
+    MeResponse:
+      type: object
+      required: [accountId, email, name, role, status, rentalIds]
+      properties:
+        accountId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        email:
+          $ref: '#/components/schemas/Email'
+        name:
+          type: string
+        role:
+          $ref: './components/codes.gen.yaml#/components/schemas/AuthRole'
+        status:
+          $ref: './components/codes.gen.yaml#/components/schemas/AuthAccountStatus'
+        rentalIds:
+          type: array
+          description: 내 계정에 연결된 렌탈(ADMIN은 빈 배열)
+          items:
+            $ref: './components/common.yaml#/components/schemas/PublicId'
+    WithdrawRequest:
+      type: object
+      additionalProperties: false
+      required: [password]
+      properties:
+        password:
+          type: string
+          writeOnly: true
+    CaptureLinkCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [rentalId, checkpointId]
+      properties:
+        rentalId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+    CaptureLinkResponse:
+      type: object
+      required: [url, expiresAt]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: QR에 넣을 주소(토큰 원문 포함, 서버는 해시만 저장)
+        expiresAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+    CaptureLinkExchangeRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 16
+          maxLength: 256
+    CaptureTokenResponse:
+      type: object
+      required: [accessToken, tokenType, expiresIn, rentalId, checkpointId]
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          description: 초(1800)
+        rentalId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+    BoothTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [clientId, clientSecret]
+      properties:
+        clientId:
+          type: string
+          maxLength: 64
+        clientSecret:
+          type: string
+          writeOnly: true
+    BoothTokenResponse:
+      type: object
+      required: [accessToken, tokenType, expiresIn, boothId]
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          description: 초(3600)
+        boothId:
+          type: string
+          maxLength: 32
+    PairingCodeCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [rentalId, checkpointId, deviceSerial]
+      properties:
+        rentalId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        deviceSerial:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 대여 기기의 등록 시리얼(rental-server 기기의 serial). 진단 JSON `device.serial`과 같은 형식이며 AGENT JWT의 deviceSerial 클레임이 된다
+    PairingCodeResponse:
+      type: object
+      required: [code, expiresAt]
+      properties:
+        code:
+          $ref: '#/components/schemas/SixDigitCode'
+        expiresAt:
+          $ref: './components/common.yaml#/components/schemas/DateTime'
+    PairingExchangeRequest:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code:
+          $ref: '#/components/schemas/SixDigitCode'
+    AgentTokenResponse:
+      type: object
+      required: [accessToken, tokenType, expiresIn, rentalId, checkpointId, deviceSerial]
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          description: 초(600)
+        rentalId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+          description: 페어링 코드를 만들 때 정한 렌탈. JWT의 rentalId 클레임과 같다
+        checkpointId:
+          $ref: './components/common.yaml#/components/schemas/PublicId'
+        deviceSerial:
+          type: string
+          maxLength: 64
+          description: 페어링 코드를 만들 때 정한 기기 시리얼. JWT의 deviceSerial 클레임과 같다. 에이전트는 수집한 시리얼과 다르면 올리기 전에 알린다
+    Jwks:
+      type: object
+      required: [keys]
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            required: [kty, kid, use, alg, n, e]
+            properties:
+              kty:
+                type: string
+                const: RSA
+              kid:
+                type: string
+              use:
+                type: string
+                const: sig
+              alg:
+                type: string
+                const: RS256
+              n:
+                type: string
+              e:
+                type: string
