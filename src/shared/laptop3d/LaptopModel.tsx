@@ -38,7 +38,7 @@ const SURFACE_GAP = 0.15;
 
 /**
  * 3D 카메라의 가까운 면(near). 1mm로 두면 수백 mm 밖에서 깊이 정밀도가 크게 떨어져 겹친 면이 깨져 보인다.
- * 가장 가까이 다가가도(OrbitControls minDistance = 큰 변의 0.45배) 잘리지 않을 만큼만 키운다
+ * OrbitControls minDistance(큰 변의 0.55배)로 옆에서 가장 가까이 다가가도 옆면까지 약 15mm 남아 잘리지 않는다
  */
 export function cameraNear(sizeMm: number): number {
   return Math.max(1, sizeMm * 0.02);

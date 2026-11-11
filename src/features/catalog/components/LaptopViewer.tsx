@@ -123,7 +123,7 @@ export default function LaptopViewer({ dimensions: d, modelCode, color, pins, se
         />
         <ContactShadows position={[0, -d.baseHMm / 2 - 0.6, 0]} scale={size * 1.35} blur={2.8} opacity={0.32} far={size * 0.25} />
       </group>
-      <OrbitControls ref={controls} makeDefault enablePan={false} minDistance={size * 0.45} maxDistance={size * 3.5} />
+      <OrbitControls ref={controls} makeDefault enablePan={false} minDistance={size * 0.55} maxDistance={size * 3.5} />
       <CameraRig view={view} nonce={viewNonce} size={size} controls={controls} />
     </Canvas>
   );
