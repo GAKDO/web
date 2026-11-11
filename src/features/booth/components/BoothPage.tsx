@@ -18,6 +18,7 @@ import { useRentals } from "../../rentals/api/rentals";
 import { VerdictBadge } from "../../inspections/components/VerdictBadge";
 import { boothQueue } from "../model/boothQueue";
 import { BoothDevicePanel } from "./BoothDevicePanel";
+import { LoadingRows } from "../../../shared/ui/LoadingRows";
 
 /**
  * gakdo.site/booth: 부스 옆 태블릿에서 여는 운영 화면(11/6 강사님 피드백 3번, 1단계).
@@ -110,7 +111,7 @@ function BoothBoard({ onLogout }: { onLogout(): void }) {
               onRetry={() => void rentals.refetch()}
             />
           )}
-          {rentals.isPending && <p className="text-muted-foreground">불러오는 중…</p>}
+          {rentals.isPending && <LoadingRows label="기기 목록을 불러오는 중…" count={3} />}
           <DeviceList
             title="검사 기다리는 기기"
             empty="기다리는 기기가 없습니다. 관리자 화면에서 렌탈의 시점을 시작하세요."

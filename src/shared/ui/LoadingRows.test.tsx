@@ -12,6 +12,13 @@ test("불러오는 동안 회색 자리는 화면 읽기에서 숨기고 상태 
   expect(status.querySelectorAll("li")).toHaveLength(3);
 });
 
+test("상세 화면용 회색 자리도 상태 문장 하나만 읽히고 그림은 숨긴다", () => {
+  render(<LoadingRows variant="detail" label="리포트를 불러오는 중…" count={2} />);
+  const status = screen.getByRole("status");
+  expect(status).toHaveTextContent("리포트를 불러오는 중…");
+  expect(status.querySelectorAll('[aria-hidden="true"]')).toHaveLength(2);
+});
+
 test("작은 버튼은 손가락 누름 영역을 44px로 넓히는 클래스를 가진다", () => {
   expect(buttonVariants({ size: "sm" })).toContain("tap-target");
 });

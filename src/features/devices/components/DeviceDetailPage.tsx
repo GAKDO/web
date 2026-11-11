@@ -22,6 +22,7 @@ import { MaskedSerial } from "../../../shared/ui/MaskedSerial";
 import { maskSerial } from "../../../shared/ui/maskSerial";
 import { RENTAL_STATUS_VARIANT } from "../../rentals/components/RentalListPage";
 import { useDevice, useDeviceRentals } from "../api/devices";
+import { LoadingRows } from "../../../shared/ui/LoadingRows";
 
 const STATUS_VARIANT = { ACTIVE: "success", MAINTENANCE: "warning", RETIRED: "secondary" } as const satisfies Record<DeviceStatus, string>;
 const toMessage = (e: unknown) => (e instanceof ApiError ? messageFor(e) : "요청을 처리하지 못했습니다.");
@@ -41,7 +42,7 @@ function RentalHistory({ deviceId, serial }: { deviceId: string; serial: string 
   return (
     <>
       {rentals.isError && <ErrorBanner message={toMessage(rentals.error)} onRetry={() => void rentals.refetch()} />}
-      {rentals.isPending && <p className="text-muted-foreground">불러오는 중…</p>}
+      {rentals.isPending && <LoadingRows label="렌탈 기록을 불러오는 중…" count={2} />}
       {rentals.isSuccess && items.length === 0 && <p className="text-muted-foreground">이 기기는 아직 렌탈한 적이 없습니다.</p>}
       <DataTable
         cols="1fr 0.8fr 1.2fr 1.3fr 1.3fr 0.9fr"
@@ -73,7 +74,7 @@ export function DeviceDetailPage() {
   const { deviceId = "" } = useParams();
   const device = useDevice(deviceId);
 
-  if (device.isPending) return <p className="text-muted-foreground">불러오는 중…</p>;
+  if (device.isPending) return <LoadingRows variant="detail" label="기기 정보를 불러오는 중…" />;
   const data = device.data;
   if (!data) return <ErrorBanner message={toMessage(device.error)} onRetry={() => void device.refetch()} />;
 

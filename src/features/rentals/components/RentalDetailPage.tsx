@@ -29,6 +29,7 @@ import { InspectionHistory } from "../../inspections/components/InspectionHistor
 import { formatDateTime } from "../../../shared/ui/format";
 import { useTimeline } from "../../report/api/report";
 import { SettlementCard } from "../../report/components/SettlementCard";
+import { LoadingRows } from "../../../shared/ui/LoadingRows";
 
 const STEPS: CheckpointType[] = ["OUT", "RCV", "RET"];
 const BEFORE: Record<CheckpointType, string> = { OUT: "출고를", RCV: "수령을", RET: "반납을" };
@@ -168,7 +169,7 @@ export function RentalDetailPage() {
   const [asking, setAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (rental.isPending) return <p className="text-muted-foreground">불러오는 중…</p>;
+  if (rental.isPending) return <LoadingRows variant="detail" label="렌탈 정보를 불러오는 중…" />;
   // 이미 받은 상세가 있으면 다시 읽기(3초 폴링)가 실패해도 화면을 지우지 않는다
   const data = rental.data;
   if (!data) return <ErrorBanner message={toMessage(rental.error)} onRetry={() => void rental.refetch()} />;
