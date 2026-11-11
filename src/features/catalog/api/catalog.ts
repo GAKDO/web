@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { publicApi as api, unwrap } from "../../../shared/api/client";
-import type { CatalogDiagnostics, CatalogInspectionSummary } from "../../../shared/api/types";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { ApiError, publicApi as api, unwrap } from "../../../shared/api/client";
+import type { CatalogDiagnostics, CatalogInspection, CatalogInspectionSummary } from "../../../shared/api/types";
 import { checkpointIdsOf, chunks, mergeCatalog, type CatalogRow } from "../model/catalog";
 
 // 공개 보유 기기 목록·상세(11/8, contracts #33). 로그인 없이 부른다(publicApi: 로그인해 있어도 토큰을 붙이지 않아 만료 토큰 401에 걸리지 않는다).
@@ -45,5 +45,27 @@ export function useCatalogInspection(checkpointId: string | undefined) {
     staleTime: 8 * 60_000,
     refetchInterval: 8 * 60_000,
     queryFn: () => unwrap(api.GET("/api/v1/captures/catalog/checkpoints/{checkpointId}", { params: { path: { checkpointId: checkpointId ?? "" } } })),
+  });
+}
+
+/**
+ * 흠집별 처음 발견 검사를 찾으려고 이전 검사들의 공개 상세를 함께 받는다(11/11 민서 요청).
+ * 부스 검사가 아니거나 등급 전이면 404라 null로 둔다. 흠집 위치만 쓰므로 사진 주소 만료와 상관없이 오래 둔다
+ */
+export function useCatalogHistory(checkpointIds: string[]) {
+  return useQueries({
+    queries: checkpointIds.map((id) => ({
+      queryKey: [...CATALOG, "history", id],
+      staleTime: 30 * 60_000,
+      retry: (count: number, error: unknown) => !(error instanceof ApiError && error.status === 404) && count < 2,
+      queryFn: async (): Promise<CatalogInspection | null> => {
+        try {
+          return await unwrap(api.GET("/api/v1/captures/catalog/checkpoints/{checkpointId}", { params: { path: { checkpointId: id } } }));
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 404) return null;
+          throw e;
+        }
+      },
+    })),
   });
 }

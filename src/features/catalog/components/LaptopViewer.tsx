@@ -1,4 +1,4 @@
-import { ContactShadows, OrbitControls } from "@react-three/drei";
+import { ContactShadows, Html, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, type ElementRef } from "react";
 import * as THREE from "three";
@@ -18,6 +18,8 @@ interface Props {
   modelCode: string;
   color: string | null;
   pins: LaptopPin[];
+  /** 핀별 짧은 표시(처음 발견 검사). 고른 핀 옆에 띄운다 */
+  tags?: Record<string, string>;
   selected: string | null;
   onSelect(groupId: string): void;
   view: ViewPreset;
@@ -51,7 +53,7 @@ function CameraRig({ view, nonce, size, controls }: { view: ViewPreset; nonce: n
   return null;
 }
 
-function Pin({ pin, radius, selected, onSelect }: { pin: LaptopPin; radius: number; selected: boolean; onSelect(): void }) {
+function Pin({ pin, radius, selected, tag, onSelect }: { pin: LaptopPin; radius: number; selected: boolean; tag?: string; onSelect(): void }) {
   const { position: at, normal } = pin.placement;
   const position: [number, number, number] = [at[0] + normal[0] * radius * 0.6, at[1] + normal[1] * radius * 0.6, at[2] + normal[2] * radius * 0.6];
   const facing = useMemo(() => new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...normal)), [normal]);
@@ -75,11 +77,16 @@ function Pin({ pin, radius, selected, onSelect }: { pin: LaptopPin; radius: numb
         <torusGeometry args={[r * 2, r * 0.28, 8, 32]} />
         <meshStandardMaterial color={color} transparent opacity={selected ? 0.95 : 0.6} />
       </mesh>
+      {selected && tag && (
+        <Html center position={[0, 0, 0]} zIndexRange={[10, 0]} pointerEvents="none" style={{ transform: "translateY(-150%)" }}>
+          <span className="whitespace-nowrap rounded-full border bg-white/95 px-2 py-0.5 text-xs font-semibold text-zinc-800 shadow-sm">{tag}</span>
+        </Html>
+      )}
     </group>
   );
 }
 
-export default function LaptopViewer({ dimensions: d, modelCode, color, pins, selected, onSelect, view, viewNonce, lidOpen, onContextLost }: Props) {
+export default function LaptopViewer({ dimensions: d, modelCode, color, pins, tags, selected, onSelect, view, viewNonce, lidOpen, onContextLost }: Props) {
   const controls = useRef<ElementRef<typeof OrbitControls>>(null);
   const size = Math.max(d.widthMm, d.depthMm);
   const body = bodyColor(color);
@@ -115,10 +122,10 @@ export default function LaptopViewer({ dimensions: d, modelCode, color, pins, se
           lidOpen={lidOpen}
           shapes={shapes}
           baseChildren={basePins.map((p) => (
-            <Pin key={p.groupId} pin={p} radius={radius} selected={selected === p.groupId} onSelect={() => onSelect(p.groupId)} />
+            <Pin key={p.groupId} pin={p} radius={radius} selected={selected === p.groupId} tag={tags?.[p.groupId]} onSelect={() => onSelect(p.groupId)} />
           ))}
           lidChildren={lidPins.map((p) => (
-            <Pin key={p.groupId} pin={p} radius={radius} selected={selected === p.groupId} onSelect={() => onSelect(p.groupId)} />
+            <Pin key={p.groupId} pin={p} radius={radius} selected={selected === p.groupId} tag={tags?.[p.groupId]} onSelect={() => onSelect(p.groupId)} />
           ))}
         />
         <ContactShadows position={[0, -d.baseHMm / 2 - 0.6, 0]} scale={size * 1.35} blur={2.8} opacity={0.32} far={size * 0.25} />

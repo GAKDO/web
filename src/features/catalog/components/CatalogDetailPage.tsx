@@ -7,16 +7,17 @@ import { messageFor } from "../../../shared/api/errorMessages";
 import type { CatalogPhotoDefect } from "../../../shared/api/types";
 import { CAPTURE_CAMERA_LABEL, CAPTURE_FACE_LABEL, CAPTURE_LIGHT_LABEL, CHECKPOINT_TYPE_LABEL, DEFECT_CLASS_LABEL, DEVICE_OS_LABEL } from "../../../shared/codes/labels";
 import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
-import { formatDateTime } from "../../../shared/ui/format";
+import { formatDate, formatDateTime } from "../../../shared/ui/format";
 import { PhotoGrid } from "../../inspections/components/PhotoGrid";
 import { PhotoLightbox, type LightboxPhoto } from "../../inspections/components/PhotoLightbox";
 import { PhotoWithDefects } from "../../inspections/components/PhotoWithDefects";
 import { faceGrids } from "../../inspections/model/photos";
 import { hasWebGL } from "../../report/components/TwinSection";
-import { useCatalog, useCatalogInspection } from "../api/catalog";
+import { useCatalog, useCatalogHistory, useCatalogInspection } from "../api/catalog";
 import { classSummary } from "../model/catalog";
 import { BENCH_LABEL, BENCH_UNIT, full, percent } from "../model/format";
 import { laptopPins, PIN_COLOR, type LaptopPin } from "../model/laptop3d";
+import { firstSeenOf, type FirstSeen, type InspectionSpots } from "../model/firstSeen";
 import { AvailabilityBadge, GradeBadge } from "./Badges";
 import type { ViewPreset } from "./LaptopViewer";
 import { usePhotoSizes } from "../../../shared/laptop3d/usePhotoSizes";
@@ -62,6 +63,20 @@ const VIEWS: { view: ViewPreset; label: string; lidOpen: boolean }[] = [
   { view: "bottom", label: "바닥", lidOpen: false },
 ];
 
+/** 처음 발견 한 줄. current: 지금 보이는 검사 ID */
+function seenText(fs: FirstSeen, current: string): string {
+  const at = `${CHECKPOINT_TYPE_LABEL[fs.type]} 검사(${formatDate(fs.gradedAt)})`;
+  if (fs.isNew) return `이번 ${at}에서 새로 발견`;
+  if (fs.checkpointId !== current) return `${at}부터 있던 흠집`;
+  return `${at}에서 발견`;
+}
+
+/** 3D 핀 옆 짧은 표시 */
+function seenTag(fs: FirstSeen): string {
+  const d = new Date(fs.gradedAt).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric" });
+  return fs.isNew ? `새 흠집 · ${d}` : `${CHECKPOINT_TYPE_LABEL[fs.type]} ${d}부터`;
+}
+
 function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex justify-between gap-4 border-b py-2 last:border-b-0">
@@ -91,6 +106,35 @@ export function CatalogDetailPage() {
   const sizes = usePhotoSizes(useMemo(() => photos.filter((p) => defects.some((d) => photoKey(d) === photoKey(p))).map((p) => ({ key: photoKey(p), url: p.url })), [photos, defects]));
   const pins = useMemo(() => (row ? laptopPins(defects, row.device.dimensions, (d) => sizes[photoKey(d)]) : []), [row, defects, sizes]);
   const current = pins.find((p) => p.groupId === selected) ?? null;
+
+  // 흠집별 처음 발견 검사(11/11 민서 요청): 지금 보이는 검사보다 이전 검사들의 흠집과 같은 면·가까운 위치끼리 이어 본다
+  const checkpoints = row?.device.checkpoints ?? [];
+  const currentIdx = checkpoints.findIndex((c) => c.checkpointId === row?.inspection?.checkpointId);
+  const olderCheckpoints = currentIdx >= 0 ? checkpoints.slice(currentIdx + 1) : [];
+  const history = useCatalogHistory(olderCheckpoints.map((c) => c.checkpointId));
+  const historyReady = history.every((h) => h.isSuccess);
+  const historyFailed = history.some((h) => h.isError);
+  const firstSeen = useMemo(() => {
+    const cp = checkpoints[currentIdx];
+    if (!row || !cp || !inspection.data || !historyReady) return new Map<string, FirstSeen>();
+    const spotsOf = (checkpointId: string, type: InspectionSpots["type"], gradedAt: string, list: LaptopPin[]): InspectionSpots => ({
+      checkpointId,
+      type,
+      gradedAt,
+      spots: list.map((p) => ({ groupId: p.groupId, face: p.face, ratio: p.ratio })),
+    });
+    const older = olderCheckpoints.flatMap((c, i) => {
+      const data = history[i]?.data;
+      return data ? [spotsOf(c.checkpointId, c.type, data.gradedAt, laptopPins(data.photoDefects, row.device.dimensions, () => undefined))] : [];
+    });
+    // 견줄 때는 이전 검사와 같은 기준(기본 해상도)으로 잰다. 화면 핀은 실제 사진 크기를 쓰므로 위치가 조금 다를 수 있다
+    const now = laptopPins(inspection.data.photoDefects, row.device.dimensions, () => undefined);
+    return firstSeenOf(spotsOf(cp.checkpointId, cp.type, inspection.data.gradedAt, now), older);
+    // history는 렌더마다 새 배열이라 받은 시각으로 바뀜을 본다
+  }, [row, inspection.data, historyReady, currentIdx, history.map((h) => h.dataUpdatedAt).join()]);
+  const pinTags = useMemo(() => Object.fromEntries([...firstSeen].map(([id, fs]) => [id, seenTag(fs)])), [firstSeen]);
+  const newCount = [...firstSeen.values()].filter((f) => f.isNew).length;
+  const hadBefore = [...firstSeen.values()].filter((f) => !f.isNew && f.checkpointId !== row?.inspection?.checkpointId).length;
 
   const choose = (pin: LaptopPin) => {
     setSelected(pin.groupId);
@@ -210,6 +254,7 @@ export function CatalogDetailPage() {
                       modelCode={d.modelCode}
                       color={d.color}
                       pins={pins}
+                      tags={pinTags}
                       selected={selected}
                       onSelect={(id) => setSelected(id)}
                       view={view}
@@ -270,6 +315,12 @@ export function CatalogDetailPage() {
             ))}
             {row.inspection && <p className="m-0 mt-0.5 text-xs text-muted-foreground">{classSummary(row.inspection.defectsByClass, DEFECT_CLASS_LABEL) || "흠집이 없습니다."}</p>}
             {row.inspection && inspection.isPending && <p role="status" className="text-sm">흠집 위치를 불러오는 중…</p>}
+            {pins.length > 0 && olderCheckpoints.length > 0 && firstSeen.size > 0 && (
+              <p className="m-0 mt-1 text-xs text-muted-foreground">
+                이전 검사부터 있던 흠집 {hadBefore} · 이번에 새로 발견 {newCount}
+              </p>
+            )}
+            {pins.length > 0 && historyFailed && <p className="m-0 mt-1 text-xs text-muted-foreground">이전 검사 기록을 불러오지 못해 처음 발견 시점은 빼고 보여 드립니다.</p>}
             {pins.length > 0 && (
               <ol className="m-0 mt-3 grid max-h-64 list-none gap-1 overflow-y-auto p-0">
                 {pins.map((pin, i) => (
@@ -281,8 +332,16 @@ export function CatalogDetailPage() {
                       className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm", selected === pin.groupId ? "bg-muted font-semibold" : "hover:bg-muted/60")}
                     >
                       <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: PIN_COLOR[pin.defectClass] }} />
-                      <span>
-                        {i + 1}. {DEFECT_CLASS_LABEL[pin.defectClass]} · {CAPTURE_FACE_LABEL[pin.face]}
+                      <span className="min-w-0">
+                        <span className="block">
+                          {i + 1}. {DEFECT_CLASS_LABEL[pin.defectClass]} · {CAPTURE_FACE_LABEL[pin.face]}
+                          {firstSeen.get(pin.groupId)?.isNew && (
+                            <span className="ml-1.5 rounded-full border border-red-300 bg-red-50 px-1.5 py-0.5 text-[11px] font-semibold text-red-700">새 흠집</span>
+                          )}
+                        </span>
+                        {firstSeen.has(pin.groupId) && (
+                          <span className="block text-xs font-normal text-muted-foreground">{seenText(firstSeen.get(pin.groupId)!, row.inspection!.checkpointId)}</span>
+                        )}
                       </span>
                     </button>
                   </li>
@@ -303,6 +362,9 @@ export function CatalogDetailPage() {
                     />
                   ) : null;
                 })()}
+                {firstSeen.has(current.groupId) && (
+                  <p className="m-0 mt-2 text-sm font-semibold">처음 발견: {seenText(firstSeen.get(current.groupId)!, row.inspection!.checkpointId)}</p>
+                )}
                 <p className="m-0 mt-2 text-xs text-muted-foreground">
                   사진 {current.members.length}장에 찍힌 흠집입니다. 사진을 누르면 크게 보고 조명별로 넘겨 볼 수 있어요.
                 </p>
@@ -310,6 +372,9 @@ export function CatalogDetailPage() {
             )}
             {row.inspection && (
               <p className="m-0 mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              {olderCheckpoints.length > 0 && firstSeen.size > 0 && (
+                <span className="basis-full">처음 발견 시점은 이전 검사에서 같은 면·가까운 위치의 흠집을 이어 본 대략 판단입니다.</span>
+              )}
               {(Object.keys(PIN_COLOR) as (keyof typeof PIN_COLOR)[]).map((c) => (
                 <span key={c} className="inline-flex items-center gap-1">
                   <span aria-hidden="true" className="size-2 rounded-full" style={{ background: PIN_COLOR[c] }} />
