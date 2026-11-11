@@ -6,8 +6,11 @@ import { faceAspect, facePlanes, paintFace, type FacePlane, type FaceShape } fro
 // 흠집 모양 겹쳐 그리기(11/8). 흠집이 있는 면마다 투명 그림판(CanvasTexture)에 실제 폴리곤을 그리고,
 // 그 면 위에 살짝 띄운 판에 입힌다. 옆면은 본체·덮개 두 판이 같은 그림을 나눠 쓴다(판마다 uv 범위만 다르다).
 
-/** 면 위로 띄우는 거리(mm). 키보드 면은 키 위로 올라와야 보인다 */
-const LIFT: Partial<Record<CaptureFace, number>> = { KB: 0.9 };
+/**
+ * 면 위로 띄우는 거리(mm). 키보드 면은 키 위로 올라와야 보인다.
+ * 화면 면(SCR0·SCR1)은 화면 판이 덮개 안쪽 면에서 0.35mm(LaptopModel SCREEN_GAP) 떠 있으므로 그보다 앞에 둔다
+ */
+const LIFT: Partial<Record<CaptureFace, number>> = { KB: 0.9, SCR0: 0.5, SCR1: 0.5 };
 const TEX_LONG = 1536;
 
 interface FaceLayer {
