@@ -9,6 +9,7 @@ import { useCatalog } from "../api/catalog";
 import { filterRows, SORT_OPTIONS, sortRows, type CatalogRow, type SortDir, type SortKey } from "../model/catalog";
 import { compact, DASH, percent } from "../model/format";
 import { AvailabilityBadge, GradeBadge } from "./Badges";
+import { LoadingRows } from "../../../shared/ui/LoadingRows";
 
 // 공개 보유 노트북 목록(11/8 민서 요청): 로그인 없이 회사가 가진 노트북의 흠집 수·외관 등급·배터리·벤치마크를 비교한다.
 // 검색·정렬은 주소(?q=&sort=&dir=&available=1)에 남겨 뒤로 가기·링크 공유 때 그대로 돌아온다.
@@ -272,7 +273,7 @@ export function CatalogPage() {
       </div>
 
       <div className="mt-5">
-        {catalog.isPending && <p role="status">노트북 목록을 불러오는 중…</p>}
+        {catalog.isPending && <LoadingRows label="노트북 목록을 불러오는 중…" variant="cards" count={3} />}
         {catalog.isError && (
           <ErrorBanner message={catalog.error instanceof ApiError ? messageFor(catalog.error) : "목록을 불러오지 못했습니다."} onRetry={() => void catalog.refetch()} />
         )}

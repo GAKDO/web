@@ -244,6 +244,43 @@
   }
 }
 
+/* 손가락 누름 영역 44px(11/11, 5팀처럼 터치 영역 점검). 보이는 크기는 그대로 두고 투명한 영역만 44×44로 넓힌다.
+   ::after를 쓰므로 ::after로 밑줄 등을 그리는 요소에는 붙이지 않는다.
+   absolute·fixed로 놓인 요소는 유틸리티 층이 position을 이기므로 그대로 그 자리에 있다 */
+@layer components {
+  .tap-target {
+    position: relative;
+  }
+  /* 손가락으로 쓰는 기기에서만 넓힌다(마우스 화면의 가로 스크롤 칸에 스크롤바가 생기지 않게) */
+  @media (pointer: coarse) {
+    .tap-target::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+  }
+}
+
+/* 불러오는 동안의 회색 자리(LoadingRows). 밝은 회색 위로 옅은 빛이 왼쪽→오른쪽으로 지나간다 */
+@layer components {
+  .skeleton {
+    background: linear-gradient(90deg, var(--muted) 25%, color-mix(in oklab, var(--muted) 45%, white) 50%, var(--muted) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shine 1.4s linear infinite;
+  }
+  @keyframes skeleton-shine {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton { animation: none; }
+  }
+}
+
 /* 계층 밖에 두어 animate-* 단축 속성의 지연 0보다 앞선다 */
 /* 목록 줄(DataTable): 처음 8줄만 40ms씩 늦게 나타나고 나머지는 함께(긴 목록이 늦게 뜨지 않게) */
 .data-rows > li:nth-child(2) { animation-delay: 40ms; }

@@ -16,6 +16,7 @@ import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import type { DeviceModelSummary } from "../../../shared/api/types";
 import { useDeleteDeviceModel } from "../api/models";
 import { MODEL_SORT_LABEL, formatGb, matchesModel, sortModels, type ModelSort } from "../lib/modelList";
+import { LoadingRows } from "../../../shared/ui/LoadingRows";
 
 /**
  * 기종 목록. 기종 수가 적어 한 번에 다 받고, 검색·정렬은 화면에서 한다(FR-RNT-03).
@@ -59,7 +60,7 @@ export function ModelListPage() {
           onRetry={() => void models.refetch()}
         />
       )}
-      {models.isPending && <p className="text-muted-foreground">불러오는 중…</p>}
+      {models.isPending && <LoadingRows label="기종 목록을 불러오는 중…" />}
       {models.isSuccess && models.data.length === 0 && <p className="text-muted-foreground">등록된 기종이 없습니다. 기기를 등록하기 전에 기종부터 등록해 주세요.</p>}
       {models.isSuccess && models.data.length > 0 && rows.length === 0 && filtered && <p className="text-muted-foreground">검색어에 맞는 기종이 없습니다.</p>}
       <DataTable

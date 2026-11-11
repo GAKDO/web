@@ -50,7 +50,7 @@ export function FlashNotice({ ms = 4000 }: { ms?: number }) {
       <button
         type="button"
         aria-label="알림 닫기"
-        className="inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+        className="tap-target inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
         onClick={() => setShown(null)}
       >
         <X aria-hidden="true" className="size-4" />

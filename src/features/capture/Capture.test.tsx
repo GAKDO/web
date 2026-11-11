@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { vi } from "vitest";
@@ -11,11 +11,11 @@ import { captureDb, mockCaptureLink } from "../../shared/mocks/captureDb";
 import { db, MOCK_CUSTOMER, MOCK_EMAIL_CODE } from "../../shared/mocks/db";
 import { server } from "../../shared/mocks/node";
 import * as camera from "./camera";
-import { blurredGray, fakeShot, glareGray, sharpGray } from "./testing";
+import { blurredGray, darkGray, fakeShot, glareGray, sharpGray } from "./testing";
 
 vi.mock("./camera", async (importOriginal) => {
   const real = await importOriginal<typeof import("./camera")>();
-  return { ...real, isSecure: vi.fn(), hasCameraApi: vi.fn(), openCamera: vi.fn(), attachStream: vi.fn(), stopCamera: vi.fn(), captureShot: vi.fn() };
+  return { ...real, isSecure: vi.fn(), hasCameraApi: vi.fn(), openCamera: vi.fn(), attachStream: vi.fn(), stopCamera: vi.fn(), captureShot: vi.fn(), sampleFrame: vi.fn() };
 });
 const cam = vi.mocked(camera);
 
@@ -24,6 +24,7 @@ beforeEach(() => {
   cam.hasCameraApi.mockReturnValue(true);
   cam.openCamera.mockResolvedValue({} as MediaStream);
   cam.captureShot.mockResolvedValue(fakeShot(sharpGray()));
+  cam.sampleFrame.mockReturnValue(null);
 });
 
 function asCustomer() {
@@ -163,6 +164,37 @@ test("빛 반사가 있는 사진은 이유를 보여 주고 쓸 수 없다", as
   await user.click(await screen.findByRole("button", { name: "찍기" }));
   expect(await screen.findByText(/빛이 반사됩니다/)).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "이 사진 쓰기" })).not.toBeInTheDocument();
+});
+
+test("어두운 사진은 불을 켜라는 이유를 보여 주고 쓸 수 없다", async () => {
+  asCustomer();
+  renderApp(`/capture?t=${mockCaptureLink().token}`);
+  const user = await openTop();
+  cam.captureShot.mockResolvedValueOnce(fakeShot(darkGray()));
+  await user.click(await screen.findByRole("button", { name: "찍기" }));
+  expect(await screen.findByText(/너무 어둡습니다. 불을 켜거나/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "이 사진 쓰기" })).not.toBeInTheDocument();
+});
+
+test("찍기 전에 미리보기가 어두우면 불을 켜라고, 밝고 멈춰 있으면 그대로 찍으라고 안내한다", async () => {
+  cam.sampleFrame.mockReturnValue(darkGray());
+  asCustomer();
+  renderApp(`/capture?t=${mockCaptureLink().token}`);
+  await openTop();
+  expect(await screen.findByText("어두워요. 불을 켜거나 밝은 곳으로 옮겨 주세요", {}, { timeout: 3000 })).toBeInTheDocument();
+  cam.sampleFrame.mockReturnValue(sharpGray());
+  // 밝아진 첫 프레임은 앞 프레임(어두움)과 달라 "멈춰 주세요", 그다음 프레임부터 OK
+  expect(await screen.findByText("좋아요, 그대로 찍으세요", {}, { timeout: 3000 })).toBeInTheDocument();
+});
+
+test("촬영 중 인터넷이 끊기면 찍은 사진은 남아 있다고 알리고, 다시 연결되면 안내를 지운다", async () => {
+  asCustomer();
+  renderApp(`/capture?t=${mockCaptureLink().token}`);
+  await screen.findByRole("button", { name: /^윗면/ });
+  act(() => void window.dispatchEvent(new Event("offline")));
+  expect(screen.getByRole("alert")).toHaveTextContent(/인터넷 연결이 끊겼습니다/);
+  act(() => void window.dispatchEvent(new Event("online")));
+  expect(screen.queryByText(/인터넷 연결이 끊겼습니다/)).not.toBeInTheDocument();
 });
 
 test("카메라 권한을 거부하면 이유와 다시 허용하는 방법이 보이고, 다시 시도하면 카메라를 다시 연다", async () => {

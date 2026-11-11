@@ -44,6 +44,12 @@ export function glareGray(seed = 1): Gray {
   return gray((x, y) => (Math.abs(x - 32) < 12 && Math.abs(y - 32) < 12 ? 255 : base.data[y * SIZE + x]));
 }
 
+/** 결은 선명하지만 불을 끈 방처럼 어두운 사진 */
+export function darkGray(seed = 1): Gray {
+  const base = sharpGray(seed);
+  return gray((x, y) => base.data[y * SIZE + x] / 6);
+}
+
 export function fakeShot(g: Gray, n = 0): Shot {
   const bytes = new Uint8Array([n, 1, 2, 3]).buffer;
   return { bytes, sha256: n.toString(16).padStart(64, "0"), takenAt: "2026-11-12T13:05:00+09:00", previewUrl: `blob:shot-${n}`, gray: g };
