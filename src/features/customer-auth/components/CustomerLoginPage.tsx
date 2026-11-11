@@ -93,8 +93,6 @@ export function CustomerLoginPage({ demoEmails = demoCustomerEmails() }: { demoE
           ))}
         </div>
       )}
-      {/* 소셜 로그인은 처음이면 가입까지 하므로 회원 가입(account)을 숨긴 배포에서는 보이지 않는다 */}
-      {!accountArchived && <SocialLoginButtons next={next} />}
       <LoginForm key={formKey} initialEmail={email} onLogin={onLogin} />
       {unverified && !accountArchived && (
         <p className="m-0 mt-3 text-sm">
@@ -115,6 +113,8 @@ export function CustomerLoginPage({ demoEmails = demoCustomerEmails() }: { demoE
               비밀번호를 잊으셨나요?
             </Link>
           </p>
+          {/* 소셜 로그인은 이메일 로그인 아래 "또는" 뒤에 둔다. 처음이면 가입까지 하므로 account를 숨긴 배포에서는 보이지 않는다 */}
+          <SocialLoginButtons next={next} />
           <AuthDivider>처음이신가요?</AuthDivider>
           <Link to={signupHref} className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full")}>
             이메일로 회원가입
