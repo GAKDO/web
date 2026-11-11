@@ -115,8 +115,8 @@ export function CapturePage({ grant, linked = false }: { grant: CaptureGrant; li
         </p>
       )}
       {!online && (
-        <p role="alert" className="m-0 mb-3 animate-enter rounded-lg border border-warning/40 bg-warning-soft px-3 py-2 text-sm font-semibold">
-          인터넷 연결이 끊겼습니다. 찍은 사진은 이 화면에 그대로 있으니, 연결되면 이어서 제출해 주세요.
+        <p role="alert" className="sticky top-2 z-10 m-0 mb-3 animate-enter rounded-lg shadow-sm border border-warning/40 bg-warning-soft px-3 py-2 text-sm font-semibold">
+          인터넷 연결이 끊겼습니다. 찍은 사진은 이 화면에 그대로 있으니 촬영 시간({minutesLeft}분 남음) 안에 연결되면 이어서 제출해 주세요. 시간이 지나면 새 QR이 필요합니다.
         </p>
       )}
       <p className="notice">촬영이 끝날 때까지 새로 고치거나 창을 닫지 마세요. 찍은 사진이 사라지고 QR을 다시 받아야 합니다.</p>

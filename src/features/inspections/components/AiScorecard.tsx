@@ -11,7 +11,7 @@ export interface Score {
   dismissed: number;
   /** 사람이 흠집이라고 확정한 비율(%). 판정한 후보가 없으면 null */
   precision: number | null;
-  /** 모델 버전별(후보가 있었던 시점만) */
+  /** 시점의 대표 모델(후보를 낸 첫 모델)별 시점 합계. 한 시점에 모델이 여럿이면 그 시점 전체가 대표 모델에 들어간다 */
   byModel: { modelVersion: string; confirmed: number; dismissed: number }[];
 }
 
@@ -61,6 +61,16 @@ export function AiScorecard() {
   // 검수를 끝낼 때마다 목록이 무효화되므로 따로 자주 다시 읽지 않는다
   const done = useReviewQueue("CONFIRMED", SCORECARD_LIMIT, 60_000);
   const items = done.data?.items ?? [];
+  if (done.isError) {
+    return (
+      <p role="alert" className="mt-0 mb-6 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        AI 후보 검수 결과를 불러오지 못했습니다.
+        <button type="button" className="tap-target cursor-pointer text-info underline-offset-4 hover:underline" onClick={() => void done.refetch()}>
+          다시 불러오기
+        </button>
+      </p>
+    );
+  }
   if (items.length === 0) return null;
   const score = scoreOf(items);
   const summary =
@@ -81,7 +91,7 @@ export function AiScorecard() {
       <p className="mt-2 mb-0 text-xs text-muted-foreground">
         최근 {SCORECARD_LIMIT}건까지 · AI는 후보만 넓게 잡고, 사람이 확정한 흠집만 등급과 기록에 들어갑니다
         {score.byModel.length > 0 &&
-          ` · ${score.byModel.map((m) => `${m.modelVersion} 확정 ${m.confirmed}·아님 ${m.dismissed}`).join(" / ")}`}
+          ` · 대표 모델별 시점 합계 ${score.byModel.map((m) => `${m.modelVersion} 확정 ${m.confirmed}·아님 ${m.dismissed}`).join(" / ")}`}
       </p>
     </section>
   );

@@ -262,6 +262,12 @@
       height: max(100%, 44px);
       transform: translate(-50%, -50%);
     }
+    /* 모서리에 붙은 손잡이(챗봇 크기 조절): 잘리지 않게 안쪽(오른쪽 아래)으로만 넓힌다 */
+    .tap-inward::after {
+      left: 0;
+      top: 0;
+      transform: none;
+    }
   }
 }
 

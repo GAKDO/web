@@ -190,7 +190,7 @@ export function ChatWidget() {
         onPointerCancel={onResizeEnd}
         onKeyDown={onResizeKey}
         onDoubleClick={resetPanel}
-        className="tap-target absolute top-0 left-0 z-10 flex size-6 cursor-nwse-resize touch-none items-center justify-center rounded-br-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        className="tap-target tap-inward absolute top-0 left-0 z-10 flex size-6 cursor-nwse-resize touch-none items-center justify-center rounded-br-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
         <MoveDiagonal aria-hidden="true" className="size-3.5" />
       </button>

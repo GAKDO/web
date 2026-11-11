@@ -11,6 +11,8 @@ export function useOnline(): boolean {
     const off = () => setOnline(false);
     window.addEventListener("online", on);
     window.addEventListener("offline", off);
+    // 처음 값을 읽은 뒤 리스너를 달기 전에 바뀌었을 수 있으므로 한 번 다시 맞춘다
+    setOnline(navigator.onLine !== false);
     return () => {
       window.removeEventListener("online", on);
       window.removeEventListener("offline", off);
