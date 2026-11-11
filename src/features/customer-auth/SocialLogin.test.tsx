@@ -16,6 +16,10 @@ test("서버에 켜진 제공자만 'Google로 계속하기' 같은 버튼으로
   expect(google.getAttribute("href")).toMatch(/\/api\/v1\/auth\/oauth\/google\/start\?next=%2Fmy%2Frentals$/);
   expect(screen.getByRole("link", { name: "GitHub로 계속하기" }).getAttribute("href")).toContain("/oauth/github/start");
   expect(screen.queryByRole("link", { name: "카카오로 계속하기" })).not.toBeInTheDocument();
+  // 이메일 로그인이 위, "또는" 뒤에 소셜 버튼이 아래
+  const emailInput = screen.getByLabelText("이메일");
+  expect(emailInput.compareDocumentPosition(google) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.getByRole("region", { name: "소셜 로그인" })).toHaveTextContent(/^또는/);
 });
 
 test("켜진 제공자가 없으면 소셜 버튼 없이 이메일 로그인만 보인다", async () => {
