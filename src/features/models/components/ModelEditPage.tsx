@@ -12,6 +12,7 @@ import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { Field, SelectField } from "../../../shared/ui/Field";
 import { useDeviceModels } from "../../devices/api/devices";
 import { useDeviceModel, useUpsertDeviceModel } from "../api/models";
+import { LoadingRows } from "../../../shared/ui/LoadingRows";
 
 // 기종 코드 규칙은 contracts rental-server.yaml ModelCode와 같다
 const MODEL_CODE = /^[A-Z0-9][A-Z0-9-]{1,63}$/;
@@ -137,7 +138,7 @@ export function ModelEditPage() {
     );
   }
 
-  if (editing && existing.isPending) return <p className="text-muted-foreground">불러오는 중…</p>;
+  if (editing && existing.isPending) return <LoadingRows variant="detail" label="기종 정보를 불러오는 중…" count={2} />;
   if (editing && existing.isError) {
     return (
       <section className="max-w-xl">

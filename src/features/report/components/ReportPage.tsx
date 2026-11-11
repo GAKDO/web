@@ -18,6 +18,7 @@ import { CompareTable } from "./CompareTable";
 import { SettlementCard } from "./SettlementCard";
 import { TwinSection } from "./TwinSection";
 import { VerifyQr } from "./VerifyQr";
+import { LoadingRows } from "../../../shared/ui/LoadingRows";
 
 /** 고객 화면 공통 폭(마이페이지와 같음). page는 3D·비교표의 옛 CSS를 이 안에서만 쓰게 한다 */
 const MAIN = "page mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-10";
@@ -69,7 +70,7 @@ function backFor(isAdmin: boolean, rentalId: string): Back {
  */
 function AdminReportMissing({ rentalId }: { rentalId: string }) {
   const rental = useRental(rentalId);
-  if (rental.isPending) return <p className="text-muted-foreground">리포트를 불러오는 중…</p>;
+  if (rental.isPending) return <LoadingRows variant="detail" label="리포트를 불러오는 중…" />;
   // 렌탈 API가 404일 때만 "렌탈 없음"이다. 그 밖의 실패는 다시 시도할 수 있게 한다
   if (rental.isError && !(rental.error instanceof ApiError && rental.error.status === 404)) {
     return <ErrorBanner message={rental.error instanceof ApiError ? messageFor(rental.error) : "렌탈을 확인하지 못했습니다."} onRetry={() => void rental.refetch()} />;
@@ -121,7 +122,7 @@ export function ReportPage() {
   const model = useDeviceModel(timeline.data?.modelCode);
   const progress = useProgress(rentalId, !!timeline.data && hasPendingCheckpoint(timeline.data.checkpoints));
 
-  if (timeline.isPending) return <main className={MAIN}><p className="text-muted-foreground">리포트를 불러오는 중…</p></main>;
+  if (timeline.isPending) return <main className={MAIN}><LoadingRows variant="detail" label="리포트를 불러오는 중…" /></main>;
   if (timeline.isError) {
     return (
       <main className={cn(MAIN, "max-w-xl")}>

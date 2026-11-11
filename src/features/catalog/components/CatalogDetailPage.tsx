@@ -22,6 +22,7 @@ import { AvailabilityBadge, GradeBadge } from "./Badges";
 import type { ViewPreset } from "./LaptopViewer";
 import { usePhotoSizes } from "../../../shared/laptop3d/usePhotoSizes";
 import { isChunkLoadError } from "../../../shared/app/chunkReload";
+import { LoadingRows } from "../../../shared/ui/LoadingRows";
 
 // 공개 기기 상세(11/8 민서 요청): 노트북 3D 모델 위에 확정 흠집을 핀으로 찍고, 핀을 누르면 그 흠집이 찍힌 원본 사진을 보여 준다.
 // WebGL이 없거나 3D가 실패하면 사진 보기만 남는다. 사양·진단·벤치마크도 함께 보여 준다.
@@ -157,7 +158,7 @@ export function CatalogDetailPage() {
       return src ? [{ key: m.defectId, name: `${CAPTURE_FACE_LABEL[m.face]} · ${CAPTURE_CAMERA_LABEL[m.camera]} · ${CAPTURE_LIGHT_LABEL[m.light]}`, src, defects: [{ id: m.defectId, title: DEFECT_CLASS_LABEL[m.class], polygon: m.polygon }] }] : [];
     });
 
-  if (catalog.isPending) return <main className="mx-auto max-w-6xl px-4 py-10" role="status">불러오는 중…</main>;
+  if (catalog.isPending) return <main className="mx-auto max-w-6xl px-4 py-10"><LoadingRows variant="detail" label="노트북 정보를 불러오는 중…" /></main>;
   if (catalog.isError)
     return (
       <main className="mx-auto max-w-6xl px-4 py-10">

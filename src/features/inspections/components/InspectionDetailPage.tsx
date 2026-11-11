@@ -31,6 +31,7 @@ import { formatConfidence, formatMm, PARTIAL_OK_LABEL, repairOf, verdictOf, type
 import { PhotoGrid, TextureList } from "./PhotoGrid";
 import { isReviewOpen } from "../model/review";
 import { ReviewPanel } from "./ReviewPanel";
+import { LoadingRows } from "../../../shared/ui/LoadingRows";
 
 /** 판정 상자 색. 늘 기호(✔·✖)와 글자를 같이 보여 색만으로 뜻을 전하지 않는다 */
 const BOX = {
@@ -191,7 +192,7 @@ export function InspectionDetailPage() {
   const shownSerial = serial ? maskSerial(serial) : "";
   const title = checkpoint ? `${shownSerial} ${CHECKPOINT_TYPE_LABEL[checkpoint.type]} 검사 결과` : `${shownSerial} 검사 결과`.trim();
 
-  if (rental.isPending || (checkpoint && inspection.isPending)) return <p className="text-muted-foreground">불러오는 중…</p>;
+  if (rental.isPending || (checkpoint && inspection.isPending)) return <LoadingRows variant="detail" label="검사 결과를 불러오는 중…" />;
   const error = rental.isError ? rental.error : inspection.isError ? inspection.error : null;
   if (error) {
     return (

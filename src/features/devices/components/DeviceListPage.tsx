@@ -24,6 +24,7 @@ import { PageHeader } from "../../../shared/ui/PageHeader";
 import { FilterPanel } from "../../../shared/ui/FilterPanel";
 import { Pager, usePaged } from "../../../shared/ui/Pager";
 import { formatDate } from "../../../shared/ui/format";
+import { LoadingRows } from "../../../shared/ui/LoadingRows";
 
 /** 입력이 멈춘 뒤에만 검색한다 */
 function useDebounced(value: string, ms = 250): string {
@@ -151,7 +152,7 @@ export function DeviceListPage() {
           onRetry={() => void devices.refetch()}
         />
       )}
-      {devices.isPending && <p className="text-muted-foreground">불러오는 중…</p>}
+      {devices.isPending && <LoadingRows label="기기 목록을 불러오는 중…" />}
       {devices.isSuccess && items.length === 0 && <p className="text-muted-foreground">조건에 맞는 기기가 없습니다.</p>}
       {devices.isSuccess && items.length > 0 && <TotalCount query={devices} />}
       <DataTable cols="1.6fr minmax(110px, 1fr) 0.8fr 0.9fr 120px" labels={["기기명", "시리얼번호", "상태", "등록일", ""]} label="기기">

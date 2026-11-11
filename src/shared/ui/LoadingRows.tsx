@@ -5,8 +5,8 @@ interface Props {
   label?: string;
   /** 회색 자리 개수 */
   count?: number;
-  /** rows = 목록 줄, cards = 카드 격자(공개 노트북 목록) */
-  variant?: "rows" | "cards";
+  /** rows = 목록 줄, cards = 카드 격자(공개 노트북 목록), detail = 상세 화면(제목 + 칸 몇 개) */
+  variant?: "rows" | "cards" | "detail";
   className?: string;
 }
 
@@ -15,6 +15,26 @@ interface Props {
  * 결과가 어디에 어떤 모양으로 나올지 먼저 보여 줘 화면이 덜 튄다. 반짝임은 움직임 줄이기 설정이면 멈춘다
  */
 export function LoadingRows({ label = "불러오는 중…", count = 4, variant = "rows", className }: Props) {
+  if (variant === "detail") {
+    return (
+      <div role="status" className={cn("grid gap-4", className)}>
+        <span className="sr-only">{label}</span>
+        <div aria-hidden="true" className="grid gap-2">
+          <span className="skeleton block h-7 w-1/2 max-w-xs rounded" />
+          <span className="skeleton block h-4 w-2/3 max-w-md rounded" />
+        </div>
+        <div aria-hidden="true" className="grid gap-3 md:grid-cols-2">
+          {Array.from({ length: Math.min(count, 4) }, (_, i) => (
+            <div key={i} className="grid gap-2 rounded-xl border bg-card p-4" style={{ opacity: 1 - i * 0.15 }}>
+              <span className="skeleton block h-4 w-1/3 rounded" />
+              <span className="skeleton block h-3 w-full rounded" />
+              <span className="skeleton block h-3 w-4/5 rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
   return (
     <div role="status" className={className}>
       <span className="sr-only">{label}</span>
