@@ -415,6 +415,20 @@ function addReviewRental() {
   return ids;
 }
 
+test("검수 후보 카드 안에 그 후보가 잡힌 사진이 보이고, 같은 흠집이 잡힌 다른 조명 사진으로 바꿔 볼 수 있다(11/12)", async () => {
+  const user = userEvent.setup();
+  const { rentalId, checkpointId } = addReviewRental();
+  renderAsAdmin(`/admin/inspections/${rentalId}/${checkpointId}`);
+  const panel = await screen.findByRole("region", { name: "사람 검수 · 남은 후보 2곳" });
+  const first = within(panel).getByRole("listitem", { name: "후보 1" });
+  // 신뢰도 높은 L1 사진이 먼저
+  expect(await within(first).findByRole("button", { name: /윗면.*L1.*전체 크게 보기/ })).toBeInTheDocument();
+  await user.click(within(first).getByRole("button", { name: /L2/, pressed: false }));
+  expect(within(first).getByRole("button", { name: /윗면.*L2.*전체 크게 보기/ })).toBeInTheDocument();
+  const second = within(panel).getByRole("listitem", { name: "후보 2" });
+  expect(within(second).getByRole("button", { name: /바닥.*CAM2.*L3.*전체 크게 보기/ })).toBeInTheDocument();
+});
+
 test("AI 후보가 있으면 목록 맨 위에 사람 검수 대기가 보이고, 판정은 사람 검수 대기로 보인다", async () => {
   addReviewRental();
   renderAsAdmin("/admin/inspections");
