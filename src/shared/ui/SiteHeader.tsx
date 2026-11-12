@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useId, useState, type CSSProperties } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Camera,
@@ -19,6 +19,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { isArchived } from "../config/features";
 import { pilotDashboardUrl } from "../config/pilotDashboard";
 import { TraceLogo } from "./TraceLogo";
+import { PendingReviewBadge, usePendingReviewLabel } from "../../features/inspections/components/PendingReviewBadge";
 import { useIsMobile } from "./useMediaQuery";
 
 export interface NavItem {
@@ -83,8 +84,12 @@ const LINK_ACTIVE = "text-white after:absolute after:inset-x-3 after:bottom-0 af
 /** 넓은 화면 메뉴의 링크. 헤더 높이를 꽉 채워 밑줄이 헤더 아래 선에 붙는다 */
 const NAV_LINK = cn(LINK, "h-full rounded-none");
 
-function HeaderLink({ item, className, activeClassName, onNavigate, style }: { item: NavItem; className: string; activeClassName?: string; onNavigate?: () => void; style?: CSSProperties }) {
+/** 검수 대기 숫자를 붙이는 메뉴(11/12) */
+export const REVIEW_MENU_PATH = "/admin/inspections";
+
+function HeaderLink({ item, className, activeClassName, onNavigate, style, badge }: { item: NavItem; className: string; activeClassName?: string; onNavigate?: () => void; style?: CSSProperties; badge?: string | null }) {
   const Icon = item.icon;
+  const badgeId = useId();
   if (item.external)
     return (
       <a href={item.to} target="_blank" rel="noopener noreferrer" className={className} style={style} onClick={onNavigate}>
@@ -94,9 +99,10 @@ function HeaderLink({ item, className, activeClassName, onNavigate, style }: { i
       </a>
     );
   return (
-    <NavLink to={item.to} end={item.end} className={({ isActive }) => cn(className, isActive && activeClassName)} style={style} onClick={onNavigate}>
+    <NavLink to={item.to} end={item.end} className={({ isActive }) => cn(className, isActive && activeClassName)} style={style} onClick={onNavigate} aria-describedby={badge ? badgeId : undefined}>
       {Icon && <Icon aria-hidden="true" className="size-4" />}
       {item.label}
+      {badge && <PendingReviewBadge label={badge} descriptionId={badgeId} />}
     </NavLink>
   );
 }
@@ -128,6 +134,9 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
     if (!confirmed) navigate("/login?loggedOut=partial", { replace: true });
   };
   const showAccount = !isArchived("account");
+  // 관리 화면에서만 검수 대기 건수를 묻는다(고객·공개 화면은 묻지 않음)
+  const pendingReviews = usePendingReviewLabel(admin && signedIn);
+  const badgeFor = (item: NavItem) => (item.to === REVIEW_MENU_PATH ? pendingReviews : null);
 
   const links = status === "unknown" ? [] : admin ? [...ADMIN_MENU, ...adminExtras()] : siteLinks(signedIn, role === "ADMIN");
 
@@ -179,7 +188,7 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
         {!mobile && links.length > 0 && (
           <nav aria-label={admin ? "관리 메뉴" : "고객 메뉴"} className="ml-4 flex h-full min-w-0 items-stretch gap-0.5 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {links.map((item) => (
-              <HeaderLink key={item.to} item={item} className={NAV_LINK} activeClassName={LINK_ACTIVE} />
+              <HeaderLink key={item.to} item={item} className={NAV_LINK} activeClassName={LINK_ACTIVE} badge={badgeFor(item)} />
             ))}
           </nav>
         )}
@@ -220,6 +229,7 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
                   activeClassName="text-white"
                   style={{ "--i": i } as CSSProperties}
                   onNavigate={() => setOpen(false)}
+                  badge={badgeFor(item)}
                 />
               </li>
             ))}

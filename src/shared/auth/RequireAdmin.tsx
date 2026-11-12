@@ -1,7 +1,9 @@
+import { useId } from "react";
 import { Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { FlashNotice } from "../ui/FlashNotice";
-import { ADMIN_MENU, SiteHeader } from "../ui/SiteHeader";
+import { ADMIN_MENU, REVIEW_MENU_PATH, SiteHeader } from "../ui/SiteHeader";
+import { usePendingReviewLabel } from "../../features/inspections/components/PendingReviewBadge";
 import { useIsMobile } from "../ui/useMediaQuery";
 import { useAuth } from "./AuthProvider";
 
@@ -20,6 +22,9 @@ export function RequireAdmin() {
   const { status, role } = useAuth();
   const { pathname } = useLocation();
   const mobile = useIsMobile();
+  // 폰 아래 탭의 "검사 결과"에도 검수 대기 건수를 붙인다(헤더와 같은 캐시)
+  const pendingReviews = usePendingReviewLabel(mobile && status === "authenticated" && role === "ADMIN");
+  const pendingId = useId();
   if (status === "unknown")
     return (
       <p className="p-6 text-muted-foreground">로그인 상태를 확인하는 중…</p>
@@ -48,9 +53,21 @@ export function RequireAdmin() {
               key={to}
               to={to}
               className={({ isActive }) => cn(TAB, isActive && TAB_ACTIVE)}
+              // 숫자는 화면 읽기에서 숨기고 같은 뜻을 설명으로 읽힌다(링크 이름은 "검사 결과" 그대로)
+              aria-describedby={to === REVIEW_MENU_PATH && pendingReviews ? pendingId : undefined}
             >
               {({ isActive }) => (
                 <>
+                  {to === REVIEW_MENU_PATH && pendingReviews && (
+                    <span aria-hidden="true" className="absolute top-1.5 left-1/2 ml-2 min-w-4 rounded-full bg-brand px-1 text-center text-[0.625rem] leading-4 font-semibold text-white tabular-nums">
+                      {pendingReviews}
+                    </span>
+                  )}
+                  {to === REVIEW_MENU_PATH && pendingReviews && (
+                    <span id={pendingId} hidden>
+                      검수 대기 {pendingReviews}건
+                    </span>
+                  )}
                   {Icon && (
                     <Icon
                       aria-hidden="true"
