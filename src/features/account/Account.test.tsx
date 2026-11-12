@@ -87,9 +87,50 @@ describe("계정 탈퇴", () => {
     expect(db.accounts.some((a) => a.email === MOCK_CUSTOMER.email)).toBe(true);
   });
 
-  test("소셜 로그인으로 가입해 비밀번호가 없으면 비밀번호 재설정으로 갈 수 있다", async () => {
+  test("비밀번호를 정한 적 없는 소셜 가입 계정은 비밀번호 대신 '탈퇴'를 입력해 탈퇴한다", async () => {
+    const customer = db.accounts.find((a) => a.email === MOCK_CUSTOMER.email);
+    if (customer) {
+      customer.socialProviders = ["GOOGLE"];
+      customer.passwordSet = false;
+    }
+    const user = userEvent.setup();
+    const { router } = renderAsCustomer("/my/account/withdraw");
+    const input = await screen.findByLabelText('확인을 위해 "탈퇴" 입력');
+    expect(screen.queryByLabelText("비밀번호 확인")).not.toBeInTheDocument();
+    await user.type(input, "탈퇴 안");
+    expect(screen.getByRole("button", { name: "탈퇴하기" })).toBeDisabled();
+    await user.clear(input);
+    await user.type(input, "탈퇴");
+    await user.click(screen.getByRole("button", { name: "탈퇴하기" }));
+    await user.click(screen.getByRole("button", { name: "탈퇴" }));
+    expect(await screen.findByRole("heading", { name: "탈퇴했습니다" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/account/withdrawn");
+  });
+
+  test("비밀번호로 가입한 뒤 소셜이 연결된 계정은 계속 비밀번호를 묻는다", async () => {
+    const customer = db.accounts.find((a) => a.email === MOCK_CUSTOMER.email);
+    if (customer) customer.socialProviders = ["GOOGLE"];
     renderAsCustomer("/my/account/withdraw");
-    expect(await screen.findByRole("link", { name: "비밀번호 재설정" })).toHaveAttribute("href", "/password/reset");
+    expect(await screen.findByLabelText("비밀번호 확인")).toBeInTheDocument();
+    expect(screen.queryByLabelText('확인을 위해 "탈퇴" 입력')).not.toBeInTheDocument();
+  });
+
+  test("로그인한 지 10분이 지나 서버가 REAUTH_REQUIRED를 주면 탈퇴하지 않고 다시 로그인하게 안내한다", async () => {
+    const customer = db.accounts.find((a) => a.email === MOCK_CUSTOMER.email);
+    if (customer) {
+      customer.passwordSet = false;
+      customer.staleLogin = true;
+    }
+    const user = userEvent.setup();
+    const { router } = renderAsCustomer("/my/account/withdraw");
+    await user.type(await screen.findByLabelText('확인을 위해 "탈퇴" 입력'), "탈퇴");
+    await user.click(screen.getByRole("button", { name: "탈퇴하기" }));
+    await user.click(screen.getByRole("button", { name: "탈퇴" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("다시 로그인한 뒤 탈퇴해 주세요");
+    expect(db.accounts.some((a) => a.email === MOCK_CUSTOMER.email)).toBe(true);
+    await user.click(screen.getByRole("button", { name: "다시 로그인" }));
+    await vi.waitFor(() => expect(router.state.location.pathname).toBe("/login"));
+    expect(router.state.location.search).toContain("next=%2Fmy%2Faccount%2Fwithdraw");
   });
 
   test("한 번 더 묻고 취소하면 탈퇴하지 않는다", async () => {

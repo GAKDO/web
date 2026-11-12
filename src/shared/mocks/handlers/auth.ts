@@ -74,6 +74,8 @@ export const authHandlers = [
       role: account.role === "ADMIN" ? "ADMIN" : "CUSTOMER",
       status: "ACTIVE",
       rentalIds: [...db.report.owners].filter(([, owner]) => owner === account.accountId).map(([rentalId]) => rentalId),
+      socialProviders: account.socialProviders ?? [],
+      passwordSet: account.passwordSet ?? true,
     } satisfies components["schemas"]["MeResponse"];
     return HttpResponse.json(me);
   }),
@@ -102,8 +104,12 @@ export const authHandlers = [
   http.delete("*/api/v1/auth/me", async ({ request }) => {
     const account = accountFromRequest(request);
     if (!account) return problem(401, "UNAUTHENTICATED", "로그인이 필요합니다");
-    const { password } = (await request.json()) as { password: string };
-    if (password !== account.password) return problem(401, "INVALID_CREDENTIALS", "비밀번호가 맞지 않습니다");
+    const { password } = (await request.json()) as { password?: string };
+    const passwordSet = account.passwordSet ?? true;
+    if (password ? password !== account.password : passwordSet) {
+      return problem(401, "INVALID_CREDENTIALS", "비밀번호가 맞지 않습니다");
+    }
+    if (!password && account.staleLogin) return problem(403, "REAUTH_REQUIRED", "다시 로그인한 뒤 해 주세요");
     db.accounts = db.accounts.filter((a) => a !== account);
     for (const [token, owner] of db.accessTokens) if (owner === account) db.accessTokens.delete(token);
     if (db.refreshAccount === account) db.refreshAccount = null;

@@ -12,6 +12,7 @@
 # Unreleased(2026-11-07): diagnostics.lock_state·disk_health, flag_kind ACTIVATION_LOCK_ON·DISK_ENCRYPTION_ON·DISK_HEALTH_WARNING 추가(잠금·디스크 상태 점검). 값 추가만.
 # Unreleased(2026-11-08): inspection.review_status·dismiss_reason, error_code REVIEW_PENDING_REMAINS·REVIEW_NOT_READY·REVIEW_CLOSED 추가(AI 후보 사람 검수). 값 추가만.
 # Unreleased(2026-11-10): error_code DEVICE_IN_USE·DEVICE_MODEL_IN_USE 추가(기기·기종 지우기). 값 추가만.
+# Unreleased(2026-11-12): error_code REAUTH_REQUIRED 추가(비밀번호 없는 탈퇴는 로그인 10분 안만). 값 추가만.
 #   OpenAPI용 enum은 scripts/gen_openapi_codes.py로 만든다. 값은 문자열이어야 한다(OFF·ON·YES·NO는 따옴표).
 version: 1.0.0
 
@@ -103,6 +104,7 @@ error_code:
   - CLIENT_CREDENTIALS_INVALID   # 401 부스 client_id·secret 틀림
   - PAIRING_CODE_INVALID         # 400
   - PAIRING_CODE_EXPIRED         # 410
+  - REAUTH_REQUIRED              # 403 로그인한 지 오래돼 다시 로그인해야 함(비밀번호 없는 탈퇴)
   # rental
   - RENTAL_OPEN_EXISTS           # 409 같은 기기로 진행 중인 렌탈 있음
   - DEVICE_NOT_ACTIVE            # 409 수리 중·폐기 기기로 렌탈 생성

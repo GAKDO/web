@@ -13,7 +13,8 @@ components:
       bearerFormat: JWT
       description: |
         auth-server가 발급한 RS256 액세스 JWT. 클레임은 iss(trace), sub, role(codes.yaml auth.token_role),
-        scope(checkpointId 또는 boothId), rentals(CUSTOMER가 볼 수 있는 렌탈 ID 목록), iat, exp, jti.
+        scope(checkpointId 또는 boothId), rentals(CUSTOMER가 볼 수 있는 렌탈 ID 목록), auth_time, iat, exp, jti.
+        auth_time(초)은 ADMIN·CUSTOMER 일반 토큰에만 있는 실제 로그인 시각이고, 리프레시로 다시 받아도 바뀌지 않는다.
         gateway가 검증한 뒤 서버에는 X-User-Id·X-Role·X-Scope 헤더로 넘긴다.
     refreshCookie:
       type: apiKey
