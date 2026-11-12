@@ -494,6 +494,8 @@ paths:
                 role: CUSTOMER
                 status: ACTIVE
                 rentalIds: [Ws0HLv6QRbDILPWOcz5I2]
+                socialProviders: [GOOGLE]
+                passwordSet: false
         '401':
           $ref: './components/common.yaml#/components/responses/Unauthorized'
         '403':
@@ -502,7 +504,12 @@ paths:
       tags: [계정]
       operationId: withdraw
       summary: 탈퇴
-      description: 비밀번호를 확인한 뒤 개인정보(이메일·이름·비밀번호)를 지우고 WITHDRAWN으로 바꾼다. 렌탈 기록은 남는다. (FR-USR-04)
+      description: >-
+        비밀번호를 확인한 뒤 개인정보(이메일·이름·비밀번호)를 지우고 WITHDRAWN으로 바꾼다. 렌탈 기록은 남는다. (FR-USR-04)
+        비밀번호를 정한 적 없는 계정(`MeResponse.passwordSet`이 false, 소셜 가입)은 `password`를 빼고 보내도 되지만,
+        로그인한 지 10분 안(토큰의 auth_time)일 때만 받는다. 지났거나 auth_time이 없으면 403 REAUTH_REQUIRED(다시 로그인한 뒤 탈퇴).
+        `passwordSet`이 true인 계정(비밀번호 가입, 가입 뒤 소셜이 자동 연결된 계정 포함)이 `password`를 빼면 401 INVALID_CREDENTIALS.
+        `password`를 보내면 어느 계정이든 그 값을 확인한다. 탈퇴하면 소셜 로그인 연결도 지운다.
       security:
         - bearerJwt: []
       x-trace-requirements: [FR-USR-04]
@@ -516,8 +523,14 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/WithdrawRequest'
-            example:
-              password: example-pass-1234
+            examples:
+              password:
+                summary: 이메일 가입 계정
+                value:
+                  password: example-pass-1234
+              social:
+                summary: 비밀번호를 정한 적 없는 소셜 가입 계정(로그인 10분 안)
+                value: {}
       responses:
         '204':
           description: 탈퇴됨
@@ -535,7 +548,16 @@ paths:
                 status: 401
                 code: INVALID_CREDENTIALS
         '403':
-          $ref: './components/common.yaml#/components/responses/Forbidden'
+          description: 고객 토큰이 아님(FORBIDDEN) 또는 비밀번호 없는 탈퇴인데 로그인한 지 10분이 지남(REAUTH_REQUIRED)
+          x-trace-error-codes: [FORBIDDEN, REAUTH_REQUIRED]
+          content:
+            application/problem+json:
+              schema:
+                $ref: './components/common.yaml#/components/schemas/Problem'
+              example:
+                title: 다시 로그인한 뒤 해 주세요
+                status: 403
+                code: REAUTH_REQUIRED
   /api/v1/auth/capture-links:
     post:
       tags: [자격]
@@ -942,14 +964,24 @@ components:
           description: 내 계정에 연결된 렌탈(ADMIN은 빈 배열)
           items:
             $ref: './components/common.yaml#/components/schemas/PublicId'
+        socialProviders:
+          type: array
+          description: 이 계정에 연결된 소셜 로그인 제공자(없으면 빈 배열)
+          items:
+            $ref: './components/codes.gen.yaml#/components/schemas/AuthSocialProvider'
+        passwordSet:
+          type: boolean
+          description: >-
+            사용자가 비밀번호를 직접 정했는지. 비밀번호 가입·재설정이면 true, 소셜 가입이면 false(서버는 항상 보냄).
+            false면 탈퇴에 비밀번호 대신 로그인 10분 안 조건을 쓴다
     WithdrawRequest:
       type: object
       additionalProperties: false
-      required: [password]
       properties:
         password:
           type: string
           writeOnly: true
+          description: 비밀번호를 정한 계정(`MeResponse.passwordSet` true)은 필수. 정한 적 없는 소셜 가입 계정은 빼도 된다
     CaptureLinkCreateRequest:
       type: object
       additionalProperties: false

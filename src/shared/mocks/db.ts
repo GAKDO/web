@@ -20,6 +20,12 @@ interface Account {
   pending?: boolean;
   /** 메일 인증 코드를 틀린 횟수(목 서버) */
   verifyMisses?: number;
+  /** 연결된 소셜 로그인 제공자 */
+  socialProviders?: ("GOOGLE" | "GITHUB" | "KAKAO" | "NAVER")[];
+  /** 비밀번호를 정한 적 없는 소셜 가입 계정이면 false(없으면 true) */
+  passwordSet?: boolean;
+  /** 로그인한 지 10분이 지난 세션처럼 굴기(목 서버, 비밀번호 없는 탈퇴가 403 REAUTH_REQUIRED) */
+  staleLogin?: boolean;
 }
 
 interface MockState {
