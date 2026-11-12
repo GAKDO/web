@@ -176,3 +176,13 @@ test("고객 화면 헤더는 검수 대기 목록을 묻지 않는다", async (
   await screen.findByRole("navigation", { name: "고객 메뉴" });
   expect(asked).toBe(false);
 });
+
+test("폰 아래 탭의 검사 결과에도 검수 대기 건수가 보이고 화면 읽기는 설명으로 읽는다", async () => {
+  setMobile(true);
+  server.use(http.get("*/api/v1/captures/reviews", () => HttpResponse.json({ items: [pendingItem(1)] })));
+  renderAsAdmin("/admin/devices");
+  const tabs = await screen.findByRole("navigation", { name: "자주 쓰는 관리 메뉴" });
+  const link = within(tabs).getByRole("link", { name: "검사 결과" });
+  expect(await within(link).findByText("1")).toBeInTheDocument();
+  expect(link).toHaveAccessibleDescription("검수 대기 1건");
+});
