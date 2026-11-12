@@ -133,7 +133,7 @@ export function CapturePage({ grant, linked = false }: { grant: CaptureGrant; li
           {requiredCount > 0 && (
             <div className="mt-4 mb-2 grid gap-1.5">
               <p className="m-0 flex justify-between text-sm">
-                <span className="font-semibold">면을 하나씩 눌러 찍어 주세요</span>
+                <span className="font-semibold">아래 면을 하나씩 눌러 안내대로 찍어 주세요</span>
                 <span className="text-muted-foreground tabular-nums">
                   {requiredCount - remaining.length} / {requiredCount}
                 </span>

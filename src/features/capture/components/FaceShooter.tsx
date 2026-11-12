@@ -145,9 +145,9 @@ export function FaceShooter({ guide, onAccept, onCancel }: Props) {
   return (
     <section className="shooter" aria-label={`${label} 찍기`}>
       <h2>{label}</h2>
-      <p className="m-0">{guide.guide}</p>
+      <p className="m-0 font-semibold">{guide.guide}</p>
       <p className="mt-1 mb-3 text-sm text-muted-foreground">
-        화면 위쪽: {guide.top} · 왼쪽: {guide.left}
+        흰 점선 테두리에 노트북이 꽉 차게 맞추세요(▲ 위쪽: {guide.top} · ▲ 왼쪽: {guide.left})
       </p>
       {failed && <CameraHelp kind={phase} onRetry={() => setAttempt((n) => n + 1)} />}
       <div className="viewfinder" hidden={failed || review !== null}>

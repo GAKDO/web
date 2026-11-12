@@ -18,10 +18,10 @@ test("면별 위쪽·왼쪽 방향이 faces.md 표와 같다", () => {
   const g = byFace();
   expect([g.TOP.top, g.TOP.left]).toEqual(["경첩", "내 왼쪽"]);
   expect([g.BOT.top, g.BOT.left]).toEqual(["경첩", "내 오른쪽"]);
-  expect([g.SF.top, g.SF.left]).toEqual(["상판", "내 왼쪽"]);
-  expect([g.SB.top, g.SB.left]).toEqual(["상판", "내 오른쪽"]);
-  expect([g.SL.top, g.SL.left]).toEqual(["상판", "경첩"]);
-  expect([g.SR.top, g.SR.left]).toEqual(["상판", "앞"]);
+  expect([g.SF.top, g.SF.left]).toEqual(["덮개", "내 왼쪽"]);
+  expect([g.SB.top, g.SB.left]).toEqual(["덮개", "내 오른쪽"]);
+  expect([g.SL.top, g.SL.left]).toEqual(["덮개", "경첩"]);
+  expect([g.SR.top, g.SR.left]).toEqual(["덮개", "여는 쪽"]);
   expect([g.SCR0.top, g.SCR0.left]).toEqual(["화면 위 모서리", "내 왼쪽"]);
 });
 
