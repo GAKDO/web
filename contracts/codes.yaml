@@ -13,6 +13,7 @@
 # Unreleased(2026-11-08): inspection.review_status·dismiss_reason, error_code REVIEW_PENDING_REMAINS·REVIEW_NOT_READY·REVIEW_CLOSED 추가(AI 후보 사람 검수). 값 추가만.
 # Unreleased(2026-11-10): error_code DEVICE_IN_USE·DEVICE_MODEL_IN_USE 추가(기기·기종 지우기). 값 추가만.
 # Unreleased(2026-11-12): error_code REAUTH_REQUIRED 추가(비밀번호 없는 탈퇴는 로그인 10분 안만). 값 추가만.
+# Unreleased(2026-11-12): flag_kind SECURITY_PROTECTION_OFF·THREAT_DETECTED 추가(보안 프로그램 상태 점검, 사업단 설문 반영). 값 추가만.
 #   OpenAPI용 enum은 scripts/gen_openapi_codes.py로 만든다. 값은 문자열이어야 한다(OFF·ON·YES·NO는 따옴표).
 version: 1.0.0
 
@@ -53,8 +54,9 @@ diagnostics:
   component_kind: [CPU, RAM, SSD, BATTERY, DISPLAY, OTHER]
   capacity_unit: [mAh, mWh]
   benchmark_metric: [CPU_SINGLE, CPU_MULTI, MEM_COPY, DISK_READ, DISK_WRITE]
-  # 앞 3개는 앞 진단과 비교, 뒤 3개는 이번 진단의 checks만 보고 붙임(11/7 민서 결정)
-  flag_kind: [COMPONENT_CHANGED, CAPACITY_DROP, BENCH_DROP, ACTIVATION_LOCK_ON, DISK_ENCRYPTION_ON, DISK_HEALTH_WARNING]
+  # 앞 3개는 앞 진단과 비교, 그다음 3개는 이번 진단의 checks만 보고 붙임(11/7 민서 결정)
+  # SECURITY_PROTECTION_OFF는 이번 checks만, THREAT_DETECTED는 앞 진단보다 위협 건수가 늘었거나 첫 진단에 1건 이상일 때(11/12 민서 결정)
+  flag_kind: [COMPONENT_CHANGED, CAPACITY_DROP, BENCH_DROP, ACTIVATION_LOCK_ON, DISK_ENCRYPTION_ON, DISK_HEALTH_WARNING, SECURITY_PROTECTION_OFF, THREAT_DETECTED]
   # 아래는 진단 JSON(diagnostics/result.schema.json)이 쓰는 값 (C2)
   battery_status: [OK, SKIPPED, NO_BATTERY]          # 배터리 읽기 결과. NO_BATTERY = 배터리 없는 기기
   storage_status: [OK, SKIPPED]                      # SSD 읽기 결과

@@ -34,6 +34,16 @@ export function checksText(checks: RunChecks | null | undefined, os?: Checkpoint
   return `활성화 잠금 ${lock(checks.activationLock, true)} · 디스크 암호화 ${lock(checks.diskEncryption, false)} · OS 디스크 상태 ${health}`;
 }
 
+/**
+ * 보안 보호 한 줄(contracts 11/12 checks.securityProtection·threatCount). Windows는 Defender 백신·실시간 보호,
+ * macOS는 Gatekeeper·SIP. 이 값을 읽지 않는 이전 에이전트 진단이나 못 읽은 값은 '확인 안 함'.
+ */
+export function securityText(checks: RunChecks | null | undefined): string {
+  const state = checks?.securityProtection === "ON" ? "켜짐" : checks?.securityProtection === "OFF" ? "꺼짐" : "확인 안 함";
+  const threats = typeof checks?.threatCount === "number" ? ` · 위협 탐지 기록 ${checks.threatCount}건` : "";
+  return `${state}${threats}`;
+}
+
 function ReadingText({ reading }: { reading: Reading }) {
   return reading.kind === "value" ? <>{reading.text}</> : <span className="text-muted-foreground">읽지 못함 ({reading.reason})</span>;
 }
@@ -94,6 +104,8 @@ export function DiagnosticsPanel({ checkpointId, live }: { checkpointId: string;
         </dd>
         <dt className="text-muted-foreground">잠금·디스크 상태</dt>
         <dd>{checksText(current.checks, current.os)}</dd>
+        <dt className="text-muted-foreground">보안 보호(백신·시스템 보호)</dt>
+        <dd>{securityText(current.checks)}</dd>
         <dt className="text-muted-foreground">점검 알림</dt>
         <dd>{flagLabels.length === 0 ? "없음" : flagLabels.join(", ")}</dd>
         {/* 벤치마크는 3회 중앙값. 전원이 없어 건너뛰면 비어 온다 */}

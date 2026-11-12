@@ -224,6 +224,8 @@ components:
       - ACTIVATION_LOCK_ON
       - DISK_ENCRYPTION_ON
       - DISK_HEALTH_WARNING
+      - SECURITY_PROTECTION_OFF
+      - THREAT_DETECTED
       description: codes.yaml diagnostics.flag_kind
     DiagnosticsBatteryStatus:
       type: string

@@ -359,7 +359,7 @@ export interface components {
          * @description codes.yaml diagnostics.flag_kind
          * @enum {string}
          */
-        DiagnosticsFlagKind: "COMPONENT_CHANGED" | "CAPACITY_DROP" | "BENCH_DROP" | "ACTIVATION_LOCK_ON" | "DISK_ENCRYPTION_ON" | "DISK_HEALTH_WARNING";
+        DiagnosticsFlagKind: "COMPONENT_CHANGED" | "CAPACITY_DROP" | "BENCH_DROP" | "ACTIVATION_LOCK_ON" | "DISK_ENCRYPTION_ON" | "DISK_HEALTH_WARNING" | "SECURITY_PROTECTION_OFF" | "THREAT_DETECTED";
         /**
          * @description codes.yaml error_code
          * @enum {string}

@@ -95,7 +95,7 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         DiagnosticUpload: components["schemas"]["result.schema"];
-        /** @description 점검 플래그. COMPONENT_CHANGED·CAPACITY_DROP·BENCH_DROP은 같은 렌탈 앞 진단과 비교해 붙이고 baseRunId는 그 앞 진단이다. ACTIVATION_LOCK_ON·DISK_ENCRYPTION_ON·DISK_HEALTH_WARNING(11/7 추가)은 이번 진단의 checks만 보고 첫 진단(출고)에도 붙이며, 비교 대상이 없으므로 baseRunId는 이번 진단 자신이다. */
+        /** @description 점검 플래그. COMPONENT_CHANGED·CAPACITY_DROP·BENCH_DROP은 같은 렌탈 앞 진단과 비교해 붙이고 baseRunId는 그 앞 진단이다. ACTIVATION_LOCK_ON·DISK_ENCRYPTION_ON·DISK_HEALTH_WARNING(11/7 추가)은 이번 진단의 checks만 보고 첫 진단(출고)에도 붙이며, 비교 대상이 없으므로 baseRunId는 이번 진단 자신이다. SECURITY_PROTECTION_OFF(11/12 추가)는 이번 checks.securityProtection이 OFF일 때 붙고 baseRunId는 이번 진단이다. THREAT_DETECTED(11/12 추가)는 checks.threatCount가 같은 렌탈 앞 진단보다 늘었을 때(baseRunId는 앞 진단), 앞 진단이 없거나 그 값을 못 읽었으면 1건 이상일 때(baseRunId는 이번 진단) 붙는다. detail은 before·after. */
         InspectionFlag: {
             kind: components["schemas"]["DiagnosticsFlagKind"];
             baseRunId: components["schemas"]["PublicId"];
@@ -110,6 +110,10 @@ export interface components {
             diskEncryption: components["schemas"]["DiagnosticsLockState"] | null;
             /** @description OS가 본 SSD SMART 상태 */
             osDiskHealth: components["schemas"]["DiagnosticsDiskHealth"] | null;
+            /** @description 선택(11/12 추가, 서버는 항상 보냄). Defender 백신·실시간 보호(Windows), Gatekeeper·SIP(macOS)가 모두 켜졌으면 ON. 못 읽었으면 null */
+            securityProtection?: components["schemas"]["DiagnosticsLockState"] | null;
+            /** @description 선택(11/12 추가, 서버는 항상 보냄). Windows Defender 위협 탐지 건수. macOS·못 읽음은 null */
+            threatCount?: number | null;
         };
         DiagnosticRunCreated: {
             runId: components["schemas"]["PublicId"];
@@ -364,7 +368,7 @@ export interface components {
             benchmarkSkippedReason: components["schemas"]["DiagnosticsSkippedReason"] | null;
             /** @description 실행한 명령 목록(NFR-02 고정 목록에서). 원본 JSON에만 남는다. */
             sources: string[];
-            /** @description 선택(11/7 추가, schemaVersion은 diag.v1 그대로). 출고·반납 때 직원이 봐야 할 잠금·디스크 상태. 못 읽은 값은 null. 이 칸이 없는 옛 에이전트 진단은 서버가 모두 null로 본다. diagnostics-server는 ON·WARNING이면 점검 플래그(ACTIVATION_LOCK_ON·DISK_ENCRYPTION_ON·DISK_HEALTH_WARNING)를 붙인다. */
+            /** @description 선택(11/7 추가, schemaVersion은 diag.v1 그대로. securityProtection·threatCount는 11/12 추가, 선택). 출고·반납 때 직원이 봐야 할 잠금·디스크 상태. 못 읽은 값은 null. 이 칸이 없는 옛 에이전트 진단은 서버가 모두 null로 본다. diagnostics-server는 ON·WARNING이면 점검 플래그(ACTIVATION_LOCK_ON·DISK_ENCRYPTION_ON·DISK_HEALTH_WARNING)를, securityProtection이 OFF면 SECURITY_PROTECTION_OFF, threatCount가 앞 진단보다 늘었으면(첫 진단은 1건 이상이면) THREAT_DETECTED를 붙인다. */
             checks?: {
                 /** @description macOS 활성화 잠금(나의 Mac 찾기). 켜져 있으면 초기화 뒤 고객 Apple ID 없이 다시 못 쓴다. Windows는 null */
                 activationLock: components["schemas"]["DiagnosticsLockState"] | null;
@@ -372,6 +376,10 @@ export interface components {
                 diskEncryption: components["schemas"]["DiagnosticsLockState"] | null;
                 /** @description OS가 본 내장 SSD SMART 상태. macOS system_profiler smart_status가 Verified면 OK, 다른 값이면 WARNING. 읽지 못했거나 Windows면 null */
                 osDiskHealth: components["schemas"]["DiagnosticsDiskHealth"] | null;
+                /** @description 선택(11/12 추가). OS 기본 보안 보호가 모두 켜져 있으면 ON, 하나라도 꺼져 있으면 OFF. Windows는 Microsoft Defender 백신·실시간 보호(Get-MpComputerStatus의 켜짐 값만), macOS는 Gatekeeper(spctl)와 시스템 무결성 보호(csrutil). 읽지 못했거나(다른 백신 사용 등) 옛 에이전트면 null 또는 키 없음. 파일·프로그램 목록은 읽지 않는다 */
+                securityProtection?: components["schemas"]["DiagnosticsLockState"] | null;
+                /** @description 선택(11/12 추가). Windows Defender가 기록한 위협 탐지 건수(Get-MpThreatDetection 건수만, 파일 경로 등 상세는 읽지 않음). macOS·읽지 못함·옛 에이전트면 null 또는 키 없음 */
+                threatCount?: number | null;
             };
             $defs: {
                 /**
@@ -447,7 +455,7 @@ export interface components {
          * @description codes.yaml diagnostics.flag_kind
          * @enum {string}
          */
-        DiagnosticsFlagKind: "COMPONENT_CHANGED" | "CAPACITY_DROP" | "BENCH_DROP" | "ACTIVATION_LOCK_ON" | "DISK_ENCRYPTION_ON" | "DISK_HEALTH_WARNING";
+        DiagnosticsFlagKind: "COMPONENT_CHANGED" | "CAPACITY_DROP" | "BENCH_DROP" | "ACTIVATION_LOCK_ON" | "DISK_ENCRYPTION_ON" | "DISK_HEALTH_WARNING" | "SECURITY_PROTECTION_OFF" | "THREAT_DETECTED";
         /**
          * @description codes.yaml error_code
          * @enum {string}
