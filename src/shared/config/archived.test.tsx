@@ -166,7 +166,7 @@ test("리포트를 숨긴 배포에서 고객은 내 계정 화면에서 탈퇴�
   vi.stubEnv("VITE_ARCHIVED_FEATURES", "phoneCapture,diagnostics,report,pilot");
   renderAsCustomer("/my/account");
   expect(await screen.findByRole("heading", { name: "내 정보" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "계정 탈퇴" })).toHaveAttribute("href", "/my/account/withdraw");
+  expect(screen.getByRole("link", { name: "탈퇴하기" })).toHaveAttribute("href", "/my/account/withdraw");
   expect(screen.queryByRole("link", { name: "마이페이지" })).not.toBeInTheDocument();
 });
 
