@@ -175,6 +175,7 @@ test("내 계정에서 로그아웃할 때 서버가 확인하지 못하면 로�
   server.use(http.post("*/api/v1/auth/logout", () => HttpResponse.error()));
   const user = userEvent.setup();
   renderAsCustomer("/my/account");
-  await user.click(await screen.findByRole("button", { name: "로그아웃" }));
+  // 헤더에도 로그아웃이 있으므로(11/12) 내 계정 화면 안의 버튼을 누른다
+  await user.click(await within(await screen.findByRole("main")).findByRole("button", { name: "로그아웃" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("서버에 알리지 못했습니다");
 });

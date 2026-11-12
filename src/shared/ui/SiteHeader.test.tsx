@@ -81,10 +81,31 @@ test("관리자로 로그인한 채 첫 화면에 있으면 헤더에 로그아�
   expect(router.state.location.pathname).toBe("/");
 });
 
-test("고객 헤더에는 로그아웃 버튼을 두지 않는다(내 정보 화면에 있다)", async () => {
+test("고객도 헤더 오른쪽 위에 로그아웃이 있고, 누르면 첫 화면으로 가며 로그아웃된다(11/12)", async () => {
   vi.stubEnv("VITE_ARCHIVED_FEATURES", "");
+  const user = userEvent.setup();
+  const { router } = renderAsCustomer("/my/rentals");
+  const header = (await screen.findByRole("link", { name: "TRACE 첫 화면" })).closest("header")!;
+  await user.click(await within(header).findByRole("button", { name: "로그아웃" }));
+  const home = (await screen.findByRole("link", { name: "TRACE 첫 화면" })).closest("header")!;
+  expect(await within(home).findByRole("link", { name: "로그인" })).toHaveAttribute("href", "/login");
+  expect(router.state.location.pathname).toBe("/");
+});
+
+test("폰에서 고객은 펼침 메뉴 맨 아래에서 로그아웃한다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "");
+  setMobile(true);
+  const user = userEvent.setup();
   renderAsCustomer("/devices");
-  await screen.findByRole("navigation", { name: "고객 메뉴" });
+  await user.click(await screen.findByRole("button", { name: "메뉴 열기" }));
+  const nav = screen.getByRole("navigation", { name: "고객 메뉴" });
+  expect(within(nav).getByRole("button", { name: "로그아웃" })).toBeInTheDocument();
+});
+
+test("로그인 전에는 헤더에 로그아웃이 없다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "");
+  renderApp("/devices");
+  await screen.findByRole("link", { name: "회원가입" });
   expect(screen.queryByRole("button", { name: "로그아웃" })).not.toBeInTheDocument();
 });
 
