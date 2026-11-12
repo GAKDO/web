@@ -12,5 +12,8 @@ main에 버전이 적힌 CHANGELOG가 올라가면 release.yml이 태그와 GitH
 - 리포트에 공개 검증 주소 QR을 보여 준다(FR-INT-0x 리포트 QR로 공개 검증). 검증 주소가 없으면 숨기고, 인쇄해도 보인다
 - 블로그(AIGJ-01-002-blog/devlog) CI/CD를 옮겨 초기 구성
 
+### 변경
+- nginx `/api/` 프록시: gateway 주소에 2초 안에 연결되지 않으면 다른 주소로 넘긴다(gateway 무중단 교체 중 내려간 주소를 붙잡지 않게, gitops #27)
+
 ### 제거
 - nginx의 `/grafana/` 프록시와 `GRAFANA_UPSTREAM`(11/6 결정: Grafana를 쓰지 않음)
