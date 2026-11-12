@@ -35,5 +35,5 @@ test("내 정보에서 이름·이메일을 보고, 비밀번호 바꾸기와 �
   expect(await screen.findByRole("heading", { level: 1, name: "내 정보" })).toBeInTheDocument();
   expect(await screen.findByText("renter@example.com")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "비밀번호 바꾸기" })).toHaveAttribute("href", "/password/reset");
-  expect(screen.getByRole("link", { name: "계정 탈퇴" })).toHaveAttribute("href", "/my/account/withdraw");
+  expect(screen.getByRole("link", { name: "탈퇴하기" })).toHaveAttribute("href", "/my/account/withdraw");
 });

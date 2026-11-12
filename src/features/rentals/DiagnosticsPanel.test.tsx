@@ -118,3 +118,32 @@ test("Windows 진단은 읽지 않는 활성화 잠금·OS 디스크 상태를 '
     "활성화 잠금 해당 없음 · 디스크 암호화 켜짐 · OS 디스크 상태 해당 없음",
   );
 });
+
+test("Windows 진단에서 Defender가 꺼지고 위협 기록이 늘면 보안 보호 줄과 점검 알림에 보인다", async () => {
+  const { rentalId, checkpointId } = openRental("OPEN");
+  const diag = diagnostics(checkpointId);
+  diag.current.os = "WINDOWS";
+  diag.current.checks = { activationLock: null, diskEncryption: "OFF", osDiskHealth: null, securityProtection: "OFF", threatCount: 2 };
+  diag.flags = [
+    { kind: "SECURITY_PROTECTION_OFF", baseRunId: diag.current.runId, detail: {} },
+    { kind: "THREAT_DETECTED", baseRunId: diag.current.runId, detail: {} },
+  ];
+  db.report.diagnostics.set(checkpointId, diag);
+  renderAsAdmin(`/admin/rentals/${rentalId}`);
+  const step = await screen.findByRole("listitem", { name: "출고" });
+  const panel = await within(step).findByRole("region", { name: "진단 결과" });
+  expect(panel).toHaveTextContent("꺼짐 · 위협 탐지 기록 2건");
+  expect(panel).toHaveTextContent("백신·시스템 보호(Defender·Gatekeeper·SIP)가 꺼져 있습니다");
+  expect(panel).toHaveTextContent("새 악성코드 탐지 기록이 있습니다");
+});
+
+test("보안 보호를 읽지 않은 이전 에이전트 진단은 '확인 안 함'으로 보인다", async () => {
+  const { rentalId, checkpointId } = openRental("OPEN");
+  const diag = diagnostics(checkpointId);
+  diag.current.checks = { activationLock: "OFF", diskEncryption: "OFF", osDiskHealth: "OK" };
+  db.report.diagnostics.set(checkpointId, diag);
+  renderAsAdmin(`/admin/rentals/${rentalId}`);
+  const step = await screen.findByRole("listitem", { name: "출고" });
+  const panel = await within(step).findByRole("region", { name: "진단 결과" });
+  expect(within(panel).getByText("보안 보호(백신·시스템 보호)").nextElementSibling).toHaveTextContent("확인 안 함");
+});

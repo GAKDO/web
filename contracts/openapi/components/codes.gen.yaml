@@ -224,6 +224,8 @@ components:
       - ACTIVATION_LOCK_ON
       - DISK_ENCRYPTION_ON
       - DISK_HEALTH_WARNING
+      - SECURITY_PROTECTION_OFF
+      - THREAT_DETECTED
       description: codes.yaml diagnostics.flag_kind
     DiagnosticsBatteryStatus:
       type: string
@@ -374,6 +376,7 @@ components:
       - CLIENT_CREDENTIALS_INVALID
       - PAIRING_CODE_INVALID
       - PAIRING_CODE_EXPIRED
+      - REAUTH_REQUIRED
       - RENTAL_OPEN_EXISTS
       - DEVICE_NOT_ACTIVE
       - CHECKPOINT_ORDER_VIOLATION
