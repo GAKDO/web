@@ -119,3 +119,60 @@ test("관리자 로그아웃을 서버가 확인하지 못하면 로그인 화�
   expect(await screen.findByText(/서버에 알리지 못했습니다/)).toBeInTheDocument();
   expect(router.state.location.pathname).toBe("/login");
 });
+
+function pendingItem(i: number) {
+  return {
+    checkpointId: `cp-${i}`,
+    rentalId: `rental-${i}`,
+    captureSetId: `set-${i}`,
+    source: "BOOTH" as const,
+    profile: "FULL" as const,
+    modelVersion: "v004",
+    pending: 3,
+    confirmed: 0,
+    dismissed: 0,
+    completedAt: "2026-11-12T10:00:00+09:00",
+    reviewCompletedAt: null,
+  };
+}
+
+test("사람 검수를 기다리는 시점이 있으면 어느 관리 화면에서든 메뉴 검사 결과 옆에 대기 건수가 보인다", async () => {
+  server.use(
+    http.get("*/api/v1/captures/reviews", ({ request }) =>
+      HttpResponse.json({ items: new URL(request.url).searchParams.get("status") === "CONFIRMED" ? [] : [pendingItem(1), pendingItem(2)] }),
+    ),
+  );
+  renderAsAdmin("/admin/devices");
+  const nav = await screen.findByRole("navigation", { name: "관리 메뉴" });
+  const link = within(nav).getByRole("link", { name: "검사 결과" });
+  expect(await within(link).findByText("2")).toBeInTheDocument();
+  expect(link).toHaveAccessibleDescription("검수 대기 2건");
+});
+
+test("검수 대기가 상한(20건)만큼이면 20+로, 대기가 없으면 숫자를 보이지 않는다", async () => {
+  server.use(http.get("*/api/v1/captures/reviews", () => HttpResponse.json({ items: Array.from({ length: 20 }, (_, i) => pendingItem(i)) })));
+  const first = renderAsAdmin("/admin/rentals");
+  const nav = await screen.findByRole("navigation", { name: "관리 메뉴" });
+  expect(await within(within(nav).getByRole("link", { name: "검사 결과" })).findByText("20+")).toBeInTheDocument();
+  first.unmount();
+
+  server.use(http.get("*/api/v1/captures/reviews", () => HttpResponse.json({ items: [] })));
+  renderAsAdmin("/admin/rentals");
+  const again = await screen.findByRole("navigation", { name: "관리 메뉴" });
+  await screen.findByRole("heading", { name: "렌탈 목록" });
+  expect(within(again).getByRole("link", { name: "검사 결과" })).not.toHaveAccessibleDescription();
+});
+
+test("고객 화면 헤더는 검수 대기 목록을 묻지 않는다", async () => {
+  vi.stubEnv("VITE_ARCHIVED_FEATURES", "");
+  let asked = false;
+  server.use(
+    http.get("*/api/v1/captures/reviews", () => {
+      asked = true;
+      return HttpResponse.json({ items: [] });
+    }),
+  );
+  renderAsCustomer("/my/rentals");
+  await screen.findByRole("navigation", { name: "고객 메뉴" });
+  expect(asked).toBe(false);
+});
