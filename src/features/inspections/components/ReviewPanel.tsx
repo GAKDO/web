@@ -11,6 +11,10 @@ import { useCompleteReview, useSaveReviews } from "../api/reviews";
 import { decisionItems, REVIEW_LEVEL_LABEL, reviewGroups, type ReviewGroup } from "../model/review";
 import { formatConfidence } from "../model/verdict";
 import { MissedDefectEditor } from "./MissedDefectEditor";
+import { PHOTO_MISSING } from "./PhotoWithDefects";
+import { useCheckpointMedia } from "../api/inspections";
+import { candidateShots, type CandidateShot } from "../model/candidateShots";
+import { CandidatePhotos } from "./CandidatePhotos";
 
 const REASONS = Object.keys(DISMISS_REASON_LABEL) as DismissReason[];
 
@@ -21,15 +25,18 @@ function newKey(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `review-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function GroupCard({ group, index, busy, onDecide }: { group: ReviewGroup; index: number; busy: boolean; onDecide: (decision: "CONFIRMED" | "DISMISSED" | "PENDING", reason?: DismissReason) => void }) {
+function GroupCard({ group, index, busy, shots, onDecide }: { group: ReviewGroup; index: number; busy: boolean; shots: CandidateShot[] | null; onDecide: (decision: "CONFIRMED" | "DISMISSED" | "PENDING", reason?: DismissReason) => void }) {
   const [askingReason, setAskingReason] = useState(false);
   const where = [CAPTURE_FACE_LABEL[group.face], group.camera && CAPTURE_CAMERA_LABEL[group.camera], group.lights.map((l) => CAPTURE_LIGHT_LABEL[l]).join("·")].filter(Boolean).join(" · ");
   const decided = group.status === "CONFIRMED" || group.status === "DISMISSED";
   return (
     <li
-      className={cn("grid gap-2 rounded-xl border bg-card p-4 shadow-xs", group.status === "CONFIRMED" && "border-destructive/40", group.status === "DISMISSED" && "opacity-70")}
+      className={cn("grid gap-3 rounded-xl border bg-card p-4 shadow-xs md:grid-cols-[minmax(0,560px)_minmax(0,1fr)] md:items-start", group.status === "CONFIRMED" && "border-destructive/40", group.status === "DISMISSED" && "opacity-70")}
       aria-label={`후보 ${index + 1}`}
     >
+      {/* 11/12: 후보 사진을 카드 안에(확대 + 전체 위치). 사진 목록을 읽는 동안은 자리만 */}
+      {shots === null ? <div className={cn(PHOTO_MISSING, "animate-pulse")} aria-hidden="true" /> : <CandidatePhotos shots={shots} />}
+      <div className="grid content-start gap-2">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
         <strong>
           {index + 1}. {DEFECT_CLASS_LABEL[group.class]}
@@ -77,6 +84,7 @@ function GroupCard({ group, index, busy, onDecide }: { group: ReviewGroup; index
           )}
         </div>
       )}
+      </div>
     </li>
   );
 }
@@ -90,6 +98,8 @@ export function ReviewPanel({ checkpointId, inspection }: { checkpointId: string
   const [key] = useState(newKey);
   const complete = useCompleteReview(checkpointId, key);
   const groups = reviewGroups(inspection);
+  // 아래 검사 사진과 같은 요청(같은 query key)이라 한 번만 읽는다
+  const media = useCheckpointMedia(checkpointId);
   const review = inspection.review;
   const left = groups.filter((g) => g.status === "PENDING" || g.status === "MIXED").length;
   const busy = save.isPending || complete.isPending;
@@ -105,7 +115,7 @@ export function ReviewPanel({ checkpointId, inspection }: { checkpointId: string
         <p className="mt-0 text-sm font-medium">AI가 잡은 후보가 없어요. 아래 사진에서 놓친 흠집이 있으면 직접 표시하고, 없으면 바로 검수를 완료하세요.</p>
       )}
       <p className={groups.length === 0 ? "hidden" : "mt-0 text-sm text-muted-foreground"}>
-        AI가 흠집일 수 있는 곳을 넓게 잡았어요. 아래 사진과 비교해 하나씩 정해 주세요. 신뢰도 {formatConfidence(0.4)} 이상은 흠집 의심, 그 아래는 확인 필요예요.
+        AI가 흠집일 수 있는 곳을 넓게 잡았어요. 카드마다 왼쪽 확대 사진과 전체 위치를 보고 하나씩 정해 주세요. 신뢰도 {formatConfidence(0.4)} 이상은 흠집 의심, 그 아래는 확인 필요예요.
         흠집 아님으로 정한 곳은 등급에서 빠지고 다음 학습에 쓰입니다.
       </p>
       {review && (
@@ -117,7 +127,7 @@ export function ReviewPanel({ checkpointId, inspection }: { checkpointId: string
       {error && <ErrorBanner message={toMessage(error)} />}
       <ul className="m-0 grid list-none gap-2 p-0" aria-label="검수 후보">
         {groups.map((g, i) => (
-          <GroupCard key={g.groupId} group={g} index={i} busy={busy} onDecide={(decision, reason) => save.mutate(decisionItems(g, decision, reason))} />
+          <GroupCard key={g.groupId} group={g} index={i} busy={busy} shots={media.isPending ? null : candidateShots(g, inspection, media.data)} onDecide={(decision, reason) => save.mutate(decisionItems(g, decision, reason))} />
         ))}
       </ul>
       <MissedDefectEditor checkpointId={checkpointId} inspection={inspection} />
