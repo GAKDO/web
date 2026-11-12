@@ -63,7 +63,8 @@ test("다른 고객에게 이미 연결된 렌탈의 QR을 열면 다른 계정�
   const link = mockCaptureLink(rental.rentalId, rental.checkpoints[0].checkpointId);
   renderApp(`/capture?t=${link.token}`);
   expect(await screen.findByText(/다른 계정에 연결된 렌탈입니다/)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "로그아웃" })).toBeInTheDocument();
+  // 헤더에도 로그아웃이 있으므로(11/12) 화면 안의 버튼을 본다
+  expect(within(screen.getByRole("main")).getByRole("button", { name: "로그아웃" })).toBeInTheDocument();
 });
 
 test("리포트까지 숨긴 배포에서는 QR 주소를 열어도 첫 화면으로 돌아간다", async () => {

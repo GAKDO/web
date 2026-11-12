@@ -67,7 +67,7 @@ test("로그아웃하면 앞 계정의 대화를 지운다", async () => {
   await userEvent.type(within(dialog).getByLabelText("질문"), "내 렌탈{Enter}");
   expect(await within(dialog).findByText(/\[로그인\] 대화 1개/)).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "도우미 닫기" }));
-  await userEvent.click(screen.getByRole("button", { name: "로그아웃" }));
+  await userEvent.click(within(screen.getByRole("main")).getByRole("button", { name: "로그아웃" }));
   await vi.waitFor(() => expect(router.state.location.pathname).not.toBe("/my/account"));
   const reopened = await openChat();
   expect(within(reopened).queryByText(/\[로그인\]/)).not.toBeInTheDocument();
@@ -127,7 +127,7 @@ test("세션이 바뀌기 전에 보낸 질문의 답이 바뀐 뒤에 와도 �
   const dialog = await openChat();
   await userEvent.type(within(dialog).getByLabelText("질문"), "늦은 질문{Enter}");
   await userEvent.click(screen.getByRole("button", { name: "도우미 닫기" }));
-  await userEvent.click(screen.getByRole("button", { name: "로그아웃" }));
+  await userEvent.click(within(screen.getByRole("main")).getByRole("button", { name: "로그아웃" }));
   await vi.waitFor(() => expect(router.state.location.pathname).not.toBe("/my/account"));
   release();
   await vi.waitFor(() => expect(answered).toBe(true));

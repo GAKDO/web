@@ -1,4 +1,4 @@
-import { act, screen } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { vi } from "vitest";
@@ -115,7 +115,8 @@ test("다른 고객 계정에 연결된 렌탈의 QR을 열면 그 사실과 로
   asCustomer();
   renderApp(`/capture?t=${link.token}`);
   expect(await screen.findByText(/다른 계정에 연결된 렌탈입니다/)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "로그아웃" })).toBeInTheDocument();
+  // 헤더에도 로그아웃이 있으므로(11/12) 화면 안의 버튼을 본다
+  expect(within(screen.getByRole("main")).getByRole("button", { name: "로그아웃" })).toBeInTheDocument();
 });
 
 test("보안 연결이 아니면 카메라를 켜지 않고 QR도 쓰지 않는다", async () => {
