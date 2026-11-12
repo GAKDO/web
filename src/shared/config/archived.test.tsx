@@ -166,7 +166,7 @@ test("리포트를 숨긴 배포에서 고객은 내 계정 화면에서 탈퇴�
   vi.stubEnv("VITE_ARCHIVED_FEATURES", "phoneCapture,diagnostics,report,pilot");
   renderAsCustomer("/my/account");
   expect(await screen.findByRole("heading", { name: "내 정보" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "계정 탈퇴" })).toHaveAttribute("href", "/my/account/withdraw");
+  expect(screen.getByRole("link", { name: "탈퇴하기" })).toHaveAttribute("href", "/my/account/withdraw");
   expect(screen.queryByRole("link", { name: "마이페이지" })).not.toBeInTheDocument();
 });
 
@@ -175,6 +175,7 @@ test("내 계정에서 로그아웃할 때 서버가 확인하지 못하면 로�
   server.use(http.post("*/api/v1/auth/logout", () => HttpResponse.error()));
   const user = userEvent.setup();
   renderAsCustomer("/my/account");
-  await user.click(await screen.findByRole("button", { name: "로그아웃" }));
+  // 헤더에도 로그아웃이 있으므로(11/12) 내 계정 화면 안의 버튼을 누른다
+  await user.click(await within(await screen.findByRole("main")).findByRole("button", { name: "로그아웃" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("서버에 알리지 못했습니다");
 });

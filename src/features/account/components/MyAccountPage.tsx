@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { KeyRound, LogOut, Mail, UserRound } from "lucide-react";
+import { KeyRound, LogOut, Mail, UserRound, UserX } from "lucide-react";
 import { useAuth } from "../../../shared/auth/AuthProvider";
 import { isArchived } from "../../../shared/config/features";
 import { buttonVariants } from "@/components/ui/button";
@@ -74,9 +74,18 @@ export function MyAccountPage() {
         <h2 id="danger" className="m-0 text-base font-semibold text-destructive">
           계정 탈퇴
         </h2>
-        <p className="m-0 mt-1 text-sm text-muted-foreground">탈퇴하면 이메일·이름이 지워지고, 렌탈 검사 기록은 이름 없이 남습니다.</p>
-        <Link to="/my/account/withdraw" className="mt-3 inline-block text-sm font-semibold text-destructive">
-          계정 탈퇴
+        <p className="m-0 mt-1 text-sm text-muted-foreground">
+          탈퇴하면 이메일·이름과 소셜 로그인 연결이 지워지고, 렌탈 검사 기록은 이름 없이 남습니다.
+        </p>
+        <Link
+          to="/my/account/withdraw"
+          className={cn(
+            buttonVariants({ variant: "outline" }),
+            "mt-4 border-destructive/40 text-destructive no-underline hover:bg-destructive/10 hover:text-destructive",
+          )}
+        >
+          <UserX aria-hidden="true" />
+          탈퇴하기
         </Link>
       </section>
     </main>
