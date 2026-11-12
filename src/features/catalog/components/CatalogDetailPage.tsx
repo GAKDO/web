@@ -330,8 +330,13 @@ export function CatalogDetailPage() {
                       type="button"
                       aria-pressed={selected === pin.groupId}
                       onClick={() => choose(pin)}
-                      className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm", selected === pin.groupId ? "bg-muted font-semibold" : "hover:bg-muted/60")}
+                      className={cn(
+                        "relative flex w-full cursor-pointer items-center gap-2 rounded-lg py-1.5 pr-2 pl-3 text-left text-sm",
+                        selected === pin.groupId ? "bg-brand-soft font-semibold" : "hover:bg-muted/60",
+                      )}
                     >
+                      {/* 지금 보고 있는 흠집: 왼쪽 브랜드 빨간 막대로 한눈에 구분 */}
+                      {selected === pin.groupId && <span aria-hidden="true" className="absolute inset-y-1 left-0 w-1 rounded-full bg-brand" />}
                       <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: PIN_COLOR[pin.defectClass] }} />
                       <span className="min-w-0">
                         <span className="block">
@@ -344,6 +349,7 @@ export function CatalogDetailPage() {
                           <span className="block text-xs font-normal text-muted-foreground">{seenText(firstSeen.get(pin.groupId)!, row.inspection!.checkpointId)}</span>
                         )}
                       </span>
+                      {selected === pin.groupId && <span className="ml-auto shrink-0 text-[11px] font-semibold text-brand">보는 중</span>}
                     </button>
                   </li>
                 ))}
