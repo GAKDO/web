@@ -1,13 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { expect, test } from "vitest";
-import { PrivacyPage, TermsPage } from "./components/LegalPages";
+import { MODEL_NOTICES, OpenSourcePage, PrivacyPage, SERVER_NOTICES, TermsPage, WEB_NOTICES } from "./components/LegalPages";
 
 function renderAt(path: string) {
   const router = createMemoryRouter(
     [
       { path: "/privacy", element: <PrivacyPage /> },
       { path: "/terms", element: <TermsPage /> },
+      { path: "/licenses", element: <OpenSourcePage /> },
     ],
     { initialEntries: [path] },
   );
@@ -29,4 +30,18 @@ test("로그인 없이 /terms에서 이용약관을 보고 개인정보처리방
 test("개인정보처리방침은 사이트 도우미가 질문을 Google Gemini로 보낸다고 알린다", () => {
   renderAt("/privacy");
   expect(screen.getByText(/Google Gemini API로 보내/)).toBeInTheDocument();
+});
+
+test("로그인 없이 /licenses에서 쓰는 오픈소스와 사용 조건을 보고, 탐지 모델(YOLO11)이 AGPL-3.0임을 안다", () => {
+  renderAt("/licenses");
+  expect(screen.getByRole("heading", { level: 1, name: "오픈소스 고지" })).toBeInTheDocument();
+  const row = screen.getByRole("rowheader", { name: "Ultralytics YOLO11" }).closest("tr")!;
+  expect(row).toHaveTextContent("AGPL-3.0");
+  expect(screen.getByRole("link", { name: "github.com/GAKDO" })).toHaveAttribute("href", "https://github.com/GAKDO");
+  for (const n of [...MODEL_NOTICES, ...SERVER_NOTICES, ...WEB_NOTICES]) expect(screen.getByRole("rowheader", { name: n.name })).toBeInTheDocument();
+});
+
+test("이용약관에서 오픈소스 고지로 갈 수 있다", () => {
+  renderAt("/terms");
+  expect(screen.getByRole("link", { name: "오픈소스 고지" })).toHaveAttribute("href", "/licenses");
 });
