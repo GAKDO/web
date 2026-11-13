@@ -147,3 +147,16 @@ test("보안 보호를 읽지 않은 이전 에이전트 진단은 '확인 안 �
   const panel = await within(step).findByRole("region", { name: "진단 결과" });
   expect(within(panel).getByText("보안 보호(백신·시스템 보호)").nextElementSibling).toHaveTextContent("확인 안 함");
 });
+
+test("macOS 진단에서 Gatekeeper·SIP가 켜져 있으면 보안 보호 줄에 두 항목이 켜짐으로 보인다", async () => {
+  const { rentalId, checkpointId } = openRental("OPEN");
+  const diag = diagnostics(checkpointId);
+  diag.current.checks = { activationLock: "ON", diskEncryption: "OFF", osDiskHealth: "OK", securityProtection: "ON" };
+  db.report.diagnostics.set(checkpointId, diag);
+  renderAsAdmin(`/admin/rentals/${rentalId}`);
+  const step = await screen.findByRole("listitem", { name: "출고" });
+  const panel = await within(step).findByRole("region", { name: "진단 결과" });
+  expect(within(panel).getByText("보안 보호(백신·시스템 보호)").nextElementSibling).toHaveTextContent(
+    "Gatekeeper 켜짐 · 시스템 무결성 보호(SIP) 켜짐",
+  );
+});
