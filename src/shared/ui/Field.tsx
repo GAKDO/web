@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string | null;
+  /** 칸 아래 작은 안내(오류가 있으면 오류만 보인다) */
+  hint?: string;
 }
 
 const WRAP = "mb-4 grid gap-2";
@@ -14,17 +16,25 @@ const WRAP = "mb-4 grid gap-2";
 const ERROR = "m-field-error m-0 text-sm text-destructive";
 
 /** 레이블과 오류 문장이 붙은 입력 칸 */
-export function Field({ label, error, className, ...input }: FieldProps) {
+export function Field({ label, error, hint, className, ...input }: FieldProps) {
   const id = useId();
   const errorId = `${id}-error`;
+  const hintId = `${id}-hint`;
+  const describedBy = error ? errorId : hint ? hintId : undefined;
   return (
     <div className={cn(WRAP, className)}>
       <Label htmlFor={id}>{label}</Label>
-      <Input id={id} aria-invalid={error ? true : undefined} aria-describedby={error ? errorId : undefined} {...input} />
-      {error && (
+      <Input id={id} aria-invalid={error ? true : undefined} aria-describedby={describedBy} {...input} />
+      {error ? (
         <p id={errorId} className={ERROR} role="alert">
           {error}
         </p>
+      ) : (
+        hint && (
+          <p id={hintId} className="m-0 text-xs text-muted-foreground">
+            {hint}
+          </p>
+        )
       )}
     </div>
   );
