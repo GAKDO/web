@@ -49,9 +49,9 @@ export function securityText(checks: RunChecks | null | undefined, os?: Checkpoi
   // macOS는 계약상 Gatekeeper·SIP가 모두 켜져야 ON이므로, 켜짐이면 두 항목을 이름으로 풀어 보인다(꺼짐은 어느 쪽인지 모른다)
   if (os === "MACOS" && value === "ON") return "Gatekeeper 켜짐 · 시스템 무결성 보호(SIP) 켜짐";
   if (os === "MACOS" && value === "OFF") return "꺼짐 (Gatekeeper·시스템 무결성 보호(SIP) 중 하나 이상)";
-  // 11/13: 값 자체가 없으면 11/12 이전 에이전트가 올린 진단이다(봉인 전이면 "진단 다시 하기"로 새 에이전트 결과를 받는다)
-  const unread = value === undefined ? "확인 안 함 (이전 버전 에이전트)" : "확인 안 함";
-  const state = value === "ON" ? "켜짐" : value === "OFF" ? "꺼짐" : unread;
+  // 11/13: 서버는 이전 에이전트 진단(값 없음)과 새 에이전트의 읽기 실패를 둘 다 null로 준다. 구분할 수 없으므로 두 경우를 함께 적는다
+  // (봉인 전이면 "진단 다시 하기"로 새 에이전트 결과를 받을 수 있다)
+  const state = value === "ON" ? "켜짐" : value === "OFF" ? "꺼짐" : "확인 안 함 (이전 버전 에이전트이거나 읽지 못함)";
   const threats = typeof checks?.threatCount === "number" ? ` · 위협 탐지 기록 ${checks.threatCount}건` : "";
   return `${state}${threats}`;
 }

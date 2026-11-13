@@ -145,7 +145,18 @@ test("보안 보호를 읽지 않은 이전 에이전트 진단은 '확인 안 �
   renderAsAdmin(`/admin/rentals/${rentalId}`);
   const step = await screen.findByRole("listitem", { name: "출고" });
   const panel = await within(step).findByRole("region", { name: "진단 결과" });
-  expect(within(panel).getByText("보안 보호(백신·시스템 보호)").nextElementSibling).toHaveTextContent("확인 안 함 (이전 버전 에이전트)");
+  expect(within(panel).getByText("보안 보호(백신·시스템 보호)").nextElementSibling).toHaveTextContent("확인 안 함 (이전 버전 에이전트이거나 읽지 못함)");
+});
+
+test("서버가 null로 준 보안 보호도 같은 안내로 보인다", async () => {
+  const { rentalId, checkpointId } = openRental("OPEN");
+  const diag = diagnostics(checkpointId);
+  diag.current.checks = { activationLock: "ON", diskEncryption: "OFF", osDiskHealth: "OK", securityProtection: null, threatCount: null };
+  db.report.diagnostics.set(checkpointId, diag);
+  renderAsAdmin(`/admin/rentals/${rentalId}`);
+  const step = await screen.findByRole("listitem", { name: "출고" });
+  const panel = await within(step).findByRole("region", { name: "진단 결과" });
+  expect(within(panel).getByText("보안 보호(백신·시스템 보호)").nextElementSibling).toHaveTextContent("확인 안 함 (이전 버전 에이전트이거나 읽지 못함)");
 });
 
 test("봉인 전 시점에서 진단 다시 하기를 확인하면 지금 진단이 비고 페어링 코드를 다시 만들 수 있다", async () => {
