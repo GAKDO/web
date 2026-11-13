@@ -145,7 +145,53 @@ test("보안 보호를 읽지 않은 이전 에이전트 진단은 '확인 안 �
   renderAsAdmin(`/admin/rentals/${rentalId}`);
   const step = await screen.findByRole("listitem", { name: "출고" });
   const panel = await within(step).findByRole("region", { name: "진단 결과" });
-  expect(within(panel).getByText("보안 보호(백신·시스템 보호)").nextElementSibling).toHaveTextContent("확인 안 함");
+  expect(within(panel).getByText("보안 보호(백신·시스템 보호)").nextElementSibling).toHaveTextContent("확인 안 함 (이전 버전 에이전트이거나 읽지 못함)");
+});
+
+test("서버가 null로 준 보안 보호도 같은 안내로 보인다", async () => {
+  const { rentalId, checkpointId } = openRental("OPEN");
+  const diag = diagnostics(checkpointId);
+  diag.current.checks = { activationLock: "ON", diskEncryption: "OFF", osDiskHealth: "OK", securityProtection: null, threatCount: null };
+  db.report.diagnostics.set(checkpointId, diag);
+  renderAsAdmin(`/admin/rentals/${rentalId}`);
+  const step = await screen.findByRole("listitem", { name: "출고" });
+  const panel = await within(step).findByRole("region", { name: "진단 결과" });
+  expect(within(panel).getByText("보안 보호(백신·시스템 보호)").nextElementSibling).toHaveTextContent("확인 안 함 (이전 버전 에이전트이거나 읽지 못함)");
+});
+
+test("봉인 전 시점에서 진단 다시 하기를 확인하면 지금 진단이 비고 페어링 코드를 다시 만들 수 있다", async () => {
+  const { rentalId, checkpointId } = openRental("OPEN");
+  db.report.diagnostics.set(checkpointId, diagnostics(checkpointId));
+  renderAsAdmin(`/admin/rentals/${rentalId}`);
+  const step = await screen.findByRole("listitem", { name: "출고" });
+  await within(step).findByRole("region", { name: "진단 결과" });
+  await userEvent.click(within(step).getByRole("button", { name: "진단 다시 하기" }));
+  expect(within(step).getByRole("note")).toHaveTextContent("이전 진단으로 남고");
+  await userEvent.click(within(step).getByRole("button", { name: "다시 진단하기" }));
+  expect(await within(step).findByRole("button", { name: "진단 페어링 코드 만들기" })).toBeInTheDocument();
+  expect(within(step).queryByRole("region", { name: "진단 결과" })).not.toBeInTheDocument();
+  expect(db.report.diagnostics.has(checkpointId)).toBe(false);
+});
+
+test("진단 다시 하기는 취소하면 아무것도 바뀌지 않는다", async () => {
+  const { rentalId, checkpointId } = openRental("OPEN");
+  db.report.diagnostics.set(checkpointId, diagnostics(checkpointId));
+  renderAsAdmin(`/admin/rentals/${rentalId}`);
+  const step = await screen.findByRole("listitem", { name: "출고" });
+  await within(step).findByRole("region", { name: "진단 결과" });
+  await userEvent.click(within(step).getByRole("button", { name: "진단 다시 하기" }));
+  await userEvent.click(within(step).getByRole("button", { name: "취소" }));
+  expect(within(step).getByRole("button", { name: "진단 다시 하기" })).toBeInTheDocument();
+  expect(db.report.diagnostics.has(checkpointId)).toBe(true);
+});
+
+test("봉인된 시점에는 진단 다시 하기 버튼이 없다", async () => {
+  const { rentalId, checkpointId } = openRental("SEALED");
+  db.report.diagnostics.set(checkpointId, diagnostics(checkpointId));
+  renderAsAdmin(`/admin/rentals/${rentalId}`);
+  const step = await screen.findByRole("listitem", { name: "출고" });
+  await within(step).findByRole("region", { name: "진단 결과" });
+  expect(within(step).queryByRole("button", { name: "진단 다시 하기" })).not.toBeInTheDocument();
 });
 
 test("macOS 진단에서 Gatekeeper·SIP가 켜져 있으면 보안 보호 줄에 두 항목이 켜짐으로 보인다", async () => {

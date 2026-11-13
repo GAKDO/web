@@ -37,7 +37,7 @@ export interface paths {
          * 진단 JSON 업로드
          * @description 진단 에이전트가 사용자 동의 뒤 진단 JSON을 올린다. checkpointId는 본문이 아니라 AGENT 토큰의 scope에서, rentalId는 토큰의 rentalId 클레임에서 읽는다(이벤트 봉투용).
          *     이전 시점과 비교해 점검 플래그를 만들어 돌려준다. (FR-DIA-05·06)
-         *     - 같은 시점에 이미 올렸으면 409 DIAGNOSTIC_ALREADY_UPLOADED.
+         *     - 같은 시점에 이미 올렸으면 409 DIAGNOSTIC_ALREADY_UPLOADED. 관리자가 진단 다시 하기(redoCheckpointDiagnostics)를 했으면 새로 저장한다.
          *     - 형식이 진단 JSON Schema와 다르면 422 DIAGNOSTIC_SCHEMA_INVALID, `device.serial`이 AGENT JWT의 `deviceSerial` 클레임(렌탈 기기 등록 시리얼)과 다르면 422 DEVICE_SERIAL_MISMATCH.
          *     - `Idempotency-Key`로 한 번만 처리하고, 같은 키로 다시 보내면 처음 응답을 돌려준다.
          */
@@ -90,11 +90,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/diagnostics/checkpoints/{checkpointId}/redo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                checkpointId: components["schemas"]["PublicId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 진단 다시 하기(봉인 전 시점만)
+         * @description 관리자가 잘못 올린 진단을 다시 받을 수 있게 지금 진단을 "이전 진단"으로 돌린다(11/13 민서 요청). 지우지 않고 이력으로 남긴다.
+         *     그 뒤 관리자가 새 페어링 코드를 만들어 에이전트를 다시 돌리면 새 진단이 그 시점의 결과가 된다(업로드는 409 없이 저장).
+         *     - 봉인된 시점(trace.record.sealed를 받은 시점)은 409 RECORD_ALREADY_SEALED. 위변조 방지 원칙상 봉인 뒤에는 바꾸지 않는다.
+         *     - 지금 진단이 없으면 404.
+         *     - 조회(getCheckpointDiagnostics)·공개 목록·비교 기준·이벤트는 이전 진단을 빼고 지금 진단만 쓴다.
+         *     - 다시 올린 진단은 trace.diagnostics.recorded로 다시 발행되고, report-server는 봉인 전이면 새 진단으로 바꿔 묶는다.
+         */
+        post: operations["redoCheckpointDiagnostics"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         DiagnosticUpload: components["schemas"]["result.schema"];
+        DiagnosticsRedo: {
+            checkpointId: components["schemas"]["PublicId"];
+            /** @description 이전 진단으로 돌린 실행 ID(지우지 않고 남음) */
+            supersededRunId: components["schemas"]["PublicId"];
+            supersededAt: components["schemas"]["DateTime"];
+        };
         /** @description 점검 플래그. COMPONENT_CHANGED·CAPACITY_DROP·BENCH_DROP은 같은 렌탈 앞 진단과 비교해 붙이고 baseRunId는 그 앞 진단이다. ACTIVATION_LOCK_ON·DISK_ENCRYPTION_ON·DISK_HEALTH_WARNING(11/7 추가)은 이번 진단의 checks만 보고 첫 진단(출고)에도 붙이며, 비교 대상이 없으므로 baseRunId는 이번 진단 자신이다. SECURITY_PROTECTION_OFF(11/12 추가)는 이번 checks.securityProtection이 OFF일 때 붙고 baseRunId는 이번 진단이다. THREAT_DETECTED(11/12 추가)는 checks.threatCount가 같은 렌탈 앞 진단보다 늘었을 때(baseRunId는 앞 진단), 앞 진단이 없거나 그 값을 못 읽었으면 1건 이상일 때(baseRunId는 이번 진단) 붙는다. detail은 before·after. */
         InspectionFlag: {
             kind: components["schemas"]["DiagnosticsFlagKind"];
@@ -992,6 +1025,54 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    redoCheckpointDiagnostics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                checkpointId: components["schemas"]["PublicId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 지금 진단을 이전 진단으로 돌림 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "checkpointId": "h40b9AN9xMQhXRHrOyJWB",
+                     *       "supersededRunId": "rvOxWZUKqB0ADJXHI6dsr",
+                     *       "supersededAt": "2026-11-13T11:30:00+09:00"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["DiagnosticsRedo"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description 이미 봉인된 시점 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "이미 봉인된 시점입니다",
+                     *       "status": 409,
+                     *       "code": "RECORD_ALREADY_SEALED"
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
 }
