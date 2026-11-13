@@ -97,7 +97,7 @@ export function RentalCreatePage() {
           </Button>
         )}
         <Field label="대여자 참조 번호" required maxLength={128} placeholder="예: R-2026-0012" value={renterRef} onChange={(e) => setRenterRef(e.target.value)} />
-        <Field label="고객 이름 (선택)" maxLength={CUSTOMER_NAME_MAX} placeholder="예: 김민서" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+        <Field label="고객 이름 (선택)" maxLength={CUSTOMER_NAME_MAX} placeholder="예: 홍길동" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
         <Field label="반납 예정일 (선택)" type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
         <TextAreaField
           label="메모 (선택)"

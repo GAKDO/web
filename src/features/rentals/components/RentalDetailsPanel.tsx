@@ -72,7 +72,7 @@ function RentalDetailsForm({ rental, onDone }: { rental: Rental; onDone: () => v
   return (
     <form className="rounded-xl border bg-card p-5 shadow-xs" onSubmit={submit} aria-label="고객 정보 고치기">
       {error && <ErrorBanner message={messageFor(error)} />}
-      <Field label="고객 이름" maxLength={CUSTOMER_NAME_MAX} placeholder="예: 김민서" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+      <Field label="고객 이름" maxLength={CUSTOMER_NAME_MAX} placeholder="예: 홍길동" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
       <Field label="반납 예정일" type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
       <TextAreaField label="메모" maxLength={NOTE_MAX} hint="관리자에게만 보입니다." value={note} onChange={(e) => setNote(e.target.value)} />
       <FormActions>
