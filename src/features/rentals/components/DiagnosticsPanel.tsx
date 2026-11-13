@@ -1,7 +1,13 @@
-import { useEffect, useRef } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { api, unwrap } from "../../../shared/api/client";
+import { messageFor } from "../../../shared/api/errorMessages";
+import { ApiError } from "../../../shared/api/problem";
 import type { CheckpointDiagnostics } from "../../../shared/api/types";
+import { Button } from "../../../shared/ui/Button";
+import { ErrorBanner } from "../../../shared/ui/ErrorBanner";
 import { formatDateTime } from "../../../shared/ui/format";
-import { useDiagnostics } from "../../report/api/report";
+import { REPORT, useDiagnostics } from "../../report/api/report";
 import { diagnosticsReadings, flagText, type Reading } from "../../report/model/compare";
 import { PairingCodePanel } from "./PairingCodePanel";
 
@@ -39,7 +45,9 @@ export function checksText(checks: RunChecks | null | undefined, os?: Checkpoint
  * macOS는 Gatekeeper·SIP. 이 값을 읽지 않는 이전 에이전트 진단이나 못 읽은 값은 '확인 안 함'.
  */
 export function securityText(checks: RunChecks | null | undefined): string {
-  const state = checks?.securityProtection === "ON" ? "켜짐" : checks?.securityProtection === "OFF" ? "꺼짐" : "확인 안 함";
+  // 11/13: 값 자체가 없으면 11/12 이전 에이전트가 올린 진단이다(봉인 전이면 "진단 다시 하기"로 새 에이전트 결과를 받는다)
+  const unread = checks?.securityProtection === undefined ? "확인 안 함 (이전 버전 에이전트)" : "확인 안 함";
+  const state = checks?.securityProtection === "ON" ? "켜짐" : checks?.securityProtection === "OFF" ? "꺼짐" : unread;
   const threats = typeof checks?.threatCount === "number" ? ` · 위협 탐지 기록 ${checks.threatCount}건` : "";
   return `${state}${threats}`;
 }
@@ -129,8 +137,53 @@ export function DiagnosticsPanel({ checkpointId, live }: { checkpointId: string;
 }
 
 /**
+ * 진단 다시 하기(11/13 민서 요청, contracts #48). 봉인 전 시점에서 잘못 올린 진단을 이전 진단(이력)으로 돌린다.
+ * 서버는 지우지 않고, 봉인된 시점이면 409로 막는다. 성공하면 진단이 없는 상태가 되어 페어링 코드 칸이 다시 열린다.
+ * 실수로 누르지 않게 한 번 더 확인한다(브라우저 confirm 창은 쓰지 않음).
+ */
+export function RedoDiagnosticsButton({ checkpointId }: { checkpointId: string }) {
+  const client = useQueryClient();
+  const [asking, setAsking] = useState(false);
+  const redo = useMutation({
+    mutationFn: () =>
+      unwrap(api.POST("/api/v1/diagnostics/checkpoints/{checkpointId}/redo", { params: { path: { checkpointId } } })),
+    onSuccess: () => {
+      setAsking(false);
+      // 진단 칸·리포트가 쓰는 같은 키를 비워 바로 "진단 없음 + 페어링 코드" 상태로 돌린다
+      client.setQueryData([...REPORT, "diagnostics", checkpointId], null);
+      void client.invalidateQueries({ queryKey: [...REPORT, "diagnostics", checkpointId] });
+    },
+  });
+  return (
+    <div className="flex w-full flex-wrap items-center gap-2">
+      {redo.isError && (
+        <ErrorBanner message={redo.error instanceof ApiError ? messageFor(redo.error) : "진단을 다시 하지 못했습니다. 다시 시도해 주세요."} />
+      )}
+      {asking ? (
+        <>
+          <p role="note" className="basis-full text-sm">
+            지금 진단은 이전 진단으로 남고, 새 페어링 코드로 다시 진단한 결과가 이 시점의 진단이 됩니다. 사진 촬영 전에 끝내 주세요.
+          </p>
+          <Button busy={redo.isPending} variant="destructive" onClick={() => redo.mutate()}>
+            다시 진단하기
+          </Button>
+          <Button disabled={redo.isPending} onClick={() => setAsking(false)}>
+            취소
+          </Button>
+        </>
+      ) : (
+        <Button size="sm" onClick={() => setAsking(true)}>
+          진단 다시 하기
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/**
  * 시점 칸의 진단 부분. 봉인 전(OPEN)이고 아직 진단이 없을 때만 페어링 코드를 만들 수 있다.
- * 시점당 진단은 한 번만 올라가므로(두 번째는 409) 진단이 올라오면 다 쓴 코드는 가린다.
+ * 시점당 지금 진단은 하나뿐이므로(두 번째는 409) 진단이 올라오면 다 쓴 코드는 가린다.
+ * 잘못 올린 진단은 OPEN일 때 "진단 다시 하기"로 비우고 새 코드를 받는다(11/13).
  */
 export function CheckpointDiagnostics({ rentalId, checkpointId, open, serial }: { rentalId: string; checkpointId: string; open: boolean; serial?: string }) {
   // DiagnosticsPanel과 같은 쿼리 키라 요청은 한 번만 나간다
@@ -138,6 +191,7 @@ export function CheckpointDiagnostics({ rentalId, checkpointId, open, serial }: 
   // 조회가 끝나 진단이 없다고 확인된 뒤에만 코드를 만들 수 있게 한다(로딩 중에 눌러 쓸데없는 코드가 나가지 않게)
   // isPending은 쓰지 않는다: 데이터가 없는 쿼리는 다시 읽을 때마다 pending으로 돌아가 코드 칸이 사라졌다 다시 생긴다
   const canPair = open && diag.isFetched && !diag.data;
+  const canRedo = open && !!diag.data;
   return (
     <>
       {canPair && <PairingCodePanel key={`${rentalId}:${checkpointId}`} rentalId={rentalId} checkpointId={checkpointId} deviceSerial={serial} />}
@@ -145,6 +199,7 @@ export function CheckpointDiagnostics({ rentalId, checkpointId, open, serial }: 
       <div aria-live="polite" className="w-full">
         <DiagnosticsPanel checkpointId={checkpointId} live={open} />
       </div>
+      {canRedo && <RedoDiagnosticsButton key={checkpointId} checkpointId={checkpointId} />}
     </>
   );
 }
