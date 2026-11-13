@@ -4,11 +4,11 @@ import type { ReactNode } from "react";
 /** 공지 날짜. 내용을 바꾸면 함께 바꾼다 */
 const EFFECTIVE_DATE = "2026년 11월 10일";
 
-function LegalPage({ title, children }: { title: string; children: ReactNode }) {
+function LegalPage({ title, dated = `시행일: ${EFFECTIVE_DATE}`, children }: { title: string; dated?: string; children: ReactNode }) {
   return (
     <main className="mx-auto max-w-3xl px-4 py-12 md:px-8 md:py-16">
       <h1 className="m-0 text-2xl font-bold">{title}</h1>
-      <p className="mt-2 mb-0 text-sm text-muted-foreground">시행일: {EFFECTIVE_DATE}</p>
+      <p className="mt-2 mb-0 text-sm text-muted-foreground">{dated}</p>
       <div className="mt-8 space-y-6 leading-relaxed [&_h2]:m-0 [&_h2]:text-lg [&_h2]:font-semibold [&_p]:m-0 [&_p]:mt-2 [&_ul]:mt-2 [&_ul]:pl-5">
         {children}
       </div>
@@ -111,6 +111,108 @@ export function TermsPage() {
         <h2>5. 개인정보</h2>
         <p>
           개인정보 처리는 <a href="/privacy">개인정보처리방침</a>을 따릅니다.
+        </p>
+      </section>
+      <section>
+        <h2>6. 오픈소스</h2>
+        <p>
+          TRACE가 쓰는 공개 소프트웨어와 모델, 그 사용 조건은 <a href="/licenses">오픈소스 고지</a>에 적었습니다.
+        </p>
+      </section>
+    </LegalPage>
+  );
+}
+
+/** 오픈소스 고지 한 줄: 이름, 쓰는 곳, 사용 조건(라이선스 이름은 원문 그대로) */
+interface Notice {
+  name: string;
+  use: string;
+  license: string;
+}
+
+/** AI 모델·추론. 조건이 까다로운 것(AGPL·연구용)을 맨 위에 둔다 */
+export const MODEL_NOTICES: Notice[] = [
+  { name: "Ultralytics YOLO11", use: "흠집 후보 탐지 모델의 학습과 추론", license: "AGPL-3.0" },
+  { name: "ONNX Runtime", use: "학교 서버 검사 워커의 모델 실행", license: "MIT" },
+  { name: "OpenCV", use: "사진 펼치기와 정합", license: "Apache-2.0" },
+  { name: "Ollama", use: "사이트 도우미의 예비 모델 실행", license: "MIT" },
+  { name: "Qwen2.5 3B", use: "사이트 도우미의 예비 모델", license: "Qwen Research License (연구·비상업용)" },
+  { name: "Tesseract.js", use: "기기 라벨 글자 읽기", license: "Apache-2.0" },
+];
+
+export const SERVER_NOTICES: Notice[] = [
+  { name: "Spring Boot · Spring Cloud Gateway", use: "API 서버와 게이트웨이", license: "Apache-2.0" },
+  { name: "PostgreSQL", use: "서비스 데이터 저장", license: "PostgreSQL License" },
+  { name: "RabbitMQ", use: "서버 사이 이벤트 전달", license: "MPL-2.0" },
+  { name: "Redis", use: "요청 제한과 진행률", license: "RSALv2 / SSPLv1" },
+  { name: "MinIO", use: "촬영 사진 저장", license: "AGPL-3.0" },
+];
+
+export const WEB_NOTICES: Notice[] = [
+  { name: "React · React Router", use: "화면", license: "MIT" },
+  { name: "three.js · React Three Fiber · drei", use: "3D 리포트", license: "MIT" },
+  { name: "TanStack Query", use: "서버 데이터 불러오기", license: "MIT" },
+  { name: "Tailwind CSS", use: "화면 꾸밈", license: "MIT" },
+  { name: "Lucide", use: "아이콘", license: "ISC" },
+  { name: "Pretendard · Inter", use: "글꼴", license: "SIL Open Font License 1.1" },
+];
+
+function NoticeTable({ caption, rows }: { caption: string; rows: Notice[] }) {
+  return (
+    <div className="mt-3 overflow-x-auto">
+      <table className="w-full min-w-[32rem] border-collapse text-left text-sm">
+        <caption className="sr-only">{caption}</caption>
+        <thead>
+          <tr className="border-b text-muted-foreground">
+            <th scope="col" className="py-2 pr-4 font-medium">이름</th>
+            <th scope="col" className="py-2 pr-4 font-medium">쓰는 곳</th>
+            <th scope="col" className="py-2 font-medium">사용 조건</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((n) => (
+            <tr key={n.name} className="border-b last:border-b-0">
+              <th scope="row" className="py-2 pr-4 font-medium">{n.name}</th>
+              <td className="py-2 pr-4">{n.use}</td>
+              <td className="py-2">{n.license}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** 오픈소스 고지(11/13): 쓰는 공개 소프트웨어·모델과 사용 조건. 로그인 없이 /licenses에서 본다 */
+export function OpenSourcePage() {
+  return (
+    <LegalPage title="오픈소스 고지" dated="2026년 11월 13일 기준">
+      <p>
+        TRACE는 아래 공개 소프트웨어와 모델로 만들었습니다. 각 항목의 저작권은 만든 사람들에게 있고, 사용 조건 전문은 각 프로젝트 저장소에
+        있습니다. TRACE의 소스 코드는 <a href="https://github.com/GAKDO">github.com/GAKDO</a>에 공개되어 있습니다.
+      </p>
+      <section>
+        <h2>1. AI 모델과 추론</h2>
+        <NoticeTable caption="AI 모델과 추론에 쓰는 오픈소스" rows={MODEL_NOTICES} />
+        <p>
+          흠집 탐지 모델은 Ultralytics YOLO11을 우리 팀이 직접 찍은 노트북 사진으로 다시 학습한 것입니다. YOLO11은 AGPL-3.0이라 이 모델을 쓰는
+          TRACE 코드도 공개합니다. 사이트 도우미의 예비 모델(Qwen2.5 3B)은 연구·비상업용 조건이며, TRACE는 수익이 없는 학교 캡스톤 시범
+          서비스로만 씁니다.
+        </p>
+      </section>
+      <section>
+        <h2>2. 서버와 저장소</h2>
+        <NoticeTable caption="서버와 저장소에 쓰는 오픈소스" rows={SERVER_NOTICES} />
+      </section>
+      <section>
+        <h2>3. 화면</h2>
+        <NoticeTable caption="화면에 쓰는 오픈소스" rows={WEB_NOTICES} />
+      </section>
+      <section>
+        <h2>4. 외부 서비스</h2>
+        <p>
+          사이트 도우미의 기본 답변은 Google Gemini API로 만듭니다(오픈소스가 아닌 외부 서비스). 보내는 내용은{" "}
+          <a href="/privacy">개인정보처리방침</a> 4절에 적었습니다.
         </p>
       </section>
     </LegalPage>
