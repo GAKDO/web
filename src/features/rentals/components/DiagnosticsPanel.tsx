@@ -44,10 +44,14 @@ export function checksText(checks: RunChecks | null | undefined, os?: Checkpoint
  * 보안 보호 한 줄(contracts 11/12 checks.securityProtection·threatCount). Windows는 Defender 백신·실시간 보호,
  * macOS는 Gatekeeper·SIP. 이 값을 읽지 않는 이전 에이전트 진단이나 못 읽은 값은 '확인 안 함'.
  */
-export function securityText(checks: RunChecks | null | undefined): string {
+export function securityText(checks: RunChecks | null | undefined, os?: CheckpointDiagnostics["current"]["os"]): string {
+  const value = checks?.securityProtection;
+  // macOS는 계약상 Gatekeeper·SIP가 모두 켜져야 ON이므로, 켜짐이면 두 항목을 이름으로 풀어 보인다(꺼짐은 어느 쪽인지 모른다)
+  if (os === "MACOS" && value === "ON") return "Gatekeeper 켜짐 · 시스템 무결성 보호(SIP) 켜짐";
+  if (os === "MACOS" && value === "OFF") return "꺼짐 (Gatekeeper·시스템 무결성 보호(SIP) 중 하나 이상)";
   // 11/13: 값 자체가 없으면 11/12 이전 에이전트가 올린 진단이다(봉인 전이면 "진단 다시 하기"로 새 에이전트 결과를 받는다)
-  const unread = checks?.securityProtection === undefined ? "확인 안 함 (이전 버전 에이전트)" : "확인 안 함";
-  const state = checks?.securityProtection === "ON" ? "켜짐" : checks?.securityProtection === "OFF" ? "꺼짐" : unread;
+  const unread = value === undefined ? "확인 안 함 (이전 버전 에이전트)" : "확인 안 함";
+  const state = value === "ON" ? "켜짐" : value === "OFF" ? "꺼짐" : unread;
   const threats = typeof checks?.threatCount === "number" ? ` · 위협 탐지 기록 ${checks.threatCount}건` : "";
   return `${state}${threats}`;
 }
@@ -113,7 +117,7 @@ export function DiagnosticsPanel({ checkpointId, live }: { checkpointId: string;
         <dt className="text-muted-foreground">잠금·디스크 상태</dt>
         <dd>{checksText(current.checks, current.os)}</dd>
         <dt className="text-muted-foreground">보안 보호(백신·시스템 보호)</dt>
-        <dd>{securityText(current.checks)}</dd>
+        <dd>{securityText(current.checks, current.os)}</dd>
         <dt className="text-muted-foreground">점검 알림</dt>
         <dd>{flagLabels.length === 0 ? "없음" : flagLabels.join(", ")}</dd>
         {/* 벤치마크는 3회 중앙값. 전원이 없어 건너뛰면 비어 온다 */}
