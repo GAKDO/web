@@ -13,6 +13,7 @@ import { Field, SelectField, TextAreaField } from "../../../shared/ui/Field";
 import { useDevice, useDevices } from "../../devices/api/devices";
 import { useCreateRental } from "../api/rentals";
 import { CUSTOMER_NAME_MAX, NOTE_MAX } from "./RentalDetailsPanel";
+import { DUE_HINT, dueInputError, todayKst } from "../dueDate";
 
 /** 기기와 대여자 참조 번호로 렌탈을 만든다. 기본은 사용 가능 기기만(FR-020) */
 export function RentalCreatePage() {
@@ -36,11 +37,12 @@ export function RentalCreatePage() {
   const [note, setNote] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
   const picked = list.find((d) => d.deviceId === deviceId);
+  const dueError = dueInputError(dueAt);
 
   function submit(event: FormEvent) {
     event.preventDefault();
     // 선택지에 보이는 기기만 제출한다(넘겨받은 기기를 아직 못 읽었거나 못 읽은 경우 막음)
-    if (!picked) return;
+    if (!picked || dueError) return;
     setError(null);
     create.mutate(
       {
@@ -98,7 +100,15 @@ export function RentalCreatePage() {
         )}
         <Field label="대여자 참조 번호" required maxLength={128} placeholder="예: R-2026-0012" value={renterRef} onChange={(e) => setRenterRef(e.target.value)} />
         <Field label="고객 이름 (선택)" maxLength={CUSTOMER_NAME_MAX} placeholder="예: 홍길동" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-        <Field label="반납 예정일 (선택)" type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
+        <Field
+          label="반납 예정일 (선택)"
+          type="date"
+          min={todayKst()}
+          hint={DUE_HINT}
+          error={dueError}
+          value={dueAt}
+          onChange={(e) => setDueAt(e.target.value)}
+        />
         <TextAreaField
           label="메모 (선택)"
           maxLength={NOTE_MAX}
@@ -111,7 +121,7 @@ export function RentalCreatePage() {
           <Link className={buttonVariants({ variant: "outline" })} to="/admin/rentals">
             취소
           </Link>
-          <Button type="submit" busy={create.isPending} disabled={!picked || !renterRef.trim()}>
+          <Button type="submit" busy={create.isPending} disabled={!picked || !renterRef.trim() || !!dueError}>
             렌탈 만들기
           </Button>
         </FormActions>

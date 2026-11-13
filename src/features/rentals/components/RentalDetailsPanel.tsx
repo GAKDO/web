@@ -9,7 +9,7 @@ import { Field, TextAreaField } from "../../../shared/ui/Field";
 import { FormActions } from "../../../shared/ui/FormCard";
 import { InfoList } from "../../../shared/ui/InfoList";
 import { useUpdateRental } from "../api/rentals";
-import { dueState } from "../dueDate";
+import { DUE_HINT, dueInputError, dueState, todayKst } from "../dueDate";
 
 /** 고객 이름·메모 최대 길이(계약 CustomerName·RentalNote) */
 export const CUSTOMER_NAME_MAX = 64;
@@ -59,12 +59,17 @@ function RentalDetailsForm({ rental, onDone }: { rental: Rental; onDone: () => v
   const [dueAt, setDueAt] = useState(rental.dueAt ?? "");
   const [note, setNote] = useState(rental.note ?? "");
   const [error, setError] = useState<ApiError | null>(null);
+  const original = rental.dueAt ?? null;
+  const dueError = dueInputError(dueAt, original);
 
   function submit(event: FormEvent) {
     event.preventDefault();
+    if (dueError) return;
     setError(null);
+    // 반납 예정일은 바꿨을 때만 보낸다(이미 지난 날짜가 저장된 렌탈도 다른 칸은 고칠 수 있게)
+    const nextDue = dueAt || null;
     update.mutate(
-      { customerName: orNull(customerName), dueAt: dueAt || null, note: orNull(note) },
+      { customerName: orNull(customerName), ...(nextDue !== original ? { dueAt: nextDue } : {}), note: orNull(note) },
       { onSuccess: onDone, onError: (e) => setError(e instanceof ApiError ? e : networkError()) },
     );
   }
@@ -73,13 +78,22 @@ function RentalDetailsForm({ rental, onDone }: { rental: Rental; onDone: () => v
     <form className="rounded-xl border bg-card p-5 shadow-xs" onSubmit={submit} aria-label="고객 정보 고치기">
       {error && <ErrorBanner message={messageFor(error)} />}
       <Field label="고객 이름" maxLength={CUSTOMER_NAME_MAX} placeholder="예: 홍길동" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-      <Field label="반납 예정일" type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
+      <Field
+        label="반납 예정일"
+        type="date"
+        // 이미 저장된 지난 날짜를 그대로 둘 때는 브라우저가 저장을 막지 않게 min을 걸지 않는다
+        min={dueAt === original ? undefined : todayKst()}
+        hint={DUE_HINT}
+        error={dueError}
+        value={dueAt}
+        onChange={(e) => setDueAt(e.target.value)}
+      />
       <TextAreaField label="메모" maxLength={NOTE_MAX} hint="관리자에게만 보입니다." value={note} onChange={(e) => setNote(e.target.value)} />
       <FormActions>
         <Button type="button" variant="outline" onClick={onDone} disabled={update.isPending}>
           취소
         </Button>
-        <Button type="submit" busy={update.isPending}>
+        <Button type="submit" busy={update.isPending} disabled={!!dueError}>
           저장
         </Button>
       </FormActions>
