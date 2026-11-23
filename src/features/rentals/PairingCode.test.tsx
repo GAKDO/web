@@ -1,3 +1,6 @@
+// 이 파일이 확인하는 것: 관리자 렌탈 상세의 "진단 페어링 코드". 관리자가 6자리 코드를 만들어 고객 노트북의 진단 프로그램(agent)에 넣으면,
+// 그 노트북의 배터리·SSD 진단이 이 렌탈 시점으로 올라온다. 코드는 5분 동안만 쓸 수 있고, 봉인 전 시점에서만 만든다.
+
 import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { nanoid } from "nanoid";
@@ -11,6 +14,7 @@ import { agentCommands } from "./components/PairingCodePanel";
 
 const now = new Date().toISOString();
 
+// 테스트 도구: 기기 C02AIR0002로 출고 시점 상태를 원하는 값으로 맞춘 렌탈을 넣고, 관리자로 상세를 열어 출고 칸을 돌려준다.
 async function openRental(out: Checkpoint["status"]) {
   const device = db.devices.find((d) => d.serial === "C02AIR0002");
   const rentalId = nanoid();
@@ -20,6 +24,8 @@ async function openRental(out: Checkpoint["status"]) {
   return { step: await screen.findByRole("listitem", { name: "출고" }), rentalId, checkpointId: checkpoints[0].checkpointId, client };
 }
 
+// [상황] 봉인 전 출고 시점에서 "진단 페어링 코드 만들기"를 누른다.
+// [기대] 6자리 숫자 코드와 남은 시간(분·초)이 보이고, 서버에 렌탈·시점·기기 시리얼과 함께 코드가 등록된다.
 test("봉인 전 시점에서 진단 페어링 코드를 만들면 6자리 코드와 남은 시간이 보인다", async () => {
   const { step, rentalId, checkpointId } = await openRental("OPEN");
   await userEvent.setup().click((await within(step).findByRole("button", { name: "진단 페어링 코드 만들기" })));
@@ -28,6 +34,8 @@ test("봉인 전 시점에서 진단 페어링 코드를 만들면 6자리 코�
   expect(captureDb.pairings).toMatchObject([{ rentalId, checkpointId, deviceSerial: "C02AIR0002" }]);
 });
 
+// [상황] 코드를 만든 뒤 진단이 아직 안 올라와, 화면이 5초마다 진단을 다시 읽는다(응답이 늦게 오는 중도 포함).
+// [기대] 코드와 "아직 올라온 진단이 없습니다" 안내가 깜빡이거나 사라지지 않고 같은 자리에 그대로 있다(11/8에 고친 문제).
 test("진단이 아직 없어 5초마다 다시 읽어도 발급한 코드는 사라지지 않고 같은 자리에 그대로 있다", async () => {
   const { step, client } = await openRental("OPEN");
   await userEvent.setup().click(await within(step).findByRole("button", { name: "진단 페어링 코드 만들기" }));
@@ -55,6 +63,8 @@ test("진단이 아직 없어 5초마다 다시 읽어도 발급한 코드는 �
   expect(within(step).getByText(/아직 올라온 진단이 없습니다/)).toBe(notice);
 });
 
+// [상황] 코드를 만들고 5분이 지난다.
+// [기대] 코드가 사라지고 "만료됐습니다"와 "페어링 코드 다시 만들기" 버튼이 보인다.
 test("5분이 지나면 코드를 가리고 새로 만들라고 알린다", async () => {
   const { step } = await openRental("OPEN");
   await userEvent.setup().click((await within(step).findByRole("button", { name: "진단 페어링 코드 만들기" })));
@@ -70,11 +80,15 @@ test("5분이 지나면 코드를 가리고 새로 만들라고 알린다", asyn
   spy.mockRestore();
 });
 
+// [상황] 이미 봉인된 출고 시점을 본다.
+// [기대] 페어링 코드 버튼이 없다(봉인 뒤엔 진단을 더 붙이지 않음).
 test("봉인된 시점에는 페어링 코드 버튼이 없다", async () => {
   const { step } = await openRental("SEALED");
   expect(within(step).queryByRole("button", { name: "진단 페어링 코드 만들기" })).not.toBeInTheDocument();
 });
 
+// [상황] 코드를 만든 뒤 "다시 만들기"를 눌렀는데 네트워크 오류로 실패한다.
+// [기대] 오류가 보이지만, 아직 유효한 처음 코드는 그대로 보인다.
 test("다시 만들기가 실패해도 아직 유효한 코드는 그대로 보인다", async () => {
   const { step } = await openRental("OPEN");
   const user = userEvent.setup();
@@ -86,6 +100,8 @@ test("다시 만들기가 실패해도 아직 유효한 코드는 그대로 보�
   expect(within(step).getByLabelText("페어링 코드")).toHaveTextContent(first ?? "");
 });
 
+// [상황] 코드를 만든다. 따로, 시리얼 없이 코드 발급을 서버에 직접 요청해 본다.
+// [기대] 요청엔 그 렌탈 기기의 시리얼이 실린다. 시리얼 없는 요청은 서버가 400으로 거절한다(다른 노트북의 진단이 섞이지 않게).
 test("목록에서 들어와도 요청에 그 렌탈 기기의 시리얼이 실리고, 시리얼 없는 요청은 400이다", async () => {
   const { step } = await openRental("OPEN");
   await userEvent.setup().click((await within(step).findByRole("button", { name: "진단 페어링 코드 만들기" })));
@@ -102,6 +118,8 @@ test("목록에서 들어와도 요청에 그 렌탈 기기의 시리얼이 실�
   expect(res.status).toBe(400);
 });
 
+// [상황] 예전 서버라 렌탈 상세에 기기 시리얼이 없다.
+// [기대] 코드 버튼이 눌리지 않고, 기기 시리얼이 없어서라는 이유가 보인다.
 test("상세에 시리얼이 없으면(옛 서버) 코드를 만들 수 없고 이유가 보인다", async () => {
   server.use(
     http.get("*/api/v1/rentals/:rentalId", ({ params }) => {
@@ -114,6 +132,8 @@ test("상세에 시리얼이 없으면(옛 서버) 코드를 만들 수 없고 �
   expect(within(step).getByRole("note")).toHaveTextContent("기기 시리얼");
 });
 
+// [상황] 렌탈 목록을 거치지 않고 상세 주소로 바로 열어 코드를 만든다.
+// [기대] 렌탈 목록을 한 번도 읽지 않고, 상세의 시리얼로 코드를 만든다.
 test("주소로 바로 연 렌탈도 렌탈 목록을 읽지 않고 상세의 시리얼로 코드를 만든다", async () => {
   let listCalls = 0;
   server.use(
@@ -129,6 +149,9 @@ test("주소로 바로 연 렌탈도 렌탈 목록을 읽지 않고 상세의 �
   expect(listCalls).toBe(0);
 });
 
+// [상황] 코드를 만든 뒤 "맥 명령 복사", "윈도우 PowerShell 명령 복사"를 차례로 누른다.
+// [기대] 지금 사이트 주소와 코드가 들어간 설치 명령이 복사되고, 터미널에 붙여 넣으라는 안내 한 줄이 보인다
+//        (결과를 보여 준 뒤 y를 눌러야 올라감).
 test("페어링 코드를 만들면 맥·윈도우 설치 명령을 지금 주소와 코드로 복사하고 안내 한 줄이 보인다", async () => {
   const { step } = await openRental("OPEN");
   const u = userEvent.setup();
@@ -142,6 +165,9 @@ test("페어링 코드를 만들면 맥·윈도우 설치 명령을 지금 주�
   expect(within(step).getByText("노트북 터미널(윈도우는 PowerShell)에 붙여 넣으세요. 관리자 PowerShell이면 SSD 수명까지 읽어요(아니어도 진행돼요). 결과를 보여 준 뒤 y를 눌러야 올라가요.")).toBeInTheDocument();
 });
 
+// [상황] 운영 주소(gakdo.site), 개발 주소(localhost), API 서버를 따로 둔 빌드에서 각각 설치 명령을 만든다.
+// [기대] 운영 주소에선 정해 둔 한 줄 명령 그대로이고, 다른 주소에선 진단을 그 서버로 올리도록 TRACE_API_URL을 함께 넣는다.
+//        API 서버를 따로 두면 설치 스크립트는 화면 주소에서, 진단은 API 서버로 보낸다.
 test("gakdo.site에서는 B가 정한 명령 그대로, 다른 주소에서는 그 서버로 올리게 TRACE_API_URL을 같이 넣는다", () => {
   expect(agentCommands("https://gakdo.site", "123456")).toEqual({
     mac: "curl -fsSL https://gakdo.site/agent.sh | sh -s 123456",

@@ -1,3 +1,6 @@
+// 테스트 도구(테스트 자체는 아님): 실제 화면 주소(라우트)를 그대로 열어 보는 도우미.
+// 로그인 안 한 상태, 관리자로 로그인한 상태, 고객으로 로그인한 상태로 원하는 주소를 열 수 있다.
+
 import { render } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { AppProviders, createQueryClient } from "../AppProviders";

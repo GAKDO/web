@@ -1,3 +1,6 @@
+// 이 파일이 확인하는 것: 관리자가 부스 옆에서 쓰는 부스 화면(/booth).
+// 검사 기다리는 기기를 골라 부스(Jetson)에 넣을 6자리 부스 코드를 발급하고, 찍은 기기의 판정을 크게 보여 준다.
+
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { nanoid } from "nanoid";
@@ -26,12 +29,16 @@ function addRental(serial: string, status: Checkpoint["status"], inspection?: Om
   return { rentalId, checkpointId };
 }
 
+// [상황] 로그인하지 않고 부스 화면을 연다.
+// [기대] 부스 화면 제목과 관리자 로그인 칸(이메일)이 보인다.
 test("로그인하지 않고 부스 화면을 열면 관리자 로그인 칸이 보인다", async () => {
   renderApp("/booth");
   expect(await screen.findByRole("heading", { name: "부스 화면" })).toBeInTheDocument();
   expect(screen.getByLabelText("이메일")).toBeInTheDocument();
 });
 
+// [상황] 아직 찍지 않은 기기가 있고, 관리자가 그 기기를 골라 "부스 코드 발급"을 누른다.
+// [기대] 기기가 "검사 기다리는 기기"에 있고, 부스(Jetson) 화면에 넣으라는 안내와 6자리 숫자 코드가 보인다.
 test("찍기 전 기기는 검사 기다리는 기기에 있고, 고르면 부스 코드를 발급할 수 있다", async () => {
   addRental("C02AIR0002", "OPEN");
   const u = userEvent.setup();
@@ -44,6 +51,8 @@ test("찍기 전 기기는 검사 기다리는 기기에 있고, 고르면 부�
   expect(await within(panel).findByLabelText("부스 코드 6자리")).toHaveTextContent(/^\d{6}$/);
 });
 
+// [상황] 검사가 끝나 C 등급("스크래치 2개")을 받은 기기를 고른다.
+// [기대] "최근 판정"에 있고, 큰 글자로 "문제 있음"과 사유 "스크래치 2개"가 보인다.
 test("찍은 기기는 최근 판정에 있고, 고르면 큰 판정 글자(문제 없음/문제 있음)가 보인다", async () => {
   addRental("LGGRAM0003", "GRADED", { grade: "C", ruleVersion: "r1", reasons: ["스크래치 2개"], defects: [] });
   const u = userEvent.setup();
@@ -55,6 +64,8 @@ test("찍은 기기는 최근 판정에 있고, 고르면 큰 판정 글자(문�
   expect(within(verdict).getByText(/스크래치 2개/)).toBeInTheDocument();
 });
 
+// [상황] 기기 A를 골라 부스 코드를 받은 뒤 기기 B를 고른다.
+// [기대] A의 코드가 사라지고 다시 "부스 코드 발급" 버튼이 보인다(A의 코드로 B를 찍는 실수 방지).
 test("기기 A에 발급한 부스 코드는 기기 B를 고르면 사라진다(다른 기기로 잘못 찍지 않게)", async () => {
   addRental("C02AIR0002", "OPEN");
   addRental("LGGRAM0003", "OPEN");
@@ -70,6 +81,8 @@ test("기기 A에 발급한 부스 코드는 기기 B를 고르면 사라진다(
   expect(within(panel).getByRole("button", { name: "부스 코드 발급" })).toBeInTheDocument();
 });
 
+// [상황] 오래전에 만든 기다리는 기기 뒤로 끝난 렌탈 25건이 더 생겼다.
+// [기대] 기다리는 기기가 목록에서 빠지지 않고 보인다.
 test("렌탈이 한 쪽(20건)보다 많아도 오래전에 만든 기다리는 기기가 목록에 보인다", async () => {
   addRental("C02AIR0002", "OPEN");
   for (let i = 0; i < 25; i += 1) {
@@ -81,6 +94,8 @@ test("렌탈이 한 쪽(20건)보다 많아도 오래전에 만든 기다리는 
   expect(await within(waiting).findByRole("button", { name: /C02AIR0002/ })).toBeInTheDocument();
 });
 
+// [상황] 폰 폭(375px) 화면에서 기다리는 기기를 처음 고른다.
+// [기대] "고른 기기" 칸이 다 그려진 뒤에 그 칸으로 한 번 스크롤한다(빈 칸으로 내려가지 않게).
 test("폰 폭에서 기기를 처음 고르면 고른 기기 칸이 그려진 뒤에 그 칸으로 내린다", async () => {
   addRental("C02AIR0002", "OPEN");
   const width = vi.spyOn(window, "innerWidth", "get").mockReturnValue(375);
