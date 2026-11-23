@@ -105,6 +105,7 @@ test("사진이 없는 면(폰 촬영의 키보드)은 '사진 없음'으로 보
 
 // [상황] 사진 목록을 주는 서버가 500 오류를 낸다.
 // [기대] "사진 없음"으로 속이지 않고 "사진을 불러오지 못했습니다."와 "사진 다시 불러오기" 버튼이 보인다.
+//        ※ 응답 코드: 500 = 서버 내부 오류
 test("사진을 불러오지 못하면 '사진 없음' 대신 오류와 다시 불러오기 버튼이 보인다", async () => {
   server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/media", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
   const { twin } = await openTwin();

@@ -44,6 +44,7 @@ test("세트 사진 상한은 계약과 같은 80장이고, 픽스처의 (face, 
 
 // [상황] 80장, 81장으로 세트를 만든다.
 // [기대] 80장은 201로 만들어지고, 81장은 400 VALIDATION_FAILED다.
+//        ※ 응답 코드: 201 = 새로 만들어짐, 400 = 요청 내용이 형식에 맞지 않음
 test("80장까지는 세트를 만들고, 81장이면 400 VALIDATION_FAILED를 돌려준다", async () => {
   expect((await createSet(MAX_SET_PHOTOS)).status).toBe(201);
   const over = await createSet(MAX_SET_PHOTOS + 1);

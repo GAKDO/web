@@ -44,6 +44,7 @@ test("틀린 비밀번호로 로그인하면 문장이 보이고 비밀번호 �
 
 // [상황] 로그인을 너무 자주 시도해 서버가 429(요청 너무 많음)로 거절한다.
 // [기대] "1분 뒤 다시 시도해 주세요"가 보인다.
+//        ※ 응답 코드: 429 = 요청이 너무 잦아 잠시 막음
 test("로그인 시도가 잦아 서버가 거절하면(429) 잠시 뒤 다시 시도하라는 문장이 보인다", async () => {
   server.use(http.post("*/api/v1/auth/login", () => problem(429, "RATE_LIMITED", "요청이 너무 많습니다")));
   await loginAs(MOCK_ADMIN.email, MOCK_ADMIN.password);

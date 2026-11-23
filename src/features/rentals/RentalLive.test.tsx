@@ -45,6 +45,7 @@ test("진행 중 렌탈 상세는 검사 진행 SSE에 붙어 '실시간 반영 
 
 // [상황] 진행 알림 서버가 없다(404).
 // [기대] 알림 연결을 접고 "자동으로 다시 읽는 중"으로 바뀐다.
+//        ※ 응답 코드: 404 = 찾을 수 없음(없는 주소나 데이터)
 test("report-server가 없으면(404) SSE를 접고 '자동으로 다시 읽는 중'으로 바뀐다", async () => {
   server.use(http.get("*/api/v1/reports/rentals/:rentalId/stream", () => problem(404, "NOT_FOUND", "없음")));
   renderAsAdmin(`/admin/rentals/${pushRental()}`);
@@ -53,6 +54,7 @@ test("report-server가 없으면(404) SSE를 접고 '자동으로 다시 읽는 
 
 // [상황] 진행 알림 서버가 계속 503을 낸다(시간을 빨리 감음).
 // [기대] 정해진 횟수(5번)까지만 다시 붙어 보고 접은 뒤 "자동으로 다시 읽는 중"이 되고, 그 뒤로는 더 붙지 않는다(서버를 괴롭히지 않음).
+//        ※ 응답 코드: 503 = 서버를 지금 쓸 수 없음(점검·장애)
 test("report-server가 5번 연달아 5xx면 SSE를 접고 더는 다시 붙지 않는다", async () => {
   let calls = 0;
   server.use(

@@ -4,6 +4,7 @@ import { ApiError, networkError, toApiError } from "./problem";
 
 // [상황] 서버가 409와 코드 DEVICE_NOT_ACTIVE, 설명 "수리 중"을 보냈다.
 // [기대] 상태 409, 코드, 설명을 그대로 읽는다.
+//        ※ 응답 코드: 409 = 지금 상태와 맞지 않아 거절(이미 있음·순서 어긋남 등)
 test("Problem Details의 code와 detail을 읽는다", () => {
   const error = toApiError(409, { title: "x", status: 409, code: "DEVICE_NOT_ACTIVE", detail: "수리 중" });
   expect(error).toBeInstanceOf(ApiError);
@@ -14,6 +15,7 @@ test("Problem Details의 code와 detail을 읽는다", () => {
 
 // [상황] 게이트웨이가 502와 "Bad Gateway" 글자만 보냈다.
 // [기대] 코드와 설명은 없음(null)으로 둔다.
+//        ※ 응답 코드: 502 = 중간 서버가 뒤쪽 서버에서 잘못된 응답을 받음
 test("본문이 Problem Details가 아니면 code와 detail은 null이다", () => {
   const error = toApiError(502, "Bad Gateway");
   expect(error.code).toBeNull();

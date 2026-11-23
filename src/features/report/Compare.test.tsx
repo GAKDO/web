@@ -59,6 +59,7 @@ test("진단 기록이 없는 시점은 '진단 기록 없음'으로 보인다",
 
 // [상황] 진단 서버가 500 오류를 낸다.
 // [기대] "진단 기록 없음"이 아니라 "진단을 불러오지 못함"과 "진단 다시 불러오기" 버튼이 보인다(없는 것과 못 읽은 것을 구분).
+//        ※ 응답 코드: 500 = 서버 내부 오류
 test("진단 서버 오류는 '진단 기록 없음'이 아니라 '진단을 불러오지 못함'과 다시 불러오기 버튼으로 보인다", async () => {
   server.use(http.get("*/api/v1/diagnostics/checkpoints/:checkpointId", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
   await openCompare();
@@ -70,6 +71,7 @@ test("진단 서버 오류는 '진단 기록 없음'이 아니라 '진단을 불
 
 // [상황] 흠집 확대 사진 목록을 받지 못했다(404).
 // [기대] 새 흠집 칸에 "(사진 없음)"이 보인다.
+//        ※ 응답 코드: 404 = 찾을 수 없음(없는 주소나 데이터)
 test("흠집 크롭 사진을 받지 못하면 신규 흠집 칸에 '사진 없음'이 보인다", async () => {
   server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/media", () => problem(404, "NOT_FOUND", "없음")));
   await openCompare();

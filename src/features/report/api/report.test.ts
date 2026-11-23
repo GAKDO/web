@@ -30,6 +30,7 @@ test("고객은 목에서 자기 렌탈만 목록·내 정보로 받는다", asy
 
 // [상황] 고객이 남의 렌탈 리포트·검사 결과·진단을 읽으려 한다.
 // [기대] 모두 403(리포트는 OUT_OF_SCOPE)이다.
+//        ※ 응답 코드: 403 = 권한 없음(누구인지는 알지만 허락되지 않은 일)
 test("고객이 다른 고객의 리포트·검사·진단을 읽으면 목이 403 OUT_OF_SCOPE를 준다", async () => {
   await loginAsCustomer();
   const [rentalId] = [...db.report.owners.keys()];

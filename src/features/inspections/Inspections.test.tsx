@@ -215,6 +215,7 @@ test("빠른 검사(QUICK) 시점의 상세는 면마다 카메라 2 × 조명 3
 
 // [상황] 사진 목록을 주는 서버가 500 오류를 낸다.
 // [기대] 판정("문제 없음")은 그대로 보이고, 사진 자리에만 "사진을 불러오지 못했습니다."와 "다시 시도"가 보인다.
+//        ※ 응답 코드: 500 = 서버 내부 오류
 test("사진을 읽다 오류가 나도 판정은 보이고, 사진 자리에 오류와 다시 시도가 보인다", async () => {
   server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/media", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
   const rental = db.rentals.find((r) => db.devices.find((d) => d.deviceId === r.deviceId)?.serial === "LGGRAM0001");
@@ -238,6 +239,7 @@ test("검사 결과가 아직 없는 시점의 상세는 판정 대기 안내를
 
 // [상황] 검사 결과를 주는 서버가 500 오류를 낸 상태에서 상세를 연다.
 // [기대] "잠시 뒤 다시 시도해 주세요."와 "다시 시도"가 보인다.
+//        ※ 응답 코드: 500 = 서버 내부 오류
 test("검사 결과를 읽다 서버 오류가 나면 오류 문장과 다시 시도가 보이고, 목록 카드에는 읽지 못했다고 보인다", async () => {
   server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/inspection", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
   const { rentalId, checkpointId } = addRental("C02AIR0002", "GRADED");
@@ -248,6 +250,7 @@ test("검사 결과를 읽다 서버 오류가 나면 오류 문장과 다시 �
 
 // [상황] 검사 결과 서버가 500 오류를 내는 상태에서 목록을 연다.
 // [기대] 결과가 있어야 할 카드에만 "판정을 읽지 못함"이 보이고, 시점이 없는 카드는 "검사 전" 그대로다.
+//        ※ 응답 코드: 500 = 서버 내부 오류
 test("목록 카드의 판정을 읽지 못하면 그 카드에만 읽지 못했다고 보인다", async () => {
   server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/inspection", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
   renderAsAdmin("/admin/inspections");
@@ -296,6 +299,7 @@ test("주소의 쪽 값이 1 이상 정수가 아니면(?page=1.5) 1쪽을 보�
 // [상황] 시점이 없는 렌탈 주소에 다른 렌탈의 시점 번호를 붙여 연다(검사 결과를 읽으면 500이 나게 해 둠).
 // [기대] 다른 렌탈의 검사 결과를 읽지 않고 "검사 전", "이 렌탈에 그런 시점이 없습니다."를 보이며 오류도 흠집도 없다
 //        (남의 렌탈 결과가 섞이지 않게).
+//        ※ 응답 코드: 500 = 서버 내부 오류
 test("주소의 시점이 그 렌탈에 없으면 검사 결과를 읽지 않고 검사 전으로 보인다(다른 렌탈의 결과가 섞이지 않음)", async () => {
   // 검사 결과를 읽으면 500이 나게 두어, 읽지 않았음을 오류 없음으로 확인한다
   server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/inspection", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
@@ -523,6 +527,7 @@ test("검수 화면에서 같은 흠집 묶음을 한 번에 정하고, 흠집 �
 
 // [상황] "남은 2곳 모두 흠집 맞음"으로 다 정하고 완료를 눌렀는데, 서버가 탐지 결과가 아직 다 오지 않았다고(409) 거절한다.
 // [기대] "탐지 결과가 아직 다 오지 않았습니다. 잠시 뒤 다시 눌러 주세요."가 보이고 등급을 내지 않는다.
+//        ※ 응답 코드: 409 = 지금 상태와 맞지 않아 거절(이미 있음·순서 어긋남 등)
 test("모두 정해도 서버가 탐지 결과를 아직 기다리면(409 REVIEW_NOT_READY) 그 문장을 보이고 등급을 내지 않는다", async () => {
   const { rentalId, checkpointId } = addReviewRental();
   server.use(

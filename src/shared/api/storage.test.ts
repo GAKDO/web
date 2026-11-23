@@ -61,6 +61,7 @@ test("업로드 URL이 만료됐으면 보내지 않고 만료로 알린다", as
 
 // [상황] 한 렌탈·시점용 촬영 권한으로 다른 렌탈·시점의 촬영 세트를 만들려 한다.
 // [기대] 403 OUT_OF_SCOPE로 거절된다(권한 범위 밖). 촬영 권한 자체는 지워지지 않고 남는다.
+//        ※ 응답 코드: 403 = 권한 없음(누구인지는 알지만 허락되지 않은 일)
 test("다른 시점의 세트를 만들려 하면 403 OUT_OF_SCOPE", async () => {
   await grantFor();
   const call = captureApi.POST("/api/v1/captures/sets", {
@@ -72,6 +73,7 @@ test("다른 시점의 세트를 만들려 하면 403 OUT_OF_SCOPE", async () =>
 
 // [상황] 만료된 촬영 권한으로 촬영 세트를 만든다.
 // [기대] 401로 거절된다.
+//        ※ 응답 코드: 401 = 로그인 필요(토큰이 없거나 만료·위조됨)
 test("만료된 촬영 권한으로 세트를 만들면 401", async () => {
   const link = await grantFor();
   const grant = captureDb.grants.get("cap.test");
