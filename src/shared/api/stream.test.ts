@@ -27,6 +27,7 @@ afterEach(() => {
 
 // [상황] 서버가 진행률 연결을 403(권한 없음)으로 거절한다.
 // [기대] 한 번만 요청하고 다시 붙으려 하지 않으며, 포기 신호를 한 번 보낸다.
+//        ※ 응답 코드: 403 = 권한 없음(누구인지는 알지만 허락되지 않은 일)
 test("403처럼 다시 붙어도 소용없는 응답이면 한 번만 요청하고 멈춘다", async () => {
   server.use(http.get("*/api/v1/reports/rentals/:rentalId/stream", () => new HttpResponse(null, { status: 403 })));
   const seen = countStreamRequests();
@@ -39,6 +40,7 @@ test("403처럼 다시 붙어도 소용없는 응답이면 한 번만 요청하�
 
 // [상황] 진행률 연결이 401(출입증 만료)이고, 새 출입증 받기도 실패한다.
 // [기대] 한 번만 연결하고 멈추며, 로그인 만료 처리를 한 번 부르고 출입증을 지운다.
+//        ※ 응답 코드: 401 = 로그인 필요(토큰이 없거나 만료·위조됨)
 test("401에서 토큰을 다시 받지 못하면 세션 만료로 처리하고 멈춘다", async () => {
   tokenStore.set({ accessToken: "old", tokenType: "Bearer", expiresIn: 60 } as never);
   server.use(
@@ -56,6 +58,7 @@ test("401에서 토큰을 다시 받지 못하면 세션 만료로 처리하고 
 
 // [상황] 401을 받아 새 출입증을 받았는데, 다시 연결해도 또 401이다.
 // [기대] 두 번째 연결에서 멈추고 로그인 만료 처리를 한다(끝없이 반복하지 않음).
+//        ※ 응답 코드: 401 = 로그인 필요(토큰이 없거나 만료·위조됨)
 test("토큰을 다시 받은 뒤에도 401이면 두 번째에서 멈춘다", async () => {
   server.use(
     http.get("*/api/v1/reports/rentals/:rentalId/stream", () => new HttpResponse(null, { status: 401 })),
@@ -111,6 +114,7 @@ test("붙을 때마다(첫 연결과 끊긴 뒤 다시 붙을 때) onConnected�
 
 // [상황] 401을 받아 출입증을 다시 받으려는데, 네트워크 오류로 실패한다.
 // [기대] 로그인 만료로 처리하지 않고 기존 출입증을 둔 채, "다시 연결 중"을 알리고 잠시 뒤 다시 붙는다.
+//        ※ 응답 코드: 401 = 로그인 필요(토큰이 없거나 만료·위조됨)
 test("토큰 다시 받기가 네트워크 오류로 실패하면 세션을 두고 잠시 뒤 다시 붙는다", async () => {
   tokenStore.set({ accessToken: "old", tokenType: "Bearer", expiresIn: 60 } as never);
   server.use(

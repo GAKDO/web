@@ -16,6 +16,7 @@ const inspection = (over: Partial<Inspection>): Inspection => ({
 
 // [상황] 서버에 검사 결과가 아직 없다(404).
 // [기대] 3초마다 다시 읽는다.
+//        ※ 응답 코드: 404 = 찾을 수 없음(없는 주소나 데이터)
 test("검사 결과가 아직 없으면(404 → null) 3초마다 다시 읽는다", () => {
   expect(inspectionPollMs(null)).toBe(INSPECTION_POLL_MS);
 });

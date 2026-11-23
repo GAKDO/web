@@ -79,6 +79,7 @@ test("모든 시점이 봉인된 리포트는 진행률 연결을 열지 않는�
 
 // [상황] 서버가 진행률 연결을 403(권한 없음)으로 거절한다.
 // [기대] 다시 붙으려 하지 않고, 반납 카드에 "실시간 진행률을 받지 못했습니다" 안내를 보인다.
+//        ※ 응답 코드: 403 = 권한 없음(누구인지는 알지만 허락되지 않은 일)
 test("진행률 연결이 거절되면(403) 다시 붙지 않고 시점 카드에 안내를 보인다", async () => {
   server.use(http.get("*/api/v1/reports/rentals/:rentalId/stream", () => new HttpResponse(null, { status: 403 })));
   renderAsCustomer(`/my/rentals/${rentalIds()[0]}`);
