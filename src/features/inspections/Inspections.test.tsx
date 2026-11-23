@@ -1,3 +1,7 @@
+// 이 파일이 확인하는 것: 관리자의 "검사 결과" 화면. 목록에서 렌탈마다 지금 시점의 판정(문제 없음·문제 있음·판정 대기)을 보고,
+// 상세에서는 등급과 근거, 흠집 카드, 부스 원본 사진 위 흠집 표시를 본다. AI가 넓게 잡은 흠집 후보를
+// 관리자가 "흠집 맞음/아님"으로 검수하는 기능(11/8)과 전체 검사(FULL)의 판정 불가 면 안내도 본다.
+
 import { maskSerial } from "../../shared/ui/maskSerial";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -21,6 +25,7 @@ async function card(serial: string, contains?: string) {
   return hit;
 }
 
+// 테스트 도구: 등급에 반영된 흠집 하나(면·종류·AI 신뢰도·길이 mm)를 만든다.
 function defect(face: Defect["face"], cls: Defect["class"], confidence: number, lengthMm: number | null): Defect {
   return {
     defectId: nanoid(),
@@ -61,6 +66,9 @@ function addRental(serial: string, status: Checkpoint["status"], inspection?: Om
   return { rentalId, checkpointId };
 }
 
+// [상황] 검사 결과 목록을 연다.
+// [기대] 반납 촬영만 된 렌탈은 "반납 · 촬영됨"과 "판정 대기", A등급 렌탈은 "문제 없음", 시점이 없는 렌탈은 "검사 전"과
+//        결과 보기 대신 "렌탈 열기" 링크, 빠른 검사 C등급 렌탈은 "문제 있음 · C등급"이다.
 test("검사 결과 목록은 렌탈마다 지금 시점과 판정을 보인다: 결과 없음은 판정 대기, A는 문제 없음, 시점 없음은 검사 전", async () => {
   renderAsAdmin("/admin/inspections");
   expect(await screen.findByRole("link", { name: "검사 결과" })).toBeInTheDocument();
@@ -77,6 +85,9 @@ test("검사 결과 목록은 렌탈마다 지금 시점과 판정을 보인다:
   expect(await within(quick).findByText("문제 있음 · C등급")).toBeInTheDocument();
 });
 
+// [상황] C등급(근거 "찍힘·긁힘 5개 이상", 윗면 긁힘·바닥 찍힘) 렌탈의 "결과 보기"를 누른다.
+// [기대] 목록엔 "문제 있음 · C등급", 상세엔 판정·근거·판정 규칙 버전, "✖ 수리 필요", "흠집 2개" 요약이 보인다.
+//        흠집 1은 긁힘·윗면·신뢰도 91%·길이 12.0mm, 길이를 못 잰 흠집 2는 "길이 —"다. 사진은 아직 없다고 안내한다.
 test("등급 B~D면 목록에 문제 있음과 등급이 보이고, 결과 보기를 누르면 판정·근거·흠집 카드가 보인다", async () => {
   addRental("C02AIR0002", "GRADED", {
     grade: "C",
@@ -107,6 +118,8 @@ test("등급 B~D면 목록에 문제 있음과 등급이 보이고, 결과 보�
   expect(await screen.findByText("사진이 아직 없습니다.")).toBeInTheDocument();
 });
 
+// [상황] A등급 시점의 상세를 연다.
+// [기대] "문제 없음", "발견된 문제 없음", "✔ 수리 필요 없음"이 보이고, 부스 면 사진 8면이 보인다.
 test("A 등급 시점의 상세는 문제 없음과 흠집이 없다는 문장을 보인다", async () => {
   const rental = db.rentals.find((r) => db.devices.find((d) => d.deviceId === r.deviceId)?.serial === "LGGRAM0001");
   const out = rental?.checkpoints[0];
@@ -121,6 +134,9 @@ test("A 등급 시점의 상세는 문제 없음과 흠집이 없다는 문장�
   expect(within(await screen.findByRole("list", { name: "면 사진" })).getAllByRole("listitem")).toHaveLength(8);
 });
 
+// [상황] 빠른 검사에서 같은 바닥 긁힘이 두 카메라 × 두 조명 사진 4장에 잡혔고, 모두 같은 묶음 번호(groupId)다.
+// [기대] 요약은 "흠집 1개"이고 "사진 4곳에서 잡힌 것 → 흠집 1개"로 설명한다. 흠집 카드엔 "두 카메라 사진 4장에서 같은 흠집"과
+//        가장 높은 신뢰도 57%가 보인다. 바닥 사진 구역엔 "흠집 1개", "사진 속 표시 4곳"이 보인다.
 test("빠른 검사에서 CAM1·CAM2와 L1·L2 사진 네 곳에 잡힌 같은 흠집(groupId 하나)은 요약에 흠집 1개 한 줄로 보인다", async () => {
   const same = [
     quickDefect("BOT", "L1", "CAM1", "scratch", 1269, 756, 0.48),
@@ -155,6 +171,9 @@ function loadImage(img: HTMLElement, width = 1600, height = 1200) {
   fireEvent.load(img);
 }
 
+// [상황] 빠른 검사에 윗면 긁힘 표시 2개(CAM1·L1, CAM1·L2)와 바닥 찍힘 1개가 있다. 사진이 다 읽힌 것처럼 만든다.
+// [기대] 흠집 3개 요약, 흠집 1은 "CAM1 · L1 확산"(빠른 검사는 길이 없음). 윗면 구역은 "흠집 2개"와 사진 6칸 격자다.
+//        사진이 읽힌 뒤에만 그 사진 크기에 맞춰 흠집 테두리를 겹쳐 그리고, 흠집 없는 사진엔 아무것도 겹치지 않는다("표시 0개").
 test("빠른 검사(QUICK) 시점의 상세는 면마다 카메라 2 × 조명 3 사진 격자를 보이고, 사진이 로드되면 그 사진의 흠집 폴리곤을 겹친다", async () => {
   const { rentalId, checkpointId } = addRental("C02AIR0002", "GRADED", {
     grade: "C",
@@ -194,6 +213,8 @@ test("빠른 검사(QUICK) 시점의 상세는 면마다 카메라 2 × 조명 3
   expect(screen.getByRole("region", { name: "바닥 사진" })).toHaveTextContent("바닥 · 흠집 1개");
 });
 
+// [상황] 사진 목록을 주는 서버가 500 오류를 낸다.
+// [기대] 판정("문제 없음")은 그대로 보이고, 사진 자리에만 "사진을 불러오지 못했습니다."와 "다시 시도"가 보인다.
 test("사진을 읽다 오류가 나도 판정은 보이고, 사진 자리에 오류와 다시 시도가 보인다", async () => {
   server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/media", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
   const rental = db.rentals.find((r) => db.devices.find((d) => d.deviceId === r.deviceId)?.serial === "LGGRAM0001");
@@ -203,6 +224,8 @@ test("사진을 읽다 오류가 나도 판정은 보이고, 사진 자리에 �
   expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
 });
 
+// [상황] 촬영만 되고 아직 등급이 없는 반납 시점의 상세를 연다.
+// [기대] "판정 대기"와 "등급이 매겨지면 여기에 보입니다"가 보이고, 오류로 보이지 않는다.
 test("검사 결과가 아직 없는 시점의 상세는 판정 대기 안내를 보이고 오류로 보이지 않는다", async () => {
   const rental = db.rentals.find((r) => r.checkpoints.length === 3);
   const ret = rental?.checkpoints[2];
@@ -213,6 +236,8 @@ test("검사 결과가 아직 없는 시점의 상세는 판정 대기 안내를
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });
 
+// [상황] 검사 결과를 주는 서버가 500 오류를 낸 상태에서 상세를 연다.
+// [기대] "잠시 뒤 다시 시도해 주세요."와 "다시 시도"가 보인다.
 test("검사 결과를 읽다 서버 오류가 나면 오류 문장과 다시 시도가 보이고, 목록 카드에는 읽지 못했다고 보인다", async () => {
   server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/inspection", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
   const { rentalId, checkpointId } = addRental("C02AIR0002", "GRADED");
@@ -221,6 +246,8 @@ test("검사 결과를 읽다 서버 오류가 나면 오류 문장과 다시 �
   expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
 });
 
+// [상황] 검사 결과 서버가 500 오류를 내는 상태에서 목록을 연다.
+// [기대] 결과가 있어야 할 카드에만 "판정을 읽지 못함"이 보이고, 시점이 없는 카드는 "검사 전" 그대로다.
 test("목록 카드의 판정을 읽지 못하면 그 카드에만 읽지 못했다고 보인다", async () => {
   server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/inspection", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
   renderAsAdmin("/admin/inspections");
@@ -228,6 +255,8 @@ test("목록 카드의 판정을 읽지 못하면 그 카드에만 읽지 못했
   expect(within(await card("C02AIR0001")).getByText("검사 전")).toBeInTheDocument();
 });
 
+// [상황] 렌탈을 20건 더 넣어 한 쪽(20건)을 넘기고 "다음 쪽"을 누른다.
+// [기대] 첫 쪽에 20건과 "이 쪽 20건 기준 · 다음 쪽이 더 있습니다"가 보이고, 다음 쪽엔 나머지 렌탈만 보이며 더 넘길 쪽이 없다.
 test("렌탈이 20건 넘으면 다음 쪽으로 넘겨 보고, 요약 카드는 지금 쪽만 센다", async () => {
   for (let i = 0; i < 20; i += 1) addRental("C02AIR0003", "OPEN");
   const user = userEvent.setup();
@@ -241,6 +270,8 @@ test("렌탈이 20건 넘으면 다음 쪽으로 넘겨 보고, 요약 카드는
   expect(screen.getByRole("button", { name: "다음 쪽" })).toBeDisabled();
 });
 
+// [상황] 2쪽에서 결과를 열었다가 "검사 결과 목록으로" 링크로 돌아온다.
+// [기대] 1쪽으로 돌아가지 않고 2쪽이 그대로 보인다.
 test("2쪽에서 결과를 열었다가 목록 링크로 돌아오면 2쪽이 그대로 보인다", async () => {
   for (let i = 0; i < 20; i += 1) addRental("C02AIR0003", "OPEN");
   const user = userEvent.setup();
@@ -253,6 +284,8 @@ test("2쪽에서 결과를 열었다가 목록 링크로 돌아오면 2쪽이 �
   expect(screen.queryByRole("listitem", { name: "C02AIR0003" })).not.toBeInTheDocument();
 });
 
+// [상황] 주소에 잘못된 쪽 값(page=1.5)을 넣어 연다.
+// [기대] 1쪽을 보인다.
 test("주소의 쪽 값이 1 이상 정수가 아니면(?page=1.5) 1쪽을 보인다", async () => {
   for (let i = 0; i < 20; i += 1) addRental("C02AIR0003", "OPEN");
   renderAsAdmin("/admin/inspections?page=1.5");
@@ -260,6 +293,9 @@ test("주소의 쪽 값이 1 이상 정수가 아니면(?page=1.5) 1쪽을 보�
   expect(screen.getAllByRole("listitem", { name: "C02AIR0003" })).toHaveLength(20);
 });
 
+// [상황] 시점이 없는 렌탈 주소에 다른 렌탈의 시점 번호를 붙여 연다(검사 결과를 읽으면 500이 나게 해 둠).
+// [기대] 다른 렌탈의 검사 결과를 읽지 않고 "검사 전", "이 렌탈에 그런 시점이 없습니다."를 보이며 오류도 흠집도 없다
+//        (남의 렌탈 결과가 섞이지 않게).
 test("주소의 시점이 그 렌탈에 없으면 검사 결과를 읽지 않고 검사 전으로 보인다(다른 렌탈의 결과가 섞이지 않음)", async () => {
   // 검사 결과를 읽으면 500이 나게 두어, 읽지 않았음을 오류 없음으로 확인한다
   server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/inspection", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
@@ -276,6 +312,8 @@ test("주소의 시점이 그 렌탈에 없으면 검사 결과를 읽지 않고
   expect(screen.queryByRole("heading", { name: /흠집/ })).not.toBeInTheDocument();
 });
 
+// [상황] 목록을 연 뒤, 부스가 그 렌탈의 출고 시점을 시작하고 A등급이 매겨진다. "새로 고침"을 누른다.
+// [기대] "검사 전"이던 카드가 "문제 없음"과 "결과 보기" 링크로 바뀐다.
 test("새로 고침을 누르면 목록을 다시 읽어 부스가 시작한 시점과 그 판정이 보인다", async () => {
   const device = db.devices.find((d) => d.serial === "LGGRAM0002");
   const now = new Date().toISOString();
@@ -302,6 +340,8 @@ test("새로 고침을 누르면 목록을 다시 읽어 부스가 시작한 시
   expect(within(await card("LGGRAM0002")).getByRole("link", { name: "결과 보기" })).toBeInTheDocument();
 });
 
+// [상황] 전체 검사(FULL) 시점에 원본 사진 12장도 있다.
+// [기대] 면 사진 8면과 원본 사진 격자(AI가 본 흠집)가 함께 보이고, "정합된 면 사진(등급 계산에 쓴 좌표)" 설명이 붙는다.
 test("정합 세트(FULL)는 원본 사진 격자(AI가 본 흠집)와 면 사진 위의 표준 좌표 흠집을 함께 보인다(11/9)", async () => {
   const rental = db.rentals.find((r) => db.devices.find((d) => d.deviceId === r.deviceId)?.serial === "LGGRAM0001");
   const out = rental?.checkpoints[0];
@@ -313,6 +353,8 @@ test("정합 세트(FULL)는 원본 사진 격자(AI가 본 흠집)와 면 사�
   expect(screen.getByText("정합된 면 사진(등급 계산에 쓴 좌표)")).toBeInTheDocument();
 });
 
+// [상황] 윗면 CAM1·L1 사진 하나가 읽기에 실패한 뒤, 그 칸의 "다시 시도"를 누른다.
+// [기대] 그 칸에만 "사진을 불러오지 못함"이 보이고 다른 칸은 멀쩡하다. 다시 시도하면 사진을 다시 읽는다.
 test("사진 주소를 못 읽으면 그 칸에만 안내와 다시 시도가 보이고, 다시 시도하면 사진을 다시 읽는다", async () => {
   const { rentalId, checkpointId } = addRental("C02AIR0002", "GRADED", {
     grade: "C",
@@ -334,6 +376,9 @@ test("사진 주소를 못 읽으면 그 칸에만 안내와 다시 시도가 �
   expect(cell).not.toHaveTextContent("사진을 불러오지 못함");
 });
 
+// [상황] 빠른 검사 사진 하나를 눌러 크게 보고, Tab·Shift+Tab, 좌우 화살표, 다음 버튼, 닫기를 차례로 쓴다.
+// [기대] 팝업 제목에 면·카메라·조명이 나오고 "1 / 12"부터 시작한다(첫 장에선 이전 버튼이 꺼짐). 열린 동안 Tab은 팝업 안에서만 돈다.
+//        화살표로 12장까지 넘기면 꺼진 다음 버튼 대신 닫기에 초점이 간다. 다음을 누르면 "L2 왼쪽 스침광" 사진(2 / 12)이고, 닫으면 사라진다.
 test("빠른 검사 사진을 누르면 크게 보기 팝업이 열리고, 이전·다음으로 12장을 넘기고 닫으면 사라진다", async () => {
   const { rentalId, checkpointId } = addRental("C02AIR0002", "GRADED", {
     grade: "C",
@@ -376,6 +421,9 @@ test("빠른 검사 사진을 누르면 크게 보기 팝업이 열리고, 이�
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
 
+// [상황] B등급인데 흠집 위치 기록이 비어 있는 렌탈의 상세에서, 검사 이력의 "결과 보기"를 누르고 다시 "렌탈 상세로"를 누른다.
+// [기대] 이력에 "문제 있음 · B등급", "수리 필요"가 보인다. 결과 화면은 "문제 없음"이라 하지 않고 "등록된 흠집 위치 없음"으로 안내하며,
+//        렌탈 상세로 돌아갈 수 있다.
 test("렌탈 상세의 검사 이력에서 결과 보기를 누르면 그 검사 결과가 열리고, 렌탈 상세로 돌아갈 수 있다", async () => {
   const { rentalId } = addRental("C02AIR0002", "GRADED", { grade: "B", ruleVersion: "grade-rules-v1", reasons: ["긁힘 1개"], defects: [] });
   const user = userEvent.setup();
@@ -415,6 +463,8 @@ function addReviewRental() {
   return ids;
 }
 
+// [상황] 사람 검수를 기다리는 빠른 검사의 상세를 연다. 후보 1의 사진 고르기에서 L2를 누른다.
+// [기대] 후보 1 카드엔 신뢰도가 높은 L1 사진이 먼저 보이고, L2를 누르면 같은 흠집이 잡힌 L2 사진으로 바뀐다. 후보 2엔 바닥 CAM2·L3 사진이 보인다.
 test("검수 후보 카드 안에 그 후보가 잡힌 사진이 보이고, 같은 흠집이 잡힌 다른 조명 사진으로 바꿔 볼 수 있다(11/12)", async () => {
   const user = userEvent.setup();
   const { rentalId, checkpointId } = addReviewRental();
@@ -429,6 +479,8 @@ test("검수 후보 카드 안에 그 후보가 잡힌 사진이 보이고, 같�
   expect(within(second).getByRole("button", { name: /바닥.*CAM2.*L3.*전체 크게 보기/ })).toBeInTheDocument();
 });
 
+// [상황] 사람 검수를 기다리는 시점이 1건 있는 상태에서 목록을 연다.
+// [기대] 맨 위 "사람 검수 대기 · 1건"에 "AI 후보 사진 3장 · 남은 3장"과 "검수하기" 링크가 있고, 그 렌탈 카드의 판정은 "사람 검수 대기"다.
 test("AI 후보가 있으면 목록 맨 위에 사람 검수 대기가 보이고, 판정은 사람 검수 대기로 보인다", async () => {
   addReviewRental();
   renderAsAdmin("/admin/inspections");
@@ -438,6 +490,9 @@ test("AI 후보가 있으면 목록 맨 위에 사람 검수 대기가 보이고
   expect(await within(await card("C02AIR0002")).findByText("사람 검수 대기")).toBeInTheDocument();
 });
 
+// [상황] 후보 1(사진 2장에 함께 잡힌 긁힘)을 "흠집 맞음", 후보 2(찍힘)를 "흠집 아님 · 스티커·테이프"로 정하고 검수를 완료한다.
+// [기대] 다 정하기 전엔 완료 버튼이 꺼져 있다. 묶음은 한 번에 정해져 현황이 "흠집 맞음 2 · 흠집 아님 1 · 남은 사진 0장"이 된다.
+//        완료하면 흠집 아님인 찍힘은 빠지고 긁힘만 남아 "문제 있음 · B등급"이 나고, 검수 칸은 사라진다.
 test("검수 화면에서 같은 흠집 묶음을 한 번에 정하고, 흠집 아님은 이유를 고르며, 모두 정해야 검수 완료로 등급이 난다", async () => {
   const user = userEvent.setup();
   const { rentalId, checkpointId } = addReviewRental();
@@ -466,6 +521,8 @@ test("검수 화면에서 같은 흠집 묶음을 한 번에 정하고, 흠집 �
   expect(screen.getByRole("listitem", { name: "흠집 2" })).toHaveTextContent("흠집 아님 · 스티커·테이프");
 });
 
+// [상황] "남은 2곳 모두 흠집 맞음"으로 다 정하고 완료를 눌렀는데, 서버가 탐지 결과가 아직 다 오지 않았다고(409) 거절한다.
+// [기대] "탐지 결과가 아직 다 오지 않았습니다. 잠시 뒤 다시 눌러 주세요."가 보이고 등급을 내지 않는다.
 test("모두 정해도 서버가 탐지 결과를 아직 기다리면(409 REVIEW_NOT_READY) 그 문장을 보이고 등급을 내지 않는다", async () => {
   const { rentalId, checkpointId } = addReviewRental();
   server.use(
@@ -482,6 +539,9 @@ test("모두 정해도 서버가 탐지 결과를 아직 기다리면(409 REVIEW
   expect(await within(panel).findByText("탐지 결과가 아직 다 오지 않았습니다. 잠시 뒤 다시 눌러 주세요.")).toBeInTheDocument();
 });
 
+// [상황] A등급이지만 앞쪽 옆면이 정합 실패로 판정 불가이고, 그 면에서 AI가 흠집 후보를 하나 봤다.
+// [기대] "문제 없음" 대신 "일부 면 판정 불가 · 1면" 경고와 "판정한 면은 문제 없음 · 일부 면 판정 불가"가 보이고,
+//        그 후보는 "판정 불가 면 · 등급 미반영"으로 적힌다(문제 없다고 잘못 믿지 않게).
 test("A 등급이어도 정합 실패 면이 있으면 '문제 없음' 대신 일부 면 판정 불가를 경고하고 그 면의 AI 후보를 등급 미반영으로 적는다(11/9)", async () => {
   const rental = db.rentals.find((r) => db.devices.find((d) => d.deviceId === r.deviceId)?.serial === "LGGRAM0001");
   const out = rental?.checkpoints[0];
@@ -503,6 +563,10 @@ test("A 등급이어도 정합 실패 면이 있으면 '문제 없음' 대신 �
   expect(screen.getByRole("listitem", { name: "흠집 1" })).toHaveTextContent("판정 불가 면 · 등급 미반영");
 });
 
+// [상황] AI가 잡은 후보가 하나도 없는 빠른 검사에서, 관리자가 사진 가운데를 눌러 놓친 찍힘을 표시해 추가하고 검수를 완료한다.
+// [기대] 후보가 없어도 검수 칸과 "직접 표시" 칸이 열린다. 점을 찍기 전엔 추가 버튼이 꺼져 있다. 추가하면 "직접 표시 · 1개"가 되고
+//        사람이 표시한 흠집(HUMAN)으로 저장되며, 화면 좌표가 원본 사진 좌표로 맞게 바뀐다(960px 화면 가운데 → 1920px 사진 가운데).
+//        완료하면 찍힘이 등급에 들어가 "문제 있음 · C등급"이 되고, 그 흠집엔 "사람이 표시"가 붙고 AI 신뢰도는 없다.
 test("AI 후보가 없는 세트도 검수 칸이 열리고, 놓친 찍힘을 점으로 표시해 추가하면 파란 표시와 함께 등급(C)에 들어간다(11/9)", async () => {
   const user = userEvent.setup();
   const ids = addRental("C02AIR0002", "CAPTURED", {
@@ -549,6 +613,8 @@ test("AI 후보가 없는 세트도 검수 칸이 열리고, 놓친 찍힘을 �
   expect(screen.getByRole("listitem", { name: "흠집 1" })).not.toHaveTextContent("신뢰도");
 });
 
+// [상황] 사람이 직접 표시한 흠집 1개가 있는 검수 화면에서 그 흠집의 "지우기"를 누른다.
+// [기대] AI 후보 목록(남은 2곳)엔 직접 표시한 흠집이 끼지 않고, 지우면 "직접 표시 · 0개"가 된다.
 test("직접 표시한 흠집은 검수 완료 전에 지울 수 있다(11/9)", async () => {
   const user = userEvent.setup();
   const { rentalId, checkpointId } = addReviewRental();
@@ -563,6 +629,8 @@ test("직접 표시한 흠집은 검수 완료 전에 지울 수 있다(11/9)", 
   expect(await screen.findByRole("region", { name: "AI가 놓친 흠집 직접 표시 · 0개" })).toBeInTheDocument();
 });
 
+// [상황] D등급 렌탈을 하나 넣고, 목록에서 "문제 있는 검사만"을 눌렀다가 "전체"를 누른다.
+// [기대] B~D등급 기기만 남고(A등급·검사 전은 빠짐), 총 건수가 줄며 주소에 problem=1이 붙는다. "전체"를 누르면 원래대로 돌아온다.
 test("문제 있는 검사만을 누르면 지금 시점 등급이 B~D인 기기만 남고 총 건수가 바뀌며, 전체를 누르면 돌아온다(contracts #23)", async () => {
   addRental("C02AIR0002", "GRADED", { grade: "D", ruleVersion: "grade-rules-v1", reasons: ["찍힘"], defects: [defect("TOP", "dent", 0.8, 3)] });
   const user = userEvent.setup();
@@ -582,6 +650,8 @@ test("문제 있는 검사만을 누르면 지금 시점 등급이 B~D인 기기
   expect(await card("LGGRAM0001")).toBeInTheDocument();
 });
 
+// [상황] 모든 등급을 A로 바꾸고 "문제 있는 검사만" 주소로 연다.
+// [기대] "지금 문제 있는 검사가 없습니다" 안내가 보인다.
 test("문제 있는 검사가 하나도 없으면 빈 목록 안내가 보인다", async () => {
   db.report.inspections.forEach((ins) => {
     if (ins.grade && ins.grade !== "A") ins.grade = "A";

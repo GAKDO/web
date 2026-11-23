@@ -1,3 +1,7 @@
+// 이 파일이 확인하는 것: 고객 리포트의 "3D로 보기"(디지털 트윈). 노트북 모형에 흠집 핀을 꽂아 보여 주고,
+// 슬라이더로 시점(출고 → 수령 → 반납)을 옮기면 그 시점의 사진과 흠집이 보인다. 직전 시점에 없던 흠집은 "신규"로 표시한다.
+// 테스트 환경에는 3D 그래픽이 없어서 화면은 "면별 사진" 대체 보기로 그려진다.
+
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderAsCustomer } from "../../test/renderApp";
@@ -6,8 +10,10 @@ import { db } from "../../shared/mocks/db";
 import { server } from "../../shared/mocks/node";
 import { problem } from "../../shared/mocks/handlers/problem";
 
+// 테스트 도구: 가짜 데이터에서 고객의 첫 렌탈 번호(출고·수령 봉인, 반납 검사 중).
 const firstRentalId = () => [...db.report.owners.keys()][0];
 
+// 테스트 도구: 고객으로 그 렌탈의 리포트를 열고 "3D로 보기" 영역을 찾는다.
 async function openTwin() {
   const u = userEvent.setup();
   renderAsCustomer(`/my/rentals/${firstRentalId()}`);
@@ -15,9 +21,13 @@ async function openTwin() {
   return { u, twin };
 }
 
+// 테스트 도구: 시점 슬라이더 찾기.
 const slider = () => screen.getByRole("slider", { name: "시점" });
+// 테스트 도구: 3D 영역에서 "신규" 표시를 모두 찾는다.
 const newTags = (twin: HTMLElement) => within(twin).queryAllByText("신규");
 
+// [상황] 출고 때 새 흠집이 없고 수령 때 윗면에 신규 흠집 1개가 있다. 슬라이더를 출고에서 수령으로 옮긴다.
+// [기대] 출고에선 "신규"가 없고, 수령으로 옮기면 윗면(덮개) 흠집 핀 1개가 "신규" 모양으로 나타난다.
 test("출고 흠집 0개·수령 신규 1개일 때 슬라이더를 출고에서 수령으로 옮기면 핀 1개가 '신규'로 구분돼 나타난다", async () => {
   const { twin } = await openTwin();
   fireEvent.change(slider(), { target: { value: "0" } });
@@ -30,6 +40,8 @@ test("출고 흠집 0개·수령 신규 1개일 때 슬라이더를 출고에서
   expect(newTags(twin)).toHaveLength(1);
 });
 
+// [상황] 수령 시점(처음 보이는 시점)에서 슬라이더를 출고로 되돌린다.
+// [기대] 신규 핀이 사라지고 출고 때 사진(키보드 사진 포함)으로 돌아간다.
 test("수령 시점에서 슬라이더를 다시 출고로 옮기면 신규 핀이 사라지고 출고 사진으로 돌아간다", async () => {
   const { twin } = await openTwin();
   expect(newTags(twin)).toHaveLength(1);
@@ -38,6 +50,9 @@ test("수령 시점에서 슬라이더를 다시 출고로 옮기면 신규 핀�
   expect(await within(twin).findByRole("img", { name: "키보드 사진" })).toBeInTheDocument();
 });
 
+// [상황] 수령의 신규 윗면 흠집 핀을 누른다.
+// [기대] 흠집 상세 창에 확대 사진, 종류(긁힘), 면(윗면), 길이 12mm, 넓이 3.1mm², "직전 시점에 없던 흠집"이 보이고,
+//        등급을 매긴 판정 규칙 버전(grade-rules-v1)도 보인다.
 test("핀을 누르면 그 흠집의 크롭 사진, 종류, 면, 크기가 보인다", async () => {
   const { u, twin } = await openTwin();
   await u.click(within(twin).getByRole("button", { name: /신규 윗면/ }));
@@ -51,6 +66,8 @@ test("핀을 누르면 그 흠집의 크롭 사진, 종류, 면, 크기가 보�
   expect(within(twin).getByText("판정 규칙: grade-rules-v1")).toBeInTheDocument();
 });
 
+// [상황] 출고 시점의 바닥 흠집 핀을 누른다.
+// [기대] "출고는 기준 시점이라 비교하지 않음"이 보인다(출고가 첫 기준이라 이전과 비교할 것이 없음).
 test("출고 시점 핀은 '이전부터 있음' 대신 비교하지 않는다고 보인다", async () => {
   const { u, twin } = await openTwin();
   fireEvent.change(slider(), { target: { value: "0" } });
@@ -59,12 +76,16 @@ test("출고 시점 핀은 '이전부터 있음' 대신 비교하지 않는다�
   expect(within(detail).getByText("출고는 기준 시점이라 비교하지 않음")).toBeInTheDocument();
 });
 
+// [상황] 반납 시점이 아직 검사 중이다.
+// [기대] "반납: 검사 중이라 아직 볼 수 없습니다."가 보이고, 슬라이더는 출고·수령 두 칸까지만 움직인다.
 test("아직 봉인되지 않은 시점은 '검사 중'으로 보이고 슬라이더에 오르지 않는다", async () => {
   const { twin } = await openTwin();
   expect(within(twin).getByText("반납: 검사 중이라 아직 볼 수 없습니다.")).toBeInTheDocument();
   expect(slider()).toHaveAttribute("max", "1");
 });
 
+// [상황] 슬라이더에 초점을 두고 왼쪽 화살표를 누른다.
+// [기대] 마우스로 옮긴 것처럼 출고 시점으로 바뀐다(키보드만 쓰는 사람도 쓸 수 있게).
 test("슬라이더를 키보드(좌우 화살표)로 움직이면 마우스와 같은 결과가 나온다", async () => {
   const { u, twin } = await openTwin();
   slider().focus();
@@ -72,6 +93,8 @@ test("슬라이더를 키보드(좌우 화살표)로 움직이면 마우스와 �
   expect(within(twin).getByRole("heading", { name: "3D로 보기 · 출고" })).toBeInTheDocument();
 });
 
+// [상황] 폰으로 찍은 수령 시점은 키보드 사진이 없고, 테스트 환경은 3D를 그릴 수 없다.
+// [기대] "3D를 볼 수 없어 면별 사진으로" 안내와 함께 면별 사진이 보이고, 키보드 칸은 "사진 없음"이다.
 test("사진이 없는 면(폰 촬영의 키보드)은 '사진 없음'으로 보이고, 3D를 그릴 수 없으면 면별 사진으로 대신 보인다", async () => {
   const { twin } = await openTwin();
   expect(await within(twin).findByText(/3D를 볼 수 없어 면별 사진으로/)).toBeInTheDocument();
@@ -80,6 +103,8 @@ test("사진이 없는 면(폰 촬영의 키보드)은 '사진 없음'으로 보
   expect(await within(twin).findByRole("img", { name: "윗면(덮개) 사진" })).toBeInTheDocument();
 });
 
+// [상황] 사진 목록을 주는 서버가 500 오류를 낸다.
+// [기대] "사진 없음"으로 속이지 않고 "사진을 불러오지 못했습니다."와 "사진 다시 불러오기" 버튼이 보인다.
 test("사진을 불러오지 못하면 '사진 없음' 대신 오류와 다시 불러오기 버튼이 보인다", async () => {
   server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/media", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
   const { twin } = await openTwin();
@@ -87,6 +112,8 @@ test("사진을 불러오지 못하면 '사진 없음' 대신 오류와 다시 �
   expect(within(twin).getByRole("button", { name: "사진 다시 불러오기" })).toBeInTheDocument();
 });
 
+// [상황] 검사 결과를 주는 서버가 500 오류를 낸 상태에서 핀을 누른다.
+// [기대] 흠집 상세가 "확인 중"에 멈추지 않고 "검사 결과를 불러오지 못했습니다"와 다시 불러오기 버튼을 보인다.
 test("검사 결과를 불러오지 못하면 흠집 상세가 '확인 중'에 머물지 않고 다시 불러오기를 보인다", async () => {
   server.use(http.get("*/api/v1/captures/checkpoints/:checkpointId/inspection", () => problem(500, "INTERNAL_ERROR", "서버 오류")));
   const { u, twin } = await openTwin();
@@ -96,6 +123,8 @@ test("검사 결과를 불러오지 못하면 흠집 상세가 '확인 중'에 �
   expect(within(detail).getByRole("button", { name: "검사 결과 다시 불러오기" })).toBeInTheDocument();
 });
 
+// [상황] 수령 시점 윗면에 신규 흠집이 하나 더 있다.
+// [기대] 흠집 목록에서 "흠집 1", "흠집 2"로 구별돼 보인다.
 test("한 면에 흠집이 둘이면 목록에서 1, 2로 구별된다", async () => {
   const timeline = db.report.timelines.get(firstRentalId());
   const rcv = timeline?.checkpoints.find((c) => c.type === "RCV");
