@@ -14,6 +14,10 @@ import { quickDefect, quickMedia, quickPhotos } from "../../shared/mocks/report"
 import { problem } from "../../shared/mocks/handlers/problem";
 import { server } from "../../shared/mocks/node";
 
+// 가짜 데이터의 부스 세트가 가진 면 사진 수(shared/mocks/report.ts BOOTH_FACES): 부스 전체 검사 필수 8면
+// (윗면·바닥·앞/뒤/왼/오른 옆면·키보드·꺼진 화면, codes.yaml capture.face_required.BOOTH). 흰 화면은 선택이라 없다.
+const BOOTH_FACE_COUNT = 8;
+
 // 목 데이터: 고객 렌탈 ①(C02PRO0001) 출고·수령 봉인, 반납 촬영됨(결과 없음) / ②(LGGRAM0001) 출고 A / 관리자 렌탈(C02AIR0001) 시점 없음
 // / 빠른 검사: C02PRO0001을 다시 빌려준 렌탈, 출고 C(원본 사진 12장)
 
@@ -131,7 +135,7 @@ test("A 등급 시점의 상세는 문제 없음과 흠집이 없다는 문장�
     /^✔ 수리 필요 없음$/,
   );
   // 정합 세트라 면 사진(부스 8면)을 보인다
-  expect(within(await screen.findByRole("list", { name: "면 사진" })).getAllByRole("listitem")).toHaveLength(8);
+  expect(within(await screen.findByRole("list", { name: "면 사진" })).getAllByRole("listitem")).toHaveLength(BOOTH_FACE_COUNT);
 });
 
 // [상황] 빠른 검사에서 같은 바닥 긁힘이 두 카메라 × 두 조명 사진 4장에 잡혔고, 모두 같은 묶음 번호(groupId)다.
@@ -352,7 +356,7 @@ test("정합 세트(FULL)는 원본 사진 격자(AI가 본 흠집)와 면 사�
   const media = db.report.media.get(out?.checkpointId ?? "");
   if (media) media.photos = quickPhotos();
   renderAsAdmin(`/admin/inspections/${rental?.rentalId}/${out?.checkpointId}`);
-  expect(within(await screen.findByRole("list", { name: "면 사진" })).getAllByRole("listitem")).toHaveLength(8);
+  expect(within(await screen.findByRole("list", { name: "면 사진" })).getAllByRole("listitem")).toHaveLength(BOOTH_FACE_COUNT);
   expect(screen.getAllByRole("region", { name: /사진$/ }).length).toBeGreaterThan(0);
   expect(screen.getByText("정합된 면 사진(등급 계산에 쓴 좌표)")).toBeInTheDocument();
 });

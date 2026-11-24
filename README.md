@@ -53,6 +53,10 @@ npm run typecheck && npm test   # 검사
 npm run build                   # 빌드
 ```
 
+`npm ci` 뒤 `npm test`(= `vitest run`)만 하면 됩니다. 테스트는 진짜 서버 없이 MSW 가짜 API(`src/shared/mocks`)로 돌고,
+카메라처럼 브라우저 장치가 필요한 부분은 테스트 안에서 가짜로 바꿔 끼웁니다. 그래서 건너뛰는 테스트가 없습니다.
+테스트 파일마다 맨 위에 "이 파일이 확인하는 것"을, 테스트마다 `[상황]`·`[기대]`를 한국어로 적어 두었습니다.
+
 컨테이너는 기존 nginx Dockerfile(8080, `/version.txt`)을 씁니다.
 
 ## 빌드 설정값 (`VITE_*`, 빌드 때 화면에 박히므로 비밀 값은 넣지 않는다)

@@ -17,10 +17,20 @@ import { server } from "../../shared/mocks/node";
 import * as camera from "./camera";
 import { blurredGray, darkGray, fakeShot, glareGray, sharpGray } from "./testing";
 
-// 테스트 도구: 카메라 기능을 모두 가짜로 바꾼다.
+// 테스트 도구: 카메라 기능을 모두 가짜로 바꾼다. 테스트 환경(jsdom)에는 진짜 카메라가 없어서,
+// 아래 7개 함수를 빈 가짜(vi.fn)로 두고 테스트마다 돌려줄 값을 정한다. 나머지(자르기 계산 등)는 진짜를 쓴다.
 vi.mock("./camera", async (importOriginal) => {
   const real = await importOriginal<typeof import("./camera")>();
-  return { ...real, isSecure: vi.fn(), hasCameraApi: vi.fn(), openCamera: vi.fn(), attachStream: vi.fn(), stopCamera: vi.fn(), captureShot: vi.fn(), sampleFrame: vi.fn() };
+  return {
+    ...real,
+    isSecure: vi.fn(), // 보안 연결(HTTPS·localhost)인지 확인. 아니면 카메라를 켤 수 없다는 안내를 띄운다
+    hasCameraApi: vi.fn(), // 브라우저에 카메라 기능(getUserMedia)이 있는지 확인
+    openCamera: vi.fn(), // 후면 카메라 켜기(권한 요청). 실패하면 거절·없음·실패 안내
+    attachStream: vi.fn(), // 켠 카메라 영상을 화면의 <video>에 연결
+    stopCamera: vi.fn(), // 카메라 끄기(촬영 화면을 나갈 때)
+    captureShot: vi.fn(), // "찍기": 지금 화면을 JPEG로 저장하고 해시·검사용 회색조를 만든다
+    sampleFrame: vi.fn(), // 찍기 전 미리보기 분석용 작은 프레임(흔들림·반사·어두움 미리 안내)
+  };
 });
 // 테스트 도구: 가짜 카메라 기능 묶음(테스트마다 돌려줄 값을 정함).
 const cam = vi.mocked(camera);
@@ -46,6 +56,10 @@ async function openTop() {
   return user;
 }
 
+// 폰 수령 촬영의 면 개수(faces.ts의 PHONE_FACES): 필수 7면(윗면·바닥·앞/뒤/왼/오른 옆면·꺼진 화면)
+// + 선택 1면(흰 화면). 키보드는 폰 촬영에서 찍지 않는다.
+const PHONE_FACE_COUNT = 8;
+
 // [상황] 로그인하지 않은 고객이 수령 QR 링크를 열고 로그인한다.
 // [기대] 로그인 화면이 열리고, 로그인하면 "수령 사진 찍기" 면 목록 8칸(흰 화면은 선택, 키보드는 없음)으로 돌아온다.
 //        주소창의 QR 토큰은 지워지고, 그 시점의 촬영 권한이 화면 메모리에 생긴다.
@@ -57,7 +71,7 @@ test("로그인하지 않은 고객이 QR 링크를 열면 로그인 화면이 �
   await user.type(screen.getByLabelText("비밀번호"), MOCK_CUSTOMER.password);
   await user.click(screen.getByRole("button", { name: "로그인" }));
   expect(await screen.findByRole("heading", { name: "수령 사진 찍기" })).toBeInTheDocument();
-  expect(screen.getAllByRole("listitem")).toHaveLength(8);
+  expect(screen.getAllByRole("listitem")).toHaveLength(PHONE_FACE_COUNT);
   expect(screen.getByText(/화면\(흰색\) \(선택\)/)).toBeInTheDocument();
   expect(screen.queryByText(/키보드/)).not.toBeInTheDocument();
   expect(router.state.location.search).toBe("");
