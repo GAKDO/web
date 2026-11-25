@@ -269,7 +269,7 @@ export interface paths {
         post?: never;
         /**
          * 탈퇴
-         * @description 비밀번호를 확인한 뒤 개인정보(이메일·이름·비밀번호)를 지우고 WITHDRAWN으로 바꾼다. 렌탈 기록은 남는다. (FR-USR-04)
+         * @description 비밀번호를 확인한 뒤 개인정보(이메일·이름·비밀번호)를 지우고 WITHDRAWN으로 바꾼다. 렌탈 기록은 남는다. (FR-USR-04) 비밀번호를 정한 적 없는 계정(`MeResponse.passwordSet`이 false, 소셜 가입)은 `password`를 빼고 보내도 되지만, 로그인한 지 10분 안(토큰의 auth_time)일 때만 받는다. 지났거나 auth_time이 없으면 403 REAUTH_REQUIRED(다시 로그인한 뒤 탈퇴). `passwordSet`이 true인 계정(비밀번호 가입, 가입 뒤 소셜이 자동 연결된 계정 포함)이 `password`를 빼면 401 INVALID_CREDENTIALS. `password`를 보내면 어느 계정이든 그 값을 확인한다. 탈퇴하면 소셜 로그인 연결도 지운다.
          */
         delete: operations["withdraw"];
         options?: never;
@@ -460,9 +460,14 @@ export interface components {
             status: components["schemas"]["AuthAccountStatus"];
             /** @description 내 계정에 연결된 렌탈(ADMIN은 빈 배열) */
             rentalIds: components["schemas"]["PublicId"][];
+            /** @description 이 계정에 연결된 소셜 로그인 제공자(없으면 빈 배열) */
+            socialProviders?: components["schemas"]["AuthSocialProvider"][];
+            /** @description 사용자가 비밀번호를 직접 정했는지. 비밀번호 가입·재설정이면 true, 소셜 가입이면 false(서버는 항상 보냄). false면 탈퇴에 비밀번호 대신 로그인 10분 안 조건을 쓴다 */
+            passwordSet?: boolean;
         };
         WithdrawRequest: {
-            password: string;
+            /** @description 비밀번호를 정한 계정(`MeResponse.passwordSet` true)은 필수. 정한 적 없는 소셜 가입 계정은 빼도 된다 */
+            password?: string;
         };
         CaptureLinkCreateRequest: {
             rentalId: components["schemas"]["PublicId"];
@@ -563,7 +568,7 @@ export interface components {
          * @description codes.yaml error_code
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "NOT_TEST_DATA" | "DEVICE_IN_USE" | "DEVICE_MODEL_IN_USE" | "BOOTH_CODE_INVALID" | "BOOTH_CODE_EXPIRED" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "REVIEW_PENDING_REMAINS" | "REVIEW_NOT_READY" | "REVIEW_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "OUT_OF_SCOPE" | "NOT_FOUND" | "RATE_LIMITED" | "IDEMPOTENCY_KEY_CONFLICT" | "INTERNAL_ERROR" | "CONSENT_REQUIRED" | "EMAIL_ALREADY_EXISTS" | "CODE_INVALID" | "CODE_EXPIRED" | "RESEND_TOO_SOON" | "INVALID_CREDENTIALS" | "EMAIL_NOT_VERIFIED" | "REFRESH_INVALID" | "CAPTURE_LINK_INVALID" | "RENTAL_LINKED_TO_OTHER" | "CLIENT_CREDENTIALS_INVALID" | "PAIRING_CODE_INVALID" | "PAIRING_CODE_EXPIRED" | "REAUTH_REQUIRED" | "RENTAL_OPEN_EXISTS" | "DEVICE_NOT_ACTIVE" | "CHECKPOINT_ORDER_VIOLATION" | "RENTAL_NOT_CLOSABLE" | "DEVICE_SERIAL_EXISTS" | "DEVICE_HAS_OPEN_RENTAL" | "DEVICE_STATUS_TRANSITION_INVALID" | "PILOT_ALIAS_EXISTS" | "NOT_TEST_DATA" | "DEVICE_IN_USE" | "DEVICE_MODEL_IN_USE" | "BOOTH_CODE_INVALID" | "BOOTH_CODE_EXPIRED" | "CAPTURE_FACES_MISSING" | "CAPTURE_HASH_MISMATCH" | "CAPTURE_SET_CLOSED" | "REVIEW_PENDING_REMAINS" | "REVIEW_NOT_READY" | "REVIEW_CLOSED" | "DIAGNOSTIC_ALREADY_UPLOADED" | "DIAGNOSTIC_SCHEMA_INVALID" | "DEVICE_SERIAL_MISMATCH" | "RECORD_ALREADY_SEALED";
         FieldError: {
             /** @description camelCase 필드 경로 (예 photos[0].sha256) */
             field: string;
@@ -1275,7 +1280,11 @@ export interface operations {
                      *       "status": "ACTIVE",
                      *       "rentalIds": [
                      *         "Ws0HLv6QRbDILPWOcz5I2"
-                     *       ]
+                     *       ],
+                     *       "socialProviders": [
+                     *         "GOOGLE"
+                     *       ],
+                     *       "passwordSet": false
                      *     }
                      */
                     "application/json": components["schemas"]["MeResponse"];
@@ -1294,11 +1303,6 @@ export interface operations {
         };
         requestBody: {
             content: {
-                /**
-                 * @example {
-                 *       "password": "example-pass-1234"
-                 *     }
-                 */
                 "application/json": components["schemas"]["WithdrawRequest"];
             };
         };
@@ -1327,7 +1331,22 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            403: components["responses"]["Forbidden"];
+            /** @description 고객 토큰이 아님(FORBIDDEN) 또는 비밀번호 없는 탈퇴인데 로그인한 지 10분이 지남(REAUTH_REQUIRED) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "title": "다시 로그인한 뒤 해 주세요",
+                     *       "status": 403,
+                     *       "code": "REAUTH_REQUIRED"
+                     *     }
+                     */
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     createCaptureLink: {

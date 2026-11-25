@@ -1,9 +1,15 @@
+// 이 파일이 확인하는 것: 관리자 "성능" 화면. 기기 진단(벤치마크·배터리)을 렌탈 전(출고)과 후(수령·반납)로 비교해 성능이 떨어졌는지 본다.
+
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderAsAdmin } from "../../test/renderApp";
 import { db } from "../../shared/mocks/db";
 
 describe("성능 화면(기기별 진단 렌탈 전·후 비교)", () => {
+  // [상황] 관리자가 성능 화면을 열고, 진단이 없는 첫 기기를 본 뒤 진단이 있는 기기(시리얼 C02PRO0001)를 고른다.
+  // [기대] 첫 기기는 "아직 진단을 올린 적이 없습니다". 그 기기는 배터리 최대 용량 91.2% → 84.0%와 배터리 점검 플래그가 보인다.
+  //        디스크 쓰기는 14% 떨어져 "떨어짐" 경고, CPU 단일 코어는 3%만 떨어져 경고 없음(측정 흔들림 범위).
+  //        "한눈에 보기" 표에 지표마다 차이와 판단이 있고(배터리 용량 차이는 −7.2%p), 이 기기의 진단 기록도 보인다.
   it("관리 메뉴에서 열리고, 기기를 고르면 출고와 수령·반납 진단을 벤치마크·배터리로 비교한다", async () => {
     renderAsAdmin("/admin/benchmark");
     expect(await screen.findByRole("heading", { name: "성능" })).toBeInTheDocument();
@@ -31,6 +37,8 @@ describe("성능 화면(기기별 진단 렌탈 전·후 비교)", () => {
     expect(screen.getByRole("heading", { name: "이 기기의 진단 기록" })).toBeInTheDocument();
   });
 
+  // [상황] 기기 상세 화면의 링크(주소에 기기 ID)로 성능 화면을 연다.
+  // [기대] 그 기기가 골라진 채 렌탈 전·후 비교가 바로 보인다.
   it("기기 상세의 링크(?deviceId)로 열면 그 기기를 골라 둔다", async () => {
     const pro = db.devices.find((d) => d.serial === "C02PRO0001")!;
     renderAsAdmin(`/admin/benchmark?deviceId=${pro.deviceId}`);

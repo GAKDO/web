@@ -95,6 +95,8 @@ export const FLAG_LABEL: Record<DiagnosticsFlagKind, string> = {
   ACTIVATION_LOCK_ON: "활성화 잠금(나의 Mac 찾기)이 켜져 있습니다",
   DISK_ENCRYPTION_ON: "디스크 암호화(FileVault·BitLocker)가 켜져 있습니다",
   DISK_HEALTH_WARNING: "운영체제가 SSD 상태를 경고했습니다",
+  SECURITY_PROTECTION_OFF: "백신·시스템 보호(Defender·Gatekeeper·SIP)가 꺼져 있습니다",
+  THREAT_DETECTED: "새 악성코드 탐지 기록이 있습니다",
 };
 
 export const PROGRESS_STAGE_LABEL: Record<ProgressStage, string> = {

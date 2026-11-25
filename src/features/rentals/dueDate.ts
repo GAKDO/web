@@ -15,3 +15,18 @@ export function dueState(rental: Pick<RentalSummary, "dueAt" | "status">, now: D
   if (!y || !m || !d) return null;
   return { label: `${y}. ${Number(m)}. ${Number(d)}.`, overdue: rental.status === "OPEN" && rental.dueAt < todayKst(now) };
 }
+
+/**
+ * 반납 예정일 입력 검사(11/13). 오늘(한국 시간)보다 과거면 오류 문장, 아니면 null.
+ * 빈 값과 이미 저장된 값(original) 그대로는 통과한다(기존 데이터 보존, 서버 규칙과 같음)
+ */
+export function dueInputError(value: string, original: string | null = null, now: Date = new Date()): string | null {
+  if (!value || value === original) return null;
+  const today = todayKst(now);
+  if (value >= today) return null;
+  const [y, m, d] = today.split("-");
+  return `반납 예정일은 오늘(${y}. ${Number(m)}. ${Number(d)}.) 이후로 정해 주세요.`;
+}
+
+/** 반납 예정일 칸 아래 안내 */
+export const DUE_HINT = "오늘 이후 날짜만 고를 수 있습니다.";

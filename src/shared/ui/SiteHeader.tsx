@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useId, useState, type CSSProperties } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Camera,
@@ -19,6 +19,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { isArchived } from "../config/features";
 import { pilotDashboardUrl } from "../config/pilotDashboard";
 import { TraceLogo } from "./TraceLogo";
+import { PendingReviewBadge, usePendingReviewLabel } from "../../features/inspections/components/PendingReviewBadge";
 import { useIsMobile } from "./useMediaQuery";
 
 export interface NavItem {
@@ -50,7 +51,7 @@ function adminExtras(): NavItem[] {
 
 /**
  * 고객·공개 화면의 메뉴. 로그인 상태와 보관 설정(report·account)에 따라 갈 수 있는 곳만 둔다.
- * 고객 화면에는 로그아웃 버튼을 두지 않는다(내 정보 화면에 있다). 관리자는 내 정보 화면이 없으므로 공개 화면 헤더에도 로그아웃을 둔다(11/9 민서)
+ * 로그인했으면 고객·관리자 모두 헤더 오른쪽 위에서 로그아웃한다(11/12 민서: 고객도 내 정보 화면까지 가지 않고 로그아웃). 내 정보 화면의 로그아웃도 그대로 둔다
  */
 function siteLinks(signedIn: boolean, admin: boolean): NavItem[] {
   const report = !isArchived("report");
@@ -83,8 +84,12 @@ const LINK_ACTIVE = "text-white after:absolute after:inset-x-3 after:bottom-0 af
 /** 넓은 화면 메뉴의 링크. 헤더 높이를 꽉 채워 밑줄이 헤더 아래 선에 붙는다 */
 const NAV_LINK = cn(LINK, "h-full rounded-none");
 
-function HeaderLink({ item, className, activeClassName, onNavigate, style }: { item: NavItem; className: string; activeClassName?: string; onNavigate?: () => void; style?: CSSProperties }) {
+/** 검수 대기 숫자를 붙이는 메뉴(11/12) */
+export const REVIEW_MENU_PATH = "/admin/inspections";
+
+function HeaderLink({ item, className, activeClassName, onNavigate, style, badge }: { item: NavItem; className: string; activeClassName?: string; onNavigate?: () => void; style?: CSSProperties; badge?: string | null }) {
   const Icon = item.icon;
+  const badgeId = useId();
   if (item.external)
     return (
       <a href={item.to} target="_blank" rel="noopener noreferrer" className={className} style={style} onClick={onNavigate}>
@@ -94,16 +99,17 @@ function HeaderLink({ item, className, activeClassName, onNavigate, style }: { i
       </a>
     );
   return (
-    <NavLink to={item.to} end={item.end} className={({ isActive }) => cn(className, isActive && activeClassName)} style={style} onClick={onNavigate}>
+    <NavLink to={item.to} end={item.end} className={({ isActive }) => cn(className, isActive && activeClassName)} style={style} onClick={onNavigate} aria-describedby={badge ? badgeId : undefined}>
       {Icon && <Icon aria-hidden="true" className="size-4" />}
       {item.label}
+      {badge && <PendingReviewBadge label={badge} descriptionId={badgeId} />}
     </NavLink>
   );
 }
 
 /**
  * 모든 화면 맨 위에 붙어 있는 헤더(11/8). 스크롤해도 제자리에 있고, 내 정보·마이페이지·관리 메뉴로 바로 간다.
- * variant="admin"은 관리자 메뉴(검사 결과·기기·기종·렌탈·성능·부스 화면)와 로그아웃을, "site"는 로그인 상태에 맞는 고객 메뉴를 보인다.
+ * variant="admin"은 관리자 메뉴(검사 결과·기기·기종·렌탈·성능·부스 화면)를, "site"는 로그인 상태에 맞는 고객 메뉴를 보인다. 로그인했으면 둘 다 로그아웃을 둔다.
  * 폰(767px 이하)은 로고 + 메뉴 버튼만 두고, 누르면 헤더 아래로 큰 글자 메뉴가 펼쳐진다.
  * 넓은 화면 메뉴와 폰 메뉴는 둘 중 하나만 그린다(화면 읽기가 같은 메뉴를 두 번 읽지 않게)
  */
@@ -116,10 +122,10 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
   const [open, setOpen] = useState(false);
   const signedIn = status === "authenticated";
   const admin = variant === "admin";
-  // 관리 화면이든 공개 화면이든 관리자로 로그인했으면 헤더에서 로그아웃한다
-  const adminLogout = admin || (signedIn && role === "ADMIN");
-  // 11/9 민서: 로그아웃하면 관리자 로그인 화면이 아니라 첫 화면으로 간다.
-  // 먼저 첫 화면으로 옮긴 뒤 세션을 끝내, 관리 화면 보호(RequireAdmin)가 로그인 화면으로 보내지 않게 한다
+  // 관리 화면은 항상, 공개·고객 화면은 로그인했으면(고객·관리자 모두) 헤더에서 로그아웃한다
+  const headerLogout = admin || signedIn;
+  // 11/9 민서: 로그아웃하면 로그인 화면이 아니라 첫 화면으로 간다.
+  // 먼저 첫 화면으로 옮긴 뒤 세션을 끝내, 화면 보호(RequireAdmin·RequireCustomer)가 로그인 화면으로 보내지 않게 한다
   // 서버가 로그아웃(리프레시 폐기)을 확인하지 못했으면 내 정보 화면과 같이 로그인 화면에서 알린다(새로 고침 때 세션이 되살아날 수 있음)
   const onLogout = async () => {
     setOpen(false);
@@ -128,6 +134,9 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
     if (!confirmed) navigate("/login?loggedOut=partial", { replace: true });
   };
   const showAccount = !isArchived("account");
+  // 관리 화면에서만 검수 대기 건수를 묻는다(고객·공개 화면은 묻지 않음)
+  const pendingReviews = usePendingReviewLabel(admin && signedIn);
+  const badgeFor = (item: NavItem) => (item.to === REVIEW_MENU_PATH ? pendingReviews : null);
 
   const links = status === "unknown" ? [] : admin ? [...ADMIN_MENU, ...adminExtras()] : siteLinks(signedIn, role === "ADMIN");
 
@@ -179,19 +188,19 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
         {!mobile && links.length > 0 && (
           <nav aria-label={admin ? "관리 메뉴" : "고객 메뉴"} className="ml-4 flex h-full min-w-0 items-stretch gap-0.5 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {links.map((item) => (
-              <HeaderLink key={item.to} item={item} className={NAV_LINK} activeClassName={LINK_ACTIVE} />
+              <HeaderLink key={item.to} item={item} className={NAV_LINK} activeClassName={LINK_ACTIVE} badge={badgeFor(item)} />
             ))}
           </nav>
         )}
         <div className="ml-auto flex items-center gap-1">
           {guestActions}
-          {adminLogout && !mobile && (
+          {headerLogout && !mobile && (
             <button type="button" className={cn(LINK, "cursor-pointer border-0 bg-transparent")} onClick={() => void onLogout()}>
               <LogOut aria-hidden="true" className="size-4" />
               로그아웃
             </button>
           )}
-          {mobile && (links.length > 0 || adminLogout || guestLogin) && (
+          {mobile && (links.length > 0 || headerLogout || guestLogin) && (
             <button
               type="button"
               aria-label={open ? "메뉴 닫기" : "메뉴 열기"}
@@ -220,6 +229,7 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
                   activeClassName="text-white"
                   style={{ "--i": i } as CSSProperties}
                   onNavigate={() => setOpen(false)}
+                  badge={badgeFor(item)}
                 />
               </li>
             ))}
@@ -229,7 +239,7 @@ export function SiteHeader({ variant = "site" }: { variant?: "site" | "admin" })
               이미 계정이 있어요. 로그인
             </Link>
           )}
-          {adminLogout && (
+          {headerLogout && (
             <button
               type="button"
               className="mt-6 inline-flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-base font-medium text-zinc-400"

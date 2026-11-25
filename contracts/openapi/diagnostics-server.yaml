@@ -347,6 +347,9 @@ components:
         점검 플래그. COMPONENT_CHANGED·CAPACITY_DROP·BENCH_DROP은 같은 렌탈 앞 진단과 비교해 붙이고 baseRunId는 그 앞 진단이다.
         ACTIVATION_LOCK_ON·DISK_ENCRYPTION_ON·DISK_HEALTH_WARNING(11/7 추가)은 이번 진단의 checks만 보고 첫 진단(출고)에도 붙이며,
         비교 대상이 없으므로 baseRunId는 이번 진단 자신이다.
+        SECURITY_PROTECTION_OFF(11/12 추가)는 이번 checks.securityProtection이 OFF일 때 붙고 baseRunId는 이번 진단이다.
+        THREAT_DETECTED(11/12 추가)는 checks.threatCount가 같은 렌탈 앞 진단보다 늘었을 때(baseRunId는 앞 진단),
+        앞 진단이 없거나 그 값을 못 읽었으면 1건 이상일 때(baseRunId는 이번 진단) 붙는다. detail은 before·after.
     RunChecks:
       type: object
       description: 진단 JSON `checks`(11/7 추가). 못 읽었으면 각 값이 null
@@ -367,6 +370,15 @@ components:
             - $ref: './components/codes.gen.yaml#/components/schemas/DiagnosticsDiskHealth'
             - type: 'null'
           description: OS가 본 SSD SMART 상태
+        securityProtection:
+          oneOf:
+            - $ref: './components/codes.gen.yaml#/components/schemas/DiagnosticsLockState'
+            - type: 'null'
+          description: 선택(11/12 추가, 서버는 항상 보냄). Defender 백신·실시간 보호(Windows), Gatekeeper·SIP(macOS)가 모두 켜졌으면 ON. 못 읽었으면 null
+        threatCount:
+          type: [integer, 'null']
+          minimum: 0
+          description: 선택(11/12 추가, 서버는 항상 보냄). Windows Defender 위협 탐지 건수. macOS·못 읽음은 null
     DiagnosticRunCreated:
       type: object
       required: [runId, flags]

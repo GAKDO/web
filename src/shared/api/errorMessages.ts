@@ -29,6 +29,7 @@ const MESSAGES: Record<ErrorCode, string> = {
   CLIENT_CREDENTIALS_INVALID: "부스 인증 정보가 맞지 않습니다.",
   PAIRING_CODE_INVALID: "페어링 코드가 맞지 않습니다.",
   PAIRING_CODE_EXPIRED: "페어링 코드가 만료됐습니다.",
+  REAUTH_REQUIRED: "보안을 위해 다시 로그인한 뒤 해 주세요.",
   RENTAL_OPEN_EXISTS: "이 기기로 진행 중인 렌탈이 이미 있습니다. 그 렌탈을 먼저 종료하세요.",
   DEVICE_NOT_ACTIVE: "이 기기는 렌탈할 수 없는 상태입니다. 사용 가능한 기기를 고르세요.",
   CHECKPOINT_ORDER_VIOLATION: "시점은 출고 → 수령 → 반납 순서로만 시작할 수 있습니다. 최신 상태를 다시 불러왔습니다.",
